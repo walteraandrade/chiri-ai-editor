@@ -4,6 +4,7 @@ import {
   freeTextInstruction,
   instructionLabel,
   quickActionInstruction,
+  refineTaskLabel,
   taskLabel,
 } from './instruction'
 
@@ -66,5 +67,25 @@ describe('taskLabel', () => {
         instruction: freeTextInstruction('make it friendlier'),
       }),
     ).toBe('cursor in p5 → free text: make it friendlier')
+  })
+})
+
+describe('refineTaskLabel', () => {
+  it('labels a Refine with the Block and the follow-up', () => {
+    expect(
+      refineTaskLabel({
+        blocks: [{ id: 'p3' }],
+        instruction: freeTextInstruction('make it shorter'),
+      }),
+    ).toBe('refine p3 → make it shorter')
+  })
+
+  it('labels a Refine over several Blocks', () => {
+    expect(
+      refineTaskLabel({
+        blocks: [{ id: 'p3' }, { id: 'p4' }],
+        instruction: freeTextInstruction('now more formal'),
+      }),
+    ).toBe('refine p3–p4 → now more formal')
   })
 })

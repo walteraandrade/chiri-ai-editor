@@ -4,6 +4,7 @@ import type { ClientError } from '../ai/errors'
 import { adaptiveDiff } from '../diff/adaptive-diff'
 import { matchEdgeWhitespace } from './replacement'
 import type {
+  Instruction,
   NoticeKind,
   ReadySuggestion,
   Suggestion,
@@ -84,10 +85,105 @@ export const resolveSuggestion = (
     replacement,
     rationale: result.rationale,
     diff: adaptiveDiff(found.original, replacement),
-    history: [],
+    history: [
+      {
+        instruction: found.instruction,
+        replacement,
+        rationale: result.rationale,
+      },
+    ],
+    refine: { status: 'idle' },
   }
   return replaceItem(state, ready)
 }
+
+const findReady = (
+  state: SuggestionsState,
+  id: SuggestionId,
+): ReadySuggestion | undefined => {
+  const found = findSuggestion(state, id)
+  return found?.status === 'ready' ? found : undefined
+}
+
+export const beginRefine = (
+  state: SuggestionsState,
+  id: SuggestionId,
+  instruction: Instruction,
+): SuggestionsState => {
+  const found = findReady(state, id)
+  return found === undefined || found.refine.status === 'working'
+    ? state
+    : replaceItem(state, {
+        ...found,
+        refine: { status: 'working', instruction },
+      })
+}
+
+export const resolveRefine = (
+  state: SuggestionsState,
+  id: SuggestionId,
+  result: SuggestionResult,
+): SuggestionsState => {
+  const found = findReady(state, id)
+  if (found?.refine.status !== 'working') return state
+  const replacement = matchEdgeWhitespace(found.original, result.replacement)
+  if (result.unchanged || replacement === found.replacement) {
+    return withNotice(
+      replaceItem(state, { ...found, refine: { status: 'idle' } }),
+      'no-change',
+    )
+  }
+  return replaceItem(state, {
+    ...found,
+    replacement,
+    rationale: result.rationale,
+    diff: adaptiveDiff(found.original, replacement),
+    history: [
+      ...found.history,
+      {
+        instruction: found.refine.instruction,
+        replacement,
+        rationale: result.rationale,
+      },
+    ],
+    refine: { status: 'idle' },
+  })
+}
+
+export const failRefine = (
+  state: SuggestionsState,
+  id: SuggestionId,
+  error: ClientError,
+): SuggestionsState => {
+  const found = findReady(state, id)
+  return found?.refine.status === 'working'
+    ? replaceItem(state, {
+        ...found,
+        refine: {
+          status: 'failed',
+          instruction: found.refine.instruction,
+          error,
+        },
+      })
+    : state
+}
+
+export const retryRefine = (
+  state: SuggestionsState,
+  id: SuggestionId,
+): SuggestionsState => {
+  const found = findReady(state, id)
+  return found?.refine.status === 'failed'
+    ? replaceItem(state, {
+        ...found,
+        refine: { status: 'working', instruction: found.refine.instruction },
+      })
+    : state
+}
+
+export const instructionHistory = (
+  suggestion: ReadySuggestion,
+): readonly string[] => suggestion.history.map((step) => step.instruction.text)
 
 export const failSuggestion = (
   state: SuggestionsState,
@@ -160,10 +256,14 @@ export const acceptSuggestion = (
   changes: ChangeDesc,
 ): SuggestionsState => mapSuggestions(without(state, id), changes)
 
-export const pendingSuggestionIds = (
+const isInFlight = (item: Suggestion): boolean =>
+  item.status === 'pending' ||
+  (item.status === 'ready' && item.refine.status === 'working')
+
+export const inFlightSuggestionIds = (
   state: SuggestionsState,
 ): readonly SuggestionId[] =>
-  state.items.filter((item) => item.status === 'pending').map((item) => item.id)
+  state.items.filter(isInFlight).map((item) => item.id)
 
 const contains = (item: Suggestion, position: number): boolean =>
   item.from <= position && position <= item.to

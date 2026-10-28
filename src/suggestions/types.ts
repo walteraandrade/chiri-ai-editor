@@ -29,12 +29,28 @@ export type PendingSuggestion = SuggestionBase & {
   readonly status: 'pending'
 }
 
+export type RefineStep = {
+  readonly instruction: Instruction
+  readonly replacement: string
+  readonly rationale: string
+}
+
+export type RefineState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'working'; readonly instruction: Instruction }
+  | {
+      readonly status: 'failed'
+      readonly instruction: Instruction
+      readonly error: ClientError
+    }
+
 export type ReadySuggestion = SuggestionBase & {
   readonly status: 'ready'
   readonly replacement: string
   readonly rationale: string
   readonly diff: AdaptiveDiff
-  readonly history: readonly string[]
+  readonly history: readonly RefineStep[]
+  readonly refine: RefineState
 }
 
 export type FailedSuggestion = SuggestionBase & {

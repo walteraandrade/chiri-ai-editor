@@ -217,6 +217,75 @@ describe('buildRefinePrompt', () => {
     expect(prompt).toContain('Delta.')
   })
 
+  it('puts the original, the history, the latest Replacement and the new Instruction in that order', () => {
+    const { prompt } = build()
+    const positions = [
+      '<original>',
+      'Previous instructions, oldest first',
+      '<latest-replacement>',
+      'New instruction:',
+    ].map((marker) => prompt.indexOf(marker))
+    expect(positions.every((position) => position >= 0)).toBe(true)
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions)
+  })
+
+  it('numbers a long history from the first Instruction', () => {
+    const { target, neighbors } = targetAt('Gamma.')
+    const { prompt } = buildRefinePrompt({
+      target,
+      neighbors,
+      history: ['Make it shorter.', 'Now more formal.', 'Drop the adjectives.'],
+      latestReplacement: 'G.',
+      instruction: 'Add a warmer tone.',
+    })
+    expect(prompt).toContain(
+      '1. Make it shorter.\n2. Now more formal.\n3. Drop the adjectives.',
+    )
+  })
+
+  it('sends the title and the current section with the Neighbors', () => {
+    const { prompt } = build()
+    expect(prompt).toContain('Document title: Guide')
+    expect(prompt).toContain('Current section: Setup')
+    expect(prompt.indexOf('Alpha.')).toBeLessThan(prompt.indexOf('<original>'))
+    expect(prompt.indexOf('Delta.')).toBeGreaterThan(
+      prompt.indexOf('</original>'),
+    )
+  })
+
+  it('shows the enclosing Block when the original is only part of it', () => {
+    const { target, neighbors } = targetAt('beta', 4)
+    const { prompt } = buildRefinePrompt({
+      target,
+      neighbors,
+      history: ['Make it shorter.'],
+      latestReplacement: 'b',
+      instruction: 'x',
+    })
+    expect(prompt).toContain('<original>\nbeta\n</original>')
+    expect(prompt).toContain(
+      '<enclosing-text>\nBeta beta beta.\n</enclosing-text>',
+    )
+  })
+
+  it('keeps the effect of the previous Instructions unless contradicted', () => {
+    expect(build().prompt).toMatch(
+      /keep the effect of the previous instructions, unless the new instruction contradicts them/,
+    )
+  })
+
+  it('returns the system prompt with the five fixed rules as instructions', () => {
+    const { instructions } = build()
+    expect(instructions).toBe(SYSTEM_PROMPT)
+    expect(instructions).toMatch(/language of the Target/i)
+    expect(instructions).toMatch(/only what the Instruction needs/i)
+    expect(instructions).toMatch(/do not invent facts, numbers or names/i)
+    expect(instructions).toMatch(/preserve markdown syntax/i)
+    expect(instructions).toMatch(
+      /one short sentence.*language of the Document/is,
+    )
+  })
+
   it('works with no previous Instructions', () => {
     const { target, neighbors } = targetAt('Gamma.')
     const { prompt } = buildRefinePrompt({

@@ -50,3 +50,9 @@ export const taskLabel = ({
       : `free text: ${instruction.text}`
   return `${where} → ${what}`
 }
+
+export const refineTaskLabel = ({
+  blocks,
+  instruction,
+}: Omit<TaskLabelInput, 'source'>): string =>
+  `refine ${blockRange(blocks)} → ${instructionLabel(instruction)}`
