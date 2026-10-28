@@ -9,7 +9,7 @@ A browser Markdown editor with an AI co-author. Select text, or put the cursor i
 **How it was built.**
 - A planning session (Claude Code, `grilling` skill) produced the [ADRs](docs/chiri/adr/), the [glossary](GLOSSARY.md), the [plan](docs/PLAN.md) and six issues.
 - An orchestrator session (Claude Code, `opus`) ran the six slices one after another. Each slice had a `sonnet` implementer subagent (tests first for the pure modules, then the UI), a check of the acceptance criteria in a real browser, and a review by `opus` (Standards and Spec) followed by `sonnet` until clean. The maintainer decided at three gates: the model (A), the core flow (B) and this submission (C).
-- The default model, `openai/gpt-6.1-terra`, was chosen by a [Bake-off](docs/chiri/bakeoff.md) of 9 models on the same requests (final run US$0.056; about US$0.17 for the three full runs plus the language re-check; about US$0.23 for everything spent on the model, with the prompt checks and probes).
+- The default model, `openai/gpt-6.1-terra`, was chosen by a [Bake-off](docs/chiri/bakeoff.md) of 9 models on the same requests (final run US$0.056; about US$0.17 for the three full runs plus the language re-check; about US$0.23 for everything spent on choosing the model, with the prompt checks and probes).
 - Every model call made while building was recorded against the US$5 budget in the [AI cost log](docs/chiri/ai-costs.md). The UI has no end-to-end suite; it was checked by hand, and each check is written up in [docs/chiri/verification/](docs/chiri/verification/).
 
 ## How to run it
