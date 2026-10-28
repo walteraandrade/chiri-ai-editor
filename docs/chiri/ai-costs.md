@@ -33,8 +33,17 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-28 | #3 | select p12 → free text: Correct the spelling mistake only | `openai/gpt-6.1-terra` → OpenAI | 432 / 41 / 0 / 0 | 0.000637 | 1815 / 1436 / 1436 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
 | 2026-10-28 | #3 | Forced failures (2 network aborts, 3 out-of-credit stubs) and 1 request aborted by typing inside its Target | `openai/gpt-6.1-terra` | – | 0 for the stubs, not reported for the aborted request | 2 to 178 (client) | – | 5 stubs, 1 aborted | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
 | 2026-10-28 | #3 | Calls without a record: Shorter on p3 and Fix grammar on p12 before the first reload, free text on p12 lost on a reload (estimated from the key's usage counter) | `openai/gpt-6.1-terra` | – | ~0.0022 | – | – | – | not kept |
+| 2026-10-28 | #4 | cursor in p3 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 516 / 86 / 0 / 0 | 0.000946 | 2640 / 1667 / 2022 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #4 | refine p3 → make it shorter | `openai/gpt-6.1-terra` → OpenAI | 616 / 70 / 0 / 0 | 0.000966 | 2487 / 1763 / 1973 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #4 | refine p3 → now more formal | `openai/gpt-6.1-terra` → OpenAI | 606 / 79 / 0 / 0 | 0.001001 | 1994 / 1483 / 1738 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #4 | refine p3 → drop the adjectives (after a forced network failure and a forced 402, then Retry) | `openai/gpt-6.1-terra` → OpenAI | 616 / 78 / 0 / 0 | 0.001006 | 2035 / 1526 / 1791 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #4 | cursor in p4 → Clearer | `openai/gpt-6.1-terra` → OpenAI | 513 / 74 / 0 / 0 | 0.000883 | 2036 / 1591 / 1795 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #4 | cursor in p5 → More formal | `openai/gpt-6.1-terra` → OpenAI | 533 / 67 / 0 / 0 | 0.000868 | 1954 / 1634 / 1728 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #4 | cursor in p5 → More formal | `openai/gpt-6.1-terra` → OpenAI | 533 / 69 / 0 / 0 | 0.000878 | 2380 / 1923 / 2089 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #4 | cursor in p1 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 404 / 30 / 0 / 0 | 0.000554 | 1566 / 1327 / 1327 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #4 | Forced failures (1 network, 1 out-of-credit), 3 Refines held in flight and aborted by Reject, Accept and typing, 1 stubbed answer for the "no change" check | `openai/gpt-6.1-terra` | – | 0 for the failures and the stub, not reported for the aborted requests (they never reached OpenRouter) | 3 to 1454 (client) | – | 2 failures, 3 aborted, 1 stub | [4-refine.md](verification/4-refine.md) |
 
-**Running total:** US$0.245 of 5.00
+**Running total:** US$0.252 of 5.00
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -45,3 +54,7 @@ Notes on slice 2:
 Notes on slice 3:
 - Slice cost is about US$0.011: 11 recorded calls US$0.0085, three calls without a record about US$0.0022, and the aborted request, whose usage OpenRouter did not report. The key's usage counter rose by about US$0.0104 over the slice, which agrees with the sum within the error of its starting point. The slice budget was US$0.10.
 - The forced-failure checks never reached OpenRouter, so they cost nothing.
+
+Notes on slice 4:
+- Slice cost is about US$0.0071: 8 real calls, all recorded (5 Quick actions to open Suggestions, 3 Refines). The failures, the aborted requests and the stub never reached OpenRouter. The slice budget was US$0.05.
+- A Refine request carries about 100 input tokens more than a Quick action (history and latest Replacement), so it costs about US$0.001 against US$0.0009.
