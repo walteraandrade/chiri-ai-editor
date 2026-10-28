@@ -21,6 +21,7 @@ The diff itself guards against rows 2 and 3: every change is visible before Acce
 - **Strict structured outputs:** `structured_outputs` with OpenRouter `provider.require_parameters: true`, so only providers that support it are used. One zod schema per shape is both the validator and the source of the JSON Schema.
 - **Target requests and Refine:** the app already knows the range. The model returns `{ replacement, rationale }`.
 - **Review pass:** the app numbers Blocks (`p1`, `p2`, …) before sending. The model returns `{ edits: [{ blockId, replacement, rationale }] }` and never copies text to say where. A Block is a top-level node of the Markdown syntax tree; a whole list is one Block.
+- **Wire shape with AI SDK `Output.array`:** the SDK owns the wrapper, so the Review pass wire shape is `{ elements: [...] }`; each element is `{ blockId, replacement, rationale }`.
 - **App-side validation:** drop an item when `replacement` equals the original or `blockId` is unknown. On invalid output, retry once silently, then show an error card.
 
 ## Consequences

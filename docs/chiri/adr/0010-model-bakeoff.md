@@ -1,6 +1,6 @@
 # 0010. Choose the model by Bake-off
 
-- Status: **Proposed**. Decided at Gate A ([docs/PLAN.md](../../PLAN.md#gates)).
+- Status: Accepted (2026-10-28, Gate A). Chosen: `openai/gpt-6.1-terra`.
 - Source: planning session, Q23, Q33
 
 ## Context
@@ -42,6 +42,16 @@ Notes:
 - **Choice:** the maintainer picks by reading the outputs. Tie-breakers, in order: Target-request latency under ~3 s, then cost. The result may be two models: a fast one for Target requests and a strong one for the Review pass.
 - **Default:** configurable via `OPENROUTER_MODEL`.
 - **Budget:** under US$0.50.
+
+### Outcome (Gate A, 2026-10-28)
+
+The maintainer chose **`openai/gpt-6.1-terra`** for Target requests, Refine and the Review pass ([bakeoff.md](../bakeoff.md)):
+
+- Median Target-request latency 2.1 s, so the Draft reopen rule ([0008](0008-validated-streaming-only.md)) stays closed.
+- Earliest first Suggestion in the Review pass (1.6 s), no Rationale language slips, parallel list rewrites, no invented facts in the outputs read.
+- About US$0.001 per call. `anthropic/claude-sonnet-5.5` was similar in quality and latency at ~3.6× the cost; `anthropic/claude-haiku-5.5` was cheaper but weaker on the list and skipped the redundant passage in the Review pass.
+- Excluded: `google/gemini-3.5-flash-lite` invented a fact (rule 3); `z-ai/glm-5.3-flash` and `deepseek/deepseek-v4.1-flash` wrote Rationales in other languages (rule 5); `google/gemini-3.8-flash`, `google/gemini-4-argon` and `qwen/qwen3.8-flash` were above ~3 s.
+- The Bake-off cost US$0.17 across three full runs plus a 3-model re-check, under the US$0.50 cap.
 
 ## Consequences
 
