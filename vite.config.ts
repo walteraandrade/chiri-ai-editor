@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
     preview: { proxy },
     test: {
       environment: 'node',
-      include: ['src/**/*.test.ts', 'config/**/*.test.ts'],
+      include: ['src/**/*.test.{ts,tsx}', 'config/**/*.test.ts'],
     },
   }
 })

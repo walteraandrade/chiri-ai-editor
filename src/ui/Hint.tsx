@@ -1,8 +1,7 @@
 import { detectApplePlatform, formatShortcut } from './platform'
 
-const shortcut = formatShortcut('K', detectApplePlatform())
-
 export function Hint() {
+  const shortcut = formatShortcut('K', detectApplePlatform())
   return (
     <p className="text-sm text-ink-muted">
       Select text and press{' '}

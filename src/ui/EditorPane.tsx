@@ -8,6 +8,7 @@ type EditorPaneProps = {
 
 export function EditorPane({ initialDoc, onChange }: EditorPaneProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const initialDocRef = useRef(initialDoc)
   const onChangeRef = useRef(onChange)
 
   useEffect(() => {
@@ -19,11 +20,11 @@ export function EditorPane({ initialDoc, onChange }: EditorPaneProps) {
     if (!parent) return undefined
     const view = createEditorView({
       parent,
-      doc: initialDoc,
+      doc: initialDocRef.current,
       onChange: (doc) => onChangeRef.current(doc),
     })
     return () => view.destroy()
-  }, [initialDoc])
+  }, [])
 
   return <div ref={parentRef} />
 }
