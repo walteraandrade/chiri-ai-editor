@@ -46,7 +46,7 @@ Keys (`Ctrl` instead of `⌘` outside macOS):
 
 ## With more time
 
-Details and sources in [docs/BACKLOG.md](docs/BACKLOG.md).
+Details and context in [docs/BACKLOG.md](docs/BACKLOG.md).
 
 1. **Margin cards instead of the floating toolbar.** The toolbar can cover the end of the line above the Suggestion (visible in the screenshot).
 2. **Version arrows for Refine** (‹ 1/3 ›). Every Refine step is already kept; only the UI is missing.
