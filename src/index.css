@@ -17,7 +17,7 @@
 
   --color-fill: rgb(241 241 243 / 0.06);
   --color-fill-hover: rgb(241 241 243 / 0.11);
-  --color-code-bg: var(--color-surface);
+  --color-code-bg: rgb(241 241 243 / 0.05);
   --color-selection: rgb(227 117 69 / 0.28);
   --color-accent-tint: rgb(227 117 69 / 0.12);
   --color-shimmer: rgb(227 117 69 / 0.25);
