@@ -13,7 +13,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Suggestion** | A proposed replacement for a range of the Document. It lives outside the Document (an overlay) until accepted. Holds: range, original text, Replacement, Rationale, refine history. |
 | **Replacement** | The new text the AI proposes for a Suggestion's range. |
 | **Rationale** | One short sentence from the AI explaining the change, in the Document's language. Shown on hover, or when the cursor is inside the Suggestion. |
-| **Active Suggestion** | The most recently created Suggestion, or the one containing the cursor. The only one that shows the Accept / Reject / Refine toolbar. |
+| **Active Suggestion** | The one containing the cursor; otherwise the most recently asked Suggestion; otherwise the most important open Review pass Suggestion. The only one that shows the Accept / Reject / Refine toolbar. |
 | **Accept** | Apply the Replacement to the Document. A normal edit, so `Cmd+Z` undoes it. |
 | **Reject** | Drop the Suggestion. Not undoable in v1. |
 | **Refine** | A follow-up Instruction on an open Suggestion. Produces a new Replacement in place. The diff is always against the original text. |

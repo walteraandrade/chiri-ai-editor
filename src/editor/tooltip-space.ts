@@ -21,8 +21,8 @@ export const spaceBelow = (
 })
 
 const viewportOf = (view: EditorView): Viewport => {
-  const win = view.dom.ownerDocument.defaultView
-  return { width: win?.innerWidth ?? 0, height: win?.innerHeight ?? 0 }
+  const root = view.dom.ownerDocument.documentElement
+  return { width: root.clientWidth, height: root.clientHeight }
 }
 
 export const tooltipSpaceBelow = (getInset: () => number): Extension =>
