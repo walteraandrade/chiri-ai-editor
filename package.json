@@ -12,7 +12,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "bakeoff": "tsx scripts/bakeoff.ts"
+    "bakeoff": "tsx scripts/bakeoff.ts",
+    "export-sessions": "tsx scripts/export-sessions.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
