@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { RefineRequest, TargetRequest } from './client'
+import type { RefineRequest, ReviewEvent, TargetRequest } from './client'
 import type { SuggestionResult } from './edits'
 import type { Result } from './errors'
 import { createLazyModelClient } from './lazy-client'
@@ -22,6 +22,18 @@ const refineRequest = {
   latestReplacement: 'Hi',
 } satisfies RefineRequest
 
+const reviewRequest = { blocks: [], focus: 'tone' }
+
+const noReview = async function* (): AsyncGenerator<ReviewEvent, void> {
+  yield* []
+}
+
+const collect = async (events: AsyncIterable<ReviewEvent>) => {
+  const all: ReviewEvent[] = []
+  for await (const event of events) all.push(event)
+  return all
+}
+
 const answer: Result<SuggestionResult> = {
   ok: true,
   value: { replacement: 'Hi', rationale: 'Shorter.', unchanged: false },
@@ -33,6 +45,7 @@ describe('createLazyModelClient', () => {
     const load = vi.fn(async () => ({
       requestSuggestion,
       refineSuggestion: async () => answer,
+      reviewDocument: noReview,
     }))
     const client = createLazyModelClient(load)
 
@@ -48,6 +61,7 @@ describe('createLazyModelClient', () => {
     const load = vi.fn(async () => ({
       requestSuggestion: async () => answer,
       refineSuggestion: async () => answer,
+      reviewDocument: noReview,
     }))
     const client = createLazyModelClient(load)
 
@@ -68,6 +82,7 @@ describe('createLazyModelClient', () => {
       .mockResolvedValue({
         requestSuggestion: async () => answer,
         refineSuggestion: async () => answer,
+        reviewDocument: noReview,
       })
     const client = createLazyModelClient(load)
 
@@ -84,6 +99,7 @@ describe('createLazyModelClient', () => {
     const load = vi.fn(async () => ({
       requestSuggestion: async () => answer,
       refineSuggestion,
+      reviewDocument: noReview,
     }))
     const client = createLazyModelClient(load)
 
@@ -101,5 +117,49 @@ describe('createLazyModelClient', () => {
 
     expect(failed).toMatchObject({ ok: false, error: { type: 'unknown' } })
     expect(!failed.ok && failed.error.message).toMatch(/reload the page/i)
+  })
+
+  it('forwards a Review pass and streams its events', async () => {
+    const done = {
+      type: 'done',
+      validated: 0,
+      dropped: 0,
+      attempts: 1,
+      incomplete: false,
+      firstSuggestionMs: null,
+    } as const
+    const reviewDocument = vi.fn(async function* (): AsyncGenerator<
+      ReviewEvent,
+      void
+    > {
+      yield done
+    })
+    const load = vi.fn(async () => ({
+      requestSuggestion: async () => answer,
+      refineSuggestion: async () => answer,
+      reviewDocument,
+    }))
+    const client = createLazyModelClient(load)
+
+    expect(await collect(client.reviewDocument(reviewRequest))).toEqual([done])
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(reviewDocument).toHaveBeenCalledWith(reviewRequest)
+  })
+
+  it('turns a failed load into one error event for a Review pass', async () => {
+    const load = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    const client = createLazyModelClient(load)
+
+    const events = await collect(client.reviewDocument(reviewRequest))
+
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      type: 'error',
+      error: { type: 'unknown' },
+    })
+    const [event] = events
+    expect(event?.type === 'error' && event.error.message).toMatch(
+      /reload the page/i,
+    )
   })
 })
