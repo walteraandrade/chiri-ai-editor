@@ -44,7 +44,7 @@ export const markdownHighlightStyle = HighlightStyle.define([
     padding: '0.1em 0.3em',
   },
   { tag: tags.link, color: 'var(--color-accent)' },
-  { tag: tags.url, color: 'var(--color-accent-dim)' },
+  { tag: tags.url, color: 'var(--color-ink-faint)' },
   { tag: tags.quote, color: 'var(--color-ink-muted)', fontStyle: 'italic' },
   { tag: tags.processingInstruction, color: 'var(--color-ink-faint)' },
   { tag: tags.labelName, color: 'var(--color-ink-faint)' },

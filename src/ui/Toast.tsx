@@ -39,13 +39,13 @@ export function Toast({ message, onDismiss }: ToastProps) {
       {message ? (
         <p
           key={message.id}
-          className="toast-in pointer-events-auto flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-2 text-ink text-sm shadow-lg"
+          className="toast-in pointer-events-auto flex items-center gap-3 rounded-full bg-raised px-4 py-2 text-ink text-sm shadow-lg"
         >
           <span>{message.text}</span>
           {message.action ? (
             <button
               type="button"
-              className="rounded-full border border-border px-2.5 py-0.5 text-ink-strong hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1"
+              className="cm-ai-button text-ink-strong"
               onClick={() => {
                 message.action?.run()
                 onDismiss()
