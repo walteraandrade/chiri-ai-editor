@@ -17,6 +17,7 @@ import {
 } from '../suggestions/instruction'
 import { currentTarget } from './current-target'
 import { el } from './dom'
+import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
 import { beginEffect } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
@@ -159,6 +160,12 @@ const buildBubble = (view: EditorView) => {
       on: {
         mousedown: (event) => {
           if (event.target !== input) event.preventDefault()
+        },
+        keydown: (event) => {
+          if (event.key !== 'Escape') return cycleTab(dom, event)
+          event.preventDefault()
+          view.dispatch({ effects: dismissBubbleEffect.of(null) })
+          view.focus()
         },
       },
     },

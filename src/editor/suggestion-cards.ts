@@ -12,6 +12,7 @@ import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion, SuggestionId } from '../suggestions/types'
 import { detectApplePlatform, formatShortcut } from '../ui/platform'
 import { el } from './dom'
+import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
 import {
   closeRefineEffect,
@@ -275,6 +276,11 @@ const cardCreator =
       on: {
         mousedown: (event) => {
           if (event.target !== refineForm.input) event.preventDefault()
+        },
+        keydown: (event) => {
+          if (event.key !== 'Escape') return cycleTab(dom, event)
+          event.preventDefault()
+          view.focus()
         },
       },
     })

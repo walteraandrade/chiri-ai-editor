@@ -1,7 +1,8 @@
 import { Prec } from '@codemirror/state'
-import { keymap } from '@codemirror/view'
+import { type EditorView, keymap } from '@codemirror/view'
 import { bubbleVisible, dismissBubbleEffect, openAskEffect } from './ask-bubble'
 import { currentTarget } from './current-target'
+import { focusEdge } from './focus-cycle'
 import {
   closeRefineEffect,
   openRefineEffect,
@@ -58,10 +59,20 @@ export const escapeAtCursor = (handle: EditorHandle): boolean =>
   cancelRefineAtCursor(handle) ||
   rejectAtCursor(handle)
 
+const focusOpenCard =
+  (backward: boolean) =>
+  (view: EditorView): boolean => {
+    const card =
+      view.dom.querySelector<HTMLElement>('.cm-ai-bubble') ??
+      view.dom.querySelector<HTMLElement>('.cm-ai-card-active')
+    return card !== null && focusEdge(card, backward)
+  }
+
 export const suggestionKeymap = Prec.highest(
   keymap.of([
     { key: 'Mod-k', run: openAskOrRefine, preventDefault: true },
     { key: 'Mod-Enter', run: acceptAtCursor },
     { key: 'Escape', run: escapeAtCursor },
+    { key: 'Tab', run: focusOpenCard(false), shift: focusOpenCard(true) },
   ]),
 )
