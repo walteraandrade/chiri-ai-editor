@@ -15,6 +15,7 @@ import {
   reviewTaskLabel,
 } from './review'
 import {
+  beginRefine,
   beginSuggestion,
   emptySuggestions,
   failSuggestion,
@@ -357,6 +358,28 @@ describe('Accept all and Reject all scope', () => {
   it('ignores review Suggestions that are not ready', () => {
     const state = stateOf(
       draft('r', SECOND.from, SECOND.to, { origin: 'review' }),
+    )
+    expect(openReviewCount(state)).toBe(0)
+    expect(acceptAllPlan(state)).toEqual({ ids: [], changes: [] })
+  })
+
+  it('leaves out a review Suggestion whose Refine is in flight, from the plan and the count', () => {
+    const refining = beginRefine(reviewState(), 'r1', {
+      type: 'free-text',
+      text: 'tighter',
+    })
+    expect(openReviewCount(refining)).toBe(1)
+    expect(acceptAllPlan(refining)).toEqual({
+      ids: ['r2'],
+      changes: [{ from: THIRD.from, to: THIRD.to, insert: 'Three.' }],
+    })
+  })
+
+  it('has nothing to accept when every review Suggestion is refining', () => {
+    const state = ['r1', 'r2'].reduce(
+      (current, id) =>
+        beginRefine(current, id, { type: 'free-text', text: 'tighter' }),
+      reviewState(),
     )
     expect(openReviewCount(state)).toBe(0)
     expect(acceptAllPlan(state)).toEqual({ ids: [], changes: [] })

@@ -547,6 +547,30 @@ describe('errors', () => {
     expect(streams[1]?.request.focus).toBe('tone')
   })
 
+  it('ignores Retry once the editor is destroyed', async () => {
+    const { runtime, handle, streams, notices } = setup()
+    runtime.actions.start(handle, 'tone')
+    await only(streams).push(failWith({ type: 'timeout', message: 'slow' }))
+    const retry = only(notices).retry
+
+    runtime.destroy()
+    retry?.()
+
+    expect(streams).toHaveLength(1)
+  })
+
+  it('aborts a running pass on destroy and starts nothing afterwards', () => {
+    const { runtime, handle, streams } = setup()
+    runtime.actions.start(handle, '')
+    const { request } = only(streams)
+
+    runtime.destroy()
+    runtime.actions.start(handle, 'again')
+
+    expect(request.signal?.aborted).toBe(true)
+    expect(streams).toHaveLength(1)
+  })
+
   it('shows a different message per error type', async () => {
     const { runtime, handle, streams, notices } = setup()
     runtime.actions.start(handle, '')

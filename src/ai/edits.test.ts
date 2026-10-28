@@ -199,6 +199,27 @@ describe('junk guard', () => {
     )
   })
 
+  it('sits exactly on the thresholds', () => {
+    const words = (count: number) =>
+      Array.from({ length: count }, (_, i) => `word${i}`).join(' ')
+    expect(isJunkReplacement(words(15), 'x')).toBe(false)
+    expect(isJunkReplacement(words(16), 'x')).toBe(true)
+    expect(isJunkReplacement(words(16), words(2))).toBe(true)
+    expect(isJunkReplacement(words(16), words(3))).toBe(false)
+  })
+
+  it('never flags a heading, however short its Replacement', () => {
+    const heading = `## ${LONG}`
+    const headingBlocks = extractBlocks(`${heading}\n\nBody.\n`)
+    expect(headingBlocks[0]?.kind).toBe('heading')
+    const { validated, dropped } = validateReviewEdits(
+      [{ blockId: 'p1', replacement: '## Deploys', rationale: 'Shorter.' }],
+      headingBlocks,
+    )
+    expect(dropped).toEqual([])
+    expect(validated.map((entry) => entry.blockId)).toEqual(['p1'])
+  })
+
   it('does not apply to short Blocks', () => {
     expect(isJunkReplacement('Short one here.', 'x')).toBe(false)
     expect(isJunkReplacement('Item one two three four.', 'Done.')).toBe(false)

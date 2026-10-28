@@ -21,6 +21,11 @@ export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
   const [controls, setControls] = useState<ReviewControls | null>(null)
   const toastId = useRef(0)
+  const headerRef = useRef<HTMLElement>(null)
+  const getTopInset = useCallback(
+    () => headerRef.current?.getBoundingClientRect().bottom ?? 0,
+    [],
+  )
   const dismissToast = useCallback(() => setToast(null), [])
 
   const showToast = useCallback(
@@ -43,7 +48,7 @@ export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 bg-canvas">
+      <header ref={headerRef} className="sticky top-0 z-30 bg-canvas">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 pt-6 pb-3">
           <h1 className="font-display font-semibold text-2xl text-ink-strong tracking-wide">
             Chiri
@@ -62,6 +67,7 @@ export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
           onReviewStatus={setReview}
           onReviewNotice={onReviewNotice}
           onReviewControls={setControls}
+          getTopInset={getTopInset}
         />
       </main>
       <Toast message={toast} onDismiss={dismissToast} />

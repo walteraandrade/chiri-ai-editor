@@ -9,6 +9,7 @@ import {
 import type { ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
 import { suggestionExtensions } from '../editor/suggestions'
+import { tooltipSpaceBelow } from '../editor/tooltip-space'
 import type { SuggestionNotice } from '../suggestions/types'
 
 type EditorPaneProps = {
@@ -18,6 +19,7 @@ type EditorPaneProps = {
   readonly onReviewStatus: (status: ReviewStatus) => void
   readonly onReviewNotice: (notice: ReviewNotice) => void
   readonly onReviewControls: (controls: ReviewControls | null) => void
+  readonly getTopInset: () => number
 }
 
 export function EditorPane({
@@ -27,6 +29,7 @@ export function EditorPane({
   onReviewStatus,
   onReviewNotice,
   onReviewControls,
+  getTopInset,
 }: EditorPaneProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const initialDocRef = useRef(initialDoc)
@@ -36,6 +39,7 @@ export function EditorPane({
     onReviewStatus,
     onReviewNotice,
     onReviewControls,
+    getTopInset,
   })
 
   useEffect(() => {
@@ -45,8 +49,16 @@ export function EditorPane({
       onReviewStatus,
       onReviewNotice,
       onReviewControls,
+      getTopInset,
     }
-  }, [onChange, onNotice, onReviewStatus, onReviewNotice, onReviewControls])
+  }, [
+    onChange,
+    onNotice,
+    onReviewStatus,
+    onReviewNotice,
+    onReviewControls,
+    getTopInset,
+  ])
 
   useEffect(() => {
     const parent = parentRef.current
@@ -55,21 +67,24 @@ export function EditorPane({
       parent,
       doc: initialDocRef.current,
       onChange: (doc) => handlersRef.current.onChange(doc),
-      extensions: suggestionExtensions({
-        client: createLazyModelClient(() =>
-          import('../ai/browser-client').then((module) =>
-            module.createBrowserModelClient(),
+      extensions: [
+        tooltipSpaceBelow(() => handlersRef.current.getTopInset()),
+        ...suggestionExtensions({
+          client: createLazyModelClient(() =>
+            import('../ai/browser-client').then((module) =>
+              module.createBrowserModelClient(),
+            ),
           ),
-        ),
-        onNotice: (notice) => handlersRef.current.onNotice(notice),
-        review: {
-          onStatus: (status) => handlersRef.current.onReviewStatus(status),
-          onNotice: (notice) => handlersRef.current.onReviewNotice(notice),
-          ...(import.meta.env.DEV && {
-            onDrop: (drop) => appendReviewDrop(window, drop),
-          }),
-        },
-      }),
+          onNotice: (notice) => handlersRef.current.onNotice(notice),
+          review: {
+            onStatus: (status) => handlersRef.current.onReviewStatus(status),
+            onNotice: (notice) => handlersRef.current.onReviewNotice(notice),
+            ...(import.meta.env.DEV && {
+              onDrop: (drop) => appendReviewDrop(window, drop),
+            }),
+          },
+        }),
+      ],
     })
     handlersRef.current.onReviewControls(bindReviewControls(view))
     return () => {

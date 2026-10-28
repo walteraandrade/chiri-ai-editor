@@ -34,13 +34,17 @@ const fromStatus = (status: number, message: string): ClientError =>
       ? { type: 'rate-limited', message }
       : { type: 'api', status, message }
 
+const isSuccessStatus = (status: number): boolean =>
+  status >= 200 && status < 300
+
 const fromApiCallError = (error: APICallError): ClientError => {
   const status =
-    error.statusCode === undefined || error.statusCode === 200
+    error.statusCode === undefined || isSuccessStatus(error.statusCode)
       ? (payloadStatus(error.data) ?? error.statusCode)
       : error.statusCode
-  return status === undefined
-    ? { type: 'network', message: error.message }
+  if (status === undefined) return { type: 'network', message: error.message }
+  return isSuccessStatus(status)
+    ? { type: 'network', message: 'The response stream broke' }
     : fromStatus(status, error.message)
 }
 

@@ -42,6 +42,8 @@ The default pass touches what the bake-off said it would (the slang, the long pa
 
 The record's number is measured from the request start inside the client and the page numbers include the click and React. The pass streams: with 3 to 5 Suggestions the first one is on screen after 34 to 65 % of the total. A pass with one Suggestion has nothing to stream, so first and total coincide.
 
+The cap of 6 edits and the time to the first Suggestion are counted at client validation, before the app places the edit. An edit dropped at placement (`text-changed` or `occupied`) still used a slot of the 6, and the first-Suggestion time of the record may refer to an edit that was never shown (the pass with p5 occupied and typing: 2999 ms in the record, 3519 ms until the first review Suggestion was on screen).
+
 ## Screenshots
 
 | File | What it shows |

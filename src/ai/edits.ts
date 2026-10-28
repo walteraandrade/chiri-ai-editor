@@ -65,7 +65,8 @@ const dropReason = (
   const replacement = edit.replacement.trim()
   if (replacement === '') return 'empty'
   if (replacement === block.text.trim()) return 'unchanged'
-  if (isJunkReplacement(block.text, replacement)) return 'junk'
+  if (block.kind !== 'heading' && isJunkReplacement(block.text, replacement))
+    return 'junk'
   if (state.validated >= MAX_REVIEW_EDITS) return 'over-limit'
   return undefined
 }
@@ -97,6 +98,12 @@ export const validateReviewEdit = (
   }
 }
 
+type ValidationRun = {
+  readonly state: ReviewValidationState
+  readonly validated: readonly ValidatedEdit[]
+  readonly dropped: readonly DroppedEdit[]
+}
+
 export const validateReviewEdits = (
   edits: readonly ReviewEdit[],
   blocks: readonly Block[],
@@ -106,15 +113,26 @@ export const validateReviewEdits = (
   readonly dropped: readonly DroppedEdit[]
 } => {
   const context = { blocks, occupied }
-  const validated: ValidatedEdit[] = []
-  const dropped: DroppedEdit[] = []
-  let state = initialReviewState
-  for (const edit of edits) {
-    const step = validateReviewEdit(context, state, edit)
-    state = step.state
-    if (step.outcome.type === 'validated') validated.push(step.outcome.edit)
-    else dropped.push({ edit: step.outcome.edit, reason: step.outcome.reason })
-  }
+  const { validated, dropped } = edits.reduce<ValidationRun>(
+    (run, edit) => {
+      const { state, outcome } = validateReviewEdit(context, run.state, edit)
+      return outcome.type === 'validated'
+        ? {
+            state,
+            validated: run.validated.concat(outcome.edit),
+            dropped: run.dropped,
+          }
+        : {
+            state,
+            validated: run.validated,
+            dropped: run.dropped.concat({
+              edit: outcome.edit,
+              reason: outcome.reason,
+            }),
+          }
+    },
+    { state: initialReviewState, validated: [], dropped: [] },
+  )
   return { validated, dropped }
 }
 

@@ -304,12 +304,19 @@ export const inFlightSuggestionIds = (
 const contains = (item: Suggestion, position: number): boolean =>
   item.from <= position && position <= item.to
 
-const mostRecent = <T extends Suggestion>(items: readonly T[]): T | undefined =>
-  items.reduce<T | undefined>(
-    (best, item) =>
-      best === undefined || item.sequence > best.sequence ? item : best,
-    undefined,
-  )
+const pickBy =
+  (better: (candidate: number, best: number) => boolean) =>
+  <T extends Suggestion>(items: readonly T[]): T | undefined =>
+    items.reduce<T | undefined>(
+      (best, item) =>
+        best === undefined || better(item.sequence, best.sequence)
+          ? item
+          : best,
+      undefined,
+    )
+
+const mostRecent = pickBy((candidate, best) => candidate > best)
+const oldest = pickBy((candidate, best) => candidate < best)
 
 export const activeSuggestion = (
   state: SuggestionsState,
@@ -320,7 +327,11 @@ export const activeSuggestion = (
   )
   const containing =
     cursor === null ? [] : ready.filter((item) => contains(item, cursor))
-  return mostRecent(containing) ?? mostRecent(ready)
+  return (
+    mostRecent(containing) ??
+    mostRecent(ready.filter((item) => item.origin !== 'review')) ??
+    oldest(ready)
+  )
 }
 
 export const suggestionAt = (

@@ -534,6 +534,61 @@ describe('activeSuggestion', () => {
     )
     expect(activeSuggestion(state, 25)?.id).toBe('a')
   })
+
+  describe('with review Suggestions', () => {
+    const reviewDraft = (id: string, from: number, to: number) =>
+      draft(id, from, to, { origin: 'review' })
+
+    const streamed = () =>
+      ready(
+        ready(
+          ready(
+            begun(
+              reviewDraft('r1', 0, 10),
+              reviewDraft('r2', 20, 30),
+              reviewDraft('r3', 40, 50),
+            ),
+            'r1',
+          ),
+          'r2',
+        ),
+        'r3',
+      )
+
+    it('falls back to the first, most important one, not the newest arrival', () => {
+      expect(activeSuggestion(streamed(), null)?.id).toBe('r1')
+      expect(activeSuggestion(streamed(), 15)?.id).toBe('r1')
+    })
+
+    it('does not jump while more arrive', () => {
+      const early = ready(begun(reviewDraft('r1', 0, 10)), 'r1')
+      const later = ready(
+        beginSuggestion(early, reviewDraft('r2', 20, 30)),
+        'r2',
+      )
+      expect(activeSuggestion(early, null)?.id).toBe('r1')
+      expect(activeSuggestion(later, null)?.id).toBe('r1')
+    })
+
+    it('still follows the cursor into a review Suggestion', () => {
+      expect(activeSuggestion(streamed(), 45)?.id).toBe('r3')
+    })
+
+    it('prefers the newest Suggestion the user asked for', () => {
+      const state = ready(beginSuggestion(streamed(), draft('a', 60, 70)), 'a')
+      expect(activeSuggestion(state, null)?.id).toBe('a')
+      expect(activeSuggestion(state, 25)?.id).toBe('r2')
+    })
+
+    it('uses the newest asked one when it was created before the pass', () => {
+      const asked = ready(begun(draft('a', 60, 70)), 'a')
+      const state = ready(
+        beginSuggestion(asked, reviewDraft('r1', 0, 10)),
+        'r1',
+      )
+      expect(activeSuggestion(state, null)?.id).toBe('a')
+    })
+  })
 })
 
 describe('suggestionAt', () => {

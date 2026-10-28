@@ -58,6 +58,22 @@ describe('classifyError', () => {
     )
   })
 
+  it('maps a broken response under a 2xx status to network, not to a 200 api error', () => {
+    for (const status of [200, 201, 204]) {
+      const error = classifyError(apiError(status))
+      expect(error.type).toBe('network')
+      expect(error.message).toBe('The response stream broke')
+    }
+    expect(classifyError(apiError(200, { code: 200 })).type).toBe('network')
+  })
+
+  it('still reads a failure code from the payload under HTTP 200', () => {
+    expect(classifyError(apiError(200, { code: 500 }))).toMatchObject({
+      type: 'api',
+      status: 500,
+    })
+  })
+
   it('maps a browser fetch failure to network', () => {
     expect(classifyError(new TypeError('Failed to fetch')).type).toBe('network')
   })

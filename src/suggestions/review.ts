@@ -105,7 +105,9 @@ const readyReviewSuggestions = (
 ): readonly ReadySuggestion[] =>
   state.items.filter(
     (item): item is ReadySuggestion =>
-      item.status === 'ready' && item.origin === 'review',
+      item.status === 'ready' &&
+      item.origin === 'review' &&
+      item.refine.status !== 'working',
   )
 
 export const openReviewCount = (state: SuggestionsState): number =>

@@ -65,6 +65,7 @@ export const createReviewRuntime = ({
   })(),
 }: RuntimeOptions) => {
   let current: AbortController | undefined
+  let destroyed = false
 
   const recordDrop = (
     handle: EditorHandle,
@@ -151,7 +152,12 @@ export const createReviewRuntime = ({
   }
 
   const start = (handle: EditorHandle, rawFocus: string): void => {
-    if (current !== undefined || reviewRunOf(handle.state) !== null) return
+    if (
+      destroyed ||
+      current !== undefined ||
+      reviewRunOf(handle.state) !== null
+    )
+      return
     const focus = rawFocus.trim()
     const blocks = blocksOf(handle.state)
     const occupied = occupiedBlockIds(suggestionsOf(handle.state), blocks)
@@ -188,18 +194,19 @@ export const createReviewRuntime = ({
     onNotice({ text: reviewSummary({ added, stopped: true }) })
   }
 
+  const destroy = (): void => {
+    destroyed = true
+    current?.abort()
+    current = undefined
+  }
+
   const actions: ReviewActions = { start, stop }
 
   const extension = [
     reviewRunField,
     reviewActionsFacet.of(actions),
-    ViewPlugin.define(() => ({
-      destroy: () => {
-        current?.abort()
-        current = undefined
-      },
-    })),
+    ViewPlugin.define(() => ({ destroy })),
   ]
 
-  return { actions, extension }
+  return { actions, extension, destroy }
 }
