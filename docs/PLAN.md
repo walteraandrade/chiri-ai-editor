@@ -28,12 +28,12 @@ Slices run **sequentially**. Each builds on the previous one, and running them i
 
 | # | Issue | Branch | Scope | Depends on | Gate after | Est. |
 |---|---|---|---|---|---|---|
-| 1 | #1 | `feat/editor-shell` | Vite + React + TS + Tailwind, CodeMirror with styled Markdown, sample Document, `localStorage`, proxy, missing-key banner, Biome, Vitest | — | — | 45 min |
-| 2 | #2 | `feat/model-client-bakeoff` | AI SDK client, zod schemas, prompt building, Block extraction, AI call records, `scripts/bakeoff.ts`, `docs/chiri/bakeoff.md` | 1 | **A** | 60 min |
-| 3 | #3 | `feat/selection-suggestions` | Selection bubble, `Cmd+K`, Quick actions, Suggestion state and mapping, adaptive diff, overlay decorations, Accept / Reject, Rationale, errors | 2, Gate A | **B** | 90 min |
-| 4 | #4 | `feat/refine` | Refine on the Active Suggestion, history, diff against original | 3, Gate B | — | 30 min |
-| 5 | #5 | `feat/review-pass` | Review pass with Focus, numbered Blocks, streamed validated Suggestions (max 6), skip occupied Blocks, Accept all / Reject all | 4 | — | 45 min |
-| 6 | #6 | `docs/readme-and-sessions` | Final README, backlog review, session export script, `ai-sessions/` | 5 | **C** | 30 min |
+| 1 | [#1](https://github.com/walteraandrade/chiri-ai-editor/issues/1) | `feat/editor-shell` | Vite + React + TS + Tailwind, CodeMirror with styled Markdown, sample Document, `localStorage`, proxy, missing-key banner, Biome, Vitest | — | — | 45 min |
+| 2 | [#2](https://github.com/walteraandrade/chiri-ai-editor/issues/2) | `feat/model-client-bakeoff` | AI SDK client, zod schemas, prompt building, Block extraction, AI call records, `scripts/bakeoff.ts`, `docs/chiri/bakeoff.md` | 1 | **A** | 60 min |
+| 3 | [#3](https://github.com/walteraandrade/chiri-ai-editor/issues/3) | `feat/selection-suggestions` | Selection bubble, `Cmd+K`, Quick actions, Suggestion state and mapping, adaptive diff, overlay decorations, Accept / Reject, Rationale, errors | 2, Gate A | **B** | 90 min |
+| 4 | [#4](https://github.com/walteraandrade/chiri-ai-editor/issues/4) | `feat/refine` | Refine on the Active Suggestion, history, diff against original | 3, Gate B | — | 30 min |
+| 5 | [#5](https://github.com/walteraandrade/chiri-ai-editor/issues/5) | `feat/review-pass` | Review pass with Focus, numbered Blocks, streamed validated Suggestions (max 6), skip occupied Blocks, Accept all / Reject all | 4 | — | 45 min |
+| 6 | [#6](https://github.com/walteraandrade/chiri-ai-editor/issues/6) | `docs/readme-and-sessions` | Final README, backlog review, session export script, `ai-sessions/` | 5 | **C** | 30 min |
 
 That is about 5 h 15 of work, plus 30–40 min of reviews. If time runs short, shrink slice 5 first.
 
