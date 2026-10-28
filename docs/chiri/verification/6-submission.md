@@ -53,6 +53,23 @@ What the 104 spans are: prose in the sessions that mentions the key prefix or a 
 
 A tampered file (a byte appended to an exported `custom-title.json`) made `--verify` exit with 1.
 
+## Final export
+
+Run by the maintainer at Gate C (the auto-mode permission classifier blocked the orchestrator from copying `~/.claude/projects/` into the repository): `pnpm export-sessions`, then `pnpm export-sessions --verify`.
+
+| Measure | Value |
+|---|---|
+| Files exported to `ai-sessions/` | 65 (2 project folders: orchestration and grilling) |
+| Bytes | 55,499,875 |
+| Masked spans | 118, in 5 files (orchestrator `.jsonl` 44; subagent `.jsonl` files 44, 23, 6 and 1) |
+| Identical to the masked source | 64 |
+| Grown since the export | 1: the orchestrator `.jsonl`, still being written; its exported part matches and ends on a line break |
+| Different, missing or unexpected | 0, 0, 0 |
+| `sk-or-` followed by a key character in the export | 0 |
+| Occurrences of the `OPENROUTER_API_KEY` value in the export | 0 |
+
+The orchestrator session continues after this export, so its last turns (Gate C and the merge) are not in `ai-sessions/`.
+
 ## Screenshots
 
 1. `img/6-1.png`: fresh clone, key from the environment, no banner.
