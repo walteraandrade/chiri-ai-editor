@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/league-spartan";
+
+@theme static {
+  --color-canvas: #0e1014;
+  --color-ink: #d9dce3;
+  --color-ink-strong: #f2f4f8;
+  --color-ink-muted: #8b909d;
+  --color-ink-faint: #565b69;
+  --color-accent: #7aa2f7;
+  --color-accent-dim: #5a78b4;
+  --color-code-bg: rgb(255 255 255 / 0.06);
+  --color-selection: rgb(122 162 247 / 0.28);
+  --color-banner-bg: #2a2110;
+  --color-banner-border: #6b5316;
+  --color-banner-ink: #f0d8a0;
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "League Spartan Variable", var(--font-sans);
+  --font-mono:
+    ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+  }
+}
