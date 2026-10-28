@@ -9,7 +9,7 @@ The real export into `ai-sessions/` is not part of this check. It runs last, aft
 | Criterion | Result | Evidence |
 |---|---|---|
 | The README instructions work from a fresh clone | Pass | See "Fresh clone" below. |
-| The export matches the source byte for byte, except the masked key spans | Pass in a dry run | `pnpm export-sessions --verify` on a temporary export: 58 files, 57 identical, 1 grown, 0 different (see "Export dry run"). The temporary export was deleted. |
+| The export matches the source byte for byte, except the masked key spans | Pass in a dry run | `pnpm export-sessions --verify` on a temporary export: 62 files, 62 identical, 0 grown, 0 different (see "Export dry run"). The temporary export was deleted. |
 | A search of the export for `sk-or-` finds only masked values, and the real key value is absent | Pass in a dry run | Dry run: 0 occurrences of `sk-or-` followed by a key character, 0 occurrences of the `OPENROUTER_API_KEY` value. The same value is also absent from the source sessions. |
 | Session files are not otherwise edited, summarized or reformatted | Pass in a dry run | The check above compares every exported file with its masked source. Binary files (the `.jpg` in the orchestrator session) are copied without masking and compared byte for byte. |
 | The `docs/chiri/ai-costs.md` running total is up to date | Pass | US$0.269 of 5.00, from the key's usage counter and the rows. No model calls in this slice. |
@@ -40,16 +40,16 @@ Notes:
 
 | Measure | Value |
 |---|---|
-| Files copied | 58 (3 project folders had session files; `memory/` and the `*.desktop-released.json` markers were skipped) |
-| Bytes | 51,595,022 |
-| Masked spans | 27, in 3 files (the orchestrator `.jsonl` 6, two subagent `.jsonl` files 20 and 1) |
-| Identical to the masked source | 57 |
-| Grown since the export | 1: the transcript of the running implementer subagent, which kept growing during the check. Its exported part matched the masked source byte for byte |
+| Files copied | 62, from the 2 project folders that have session files (orchestration and grilling). The other 2 matching folders hold only `memory/` or a `*.desktop-released.json` marker, which are skipped, so no session was left out |
+| Bytes | 54,637,901 |
+| Masked spans | 104, in 4 files (the orchestrator `.jsonl` 42, three subagent `.jsonl` files 23, 38 and 1) |
+| Identical to the masked source | 62 |
+| Grown since the export | 0 in this run. An earlier dry run (58 files, 27 spans) had 1: the transcript of a running subagent, whose exported part matched the masked source byte for byte. Only a `.jsonl` whose exported part is non-empty and ends with a line break may be "grown"; any other difference fails |
 | Different, missing or unexpected | 0, 0, 0 |
 | `sk-or-` followed by a key character in the export | 0 |
 | Occurrences of the `OPENROUTER_API_KEY` value in the export | 0 |
 
-What the 27 spans are: prose in the sessions that mentions the key prefix or a partially masked label (`sk-or-v1-`, `sk-or-v1-abc...xyz` and similar), and the test examples written during this slice. None has the shape of a real key (`sk-or-v1-` plus 64 hex characters), and the real value is not in the sources at all. The pattern masks these too, as the plan asks.
+What the 104 spans are: prose in the sessions that mentions the key prefix or a partially masked label (`sk-or-v1-`, `sk-or-v1-abc...xyz` and similar), and the test examples written during this slice. None has the shape of a real key (`sk-or-v1-` plus 64 hex characters), and the real value is not in the sources at all. The pattern masks these too, as the plan asks.
 
 A tampered file (a byte appended to an exported `custom-title.json`) made `--verify` exit with 1.
 

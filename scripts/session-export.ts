@@ -5,6 +5,7 @@ import {
   readFile,
   rename,
   rm,
+  stat,
   writeFile,
 } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
@@ -178,6 +179,29 @@ const copyFile =
     return { path: keyOf(file), bytes: bytes.length, spans, text }
   }
 
+const pathExists = (path: string): Promise<boolean> =>
+  stat(path).then(
+    () => true,
+    () => false,
+  )
+
+export const swapInto = async (
+  staging: string,
+  target: string,
+  move: typeof rename = rename,
+): Promise<void> => {
+  const backup = `${staging}.previous`
+  const hadPrevious = await pathExists(target)
+  if (hadPrevious) await move(target, backup)
+  try {
+    await move(staging, target)
+  } catch (error) {
+    if (hadPrevious) await move(backup, target)
+    throw error
+  }
+  await rm(backup, { recursive: true, force: true })
+}
+
 export const exportSessions = async ({
   sourceRoot,
   dest,
@@ -189,27 +213,38 @@ export const exportSessions = async ({
   const target = resolve(dest)
   await mkdir(dirname(target), { recursive: true })
   const staging = await mkdtemp(join(dirname(target), '.export-sessions-'))
-  try {
-    const exported = await mapSequential(
-      files,
-      copyFile(sourceRoot, staging, secrets),
-    )
-    await rm(target, { recursive: true, force: true })
-    await rename(staging, target)
-    return {
-      files: exported,
-      totalBytes: exported.reduce((sum, file) => sum + file.bytes, 0),
-      totalSpans: exported.reduce((sum, file) => sum + file.spans, 0),
-    }
-  } catch (error) {
+  const exported = await mapSequential(
+    files,
+    copyFile(sourceRoot, staging, secrets),
+  ).catch(async (error: unknown) => {
     await rm(staging, { recursive: true, force: true })
     throw error
+  })
+  await swapInto(staging, target).catch((error: unknown) => {
+    throw new Error(
+      `Could not replace ${target}; the new export is kept in ${staging}`,
+      { cause: error },
+    )
+  })
+  return {
+    files: exported,
+    totalBytes: exported.reduce((sum, file) => sum + file.bytes, 0),
+    totalSpans: exported.reduce((sum, file) => sum + file.spans, 0),
   }
 }
 
-const isPrefixOf = (prefix: Buffer, whole: Buffer): boolean =>
-  prefix.length < whole.length &&
-  whole.subarray(0, prefix.length).equals(prefix)
+const LINE_FEED = 0x0a
+
+const isGrowth = (
+  file: SessionFile,
+  actual: Buffer,
+  expected: Buffer,
+): boolean =>
+  file.path.endsWith(SESSION_EXTENSION) &&
+  actual.length > 0 &&
+  actual[actual.length - 1] === LINE_FEED &&
+  actual.length < expected.length &&
+  expected.subarray(0, actual.length).equals(actual)
 
 const readIfPresent = (path: string): Promise<Buffer | null> =>
   readFile(path).then(
@@ -230,7 +265,7 @@ const compare =
         ? 'missing'
         : actual.equals(expected)
           ? 'identical'
-          : isPrefixOf(actual, expected)
+          : isGrowth(file, actual, expected)
             ? 'grown'
             : 'mismatched'
     return { key: keyOf(file), result }

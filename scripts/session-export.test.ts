@@ -5,6 +5,7 @@ import {
   mkdtemp,
   readdir,
   readFile,
+  rename,
   rm,
   stat,
   writeFile,
@@ -16,6 +17,7 @@ import {
   exportSessions,
   listSessionFiles,
   type SessionFile,
+  swapInto,
   verifyExport,
 } from './session-export'
 import { MASK } from './session-masking'
@@ -491,6 +493,80 @@ describe('verifyExport', () => {
     expect(report.identical).toBe(8)
   })
 
+  it('does not call an empty exported .jsonl "grown"', async () => {
+    await exported()
+    await writeFile(join(dest, PROJECT, 's2.jsonl'), '')
+
+    const report = await verifyExport({
+      sourceRoot,
+      dest,
+      prefix: PREFIX,
+      secrets: [],
+    })
+
+    expect(report.ok).toBe(false)
+    expect(report.grown).toEqual([])
+    expect(report.mismatched).toEqual([`${PROJECT}/s2.jsonl`])
+  })
+
+  it('does not call a .jsonl cut in the middle of a line "grown"', async () => {
+    await exported()
+    await appendFile(join(sourceRoot, PROJECT, 's1.jsonl'), '{"later":true}\n')
+    await writeFile(
+      join(dest, PROJECT, 's1.jsonl'),
+      `{"a":"hello ${MASK}"}\n{"b"`,
+    )
+
+    const report = await verifyExport({
+      sourceRoot,
+      dest,
+      prefix: PREFIX,
+      secrets: [],
+    })
+
+    expect(report.ok).toBe(false)
+    expect(report.grown).toEqual([])
+    expect(report.mismatched).toEqual([`${PROJECT}/s1.jsonl`])
+  })
+
+  it.each([
+    's1/tool-results/out.txt',
+    's1/custom-title.json',
+    's1/tool-results/shot.png',
+  ])('does not call a grown %s "grown"', async (path) => {
+    await exported()
+    await appendFile(join(sourceRoot, PROJECT, path), '\n')
+
+    const report = await verifyExport({
+      sourceRoot,
+      dest,
+      prefix: PREFIX,
+      secrets: [],
+    })
+
+    expect(report.ok).toBe(false)
+    expect(report.grown).toEqual([])
+    expect(report.mismatched).toEqual([`${PROJECT}/${path}`])
+  })
+
+  it('accepts a grown subagent .jsonl that ends with a line break', async () => {
+    await exported()
+    await appendFile(
+      join(sourceRoot, PROJECT, 's1/subagents/agent-1.jsonl'),
+      '{"later":true}\n',
+    )
+
+    const report = await verifyExport({
+      sourceRoot,
+      dest,
+      prefix: PREFIX,
+      secrets: [],
+    })
+
+    expect(report.ok).toBe(true)
+    expect(report.grown).toEqual([`${PROJECT}/s1/subagents/agent-1.jsonl`])
+  })
+
   it('does not call a rewritten source "grown"', async () => {
     await exported()
     await writeFile(join(sourceRoot, PROJECT, 's2.jsonl'), '{"rewritten":1}\n')
@@ -504,5 +580,50 @@ describe('verifyExport', () => {
 
     expect(report.ok).toBe(false)
     expect(report.mismatched).toEqual([`${PROJECT}/s2.jsonl`])
+  })
+})
+
+describe('swapInto', () => {
+  const staged = async () => {
+    const staging = join(root, '.export-sessions-abc')
+    await put(staging, { 'new.jsonl': 'new\n' })
+    return staging
+  }
+
+  it('replaces the previous folder and removes the backup', async () => {
+    const staging = await staged()
+    await put(dest, { 'old.jsonl': 'old\n' })
+
+    await swapInto(staging, dest)
+
+    expect(await listTree(dest)).toEqual(['new.jsonl'])
+    expect(await readdir(root)).not.toContain('.export-sessions-abc')
+    expect(await readdir(root)).not.toContain('.export-sessions-abc.previous')
+  })
+
+  it('works when there is no previous folder', async () => {
+    const staging = await staged()
+    await mkdir(dirname(dest), { recursive: true })
+
+    await swapInto(staging, dest)
+
+    expect(await listTree(dest)).toEqual(['new.jsonl'])
+  })
+
+  it('restores the previous folder and keeps the staging one when the swap fails', async () => {
+    const staging = await staged()
+    await put(dest, { 'old.jsonl': 'old\n' })
+    const failingSecondRename: typeof rename = (from, to) =>
+      from === staging
+        ? Promise.reject(new Error('rename failed'))
+        : rename(from, to)
+
+    await expect(swapInto(staging, dest, failingSecondRename)).rejects.toThrow(
+      /rename failed/,
+    )
+
+    expect(await listTree(dest)).toEqual(['old.jsonl'])
+    expect(await listTree(staging)).toEqual(['new.jsonl'])
+    expect(await readdir(root)).not.toContain('.export-sessions-abc.previous')
   })
 })

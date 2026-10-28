@@ -36,23 +36,28 @@ const plural = (count: number, word: string): string =>
 const printExport = (report: ExportReport, dest: string): void => {
   const masked = report.files.filter((file) => file.spans > 0)
   console.log(
-    `exported ${plural(report.files.length, 'file')}, ${report.totalBytes} bytes, ${plural(report.totalSpans, 'masked span')} in ${plural(masked.length, 'file')} -> ${dest}`,
+    [
+      `exported ${plural(report.files.length, 'file')}, ${report.totalBytes} bytes, ${plural(report.totalSpans, 'masked span')} in ${plural(masked.length, 'file')} -> ${dest}`,
+      ...masked.map(
+        (file) => `  ${String(file.spans).padStart(5)} masked  ${file.path}`,
+      ),
+    ].join('\n'),
   )
-  for (const file of masked) {
-    console.log(`  ${String(file.spans).padStart(5)} masked  ${file.path}`)
-  }
 }
 
 const printList = (title: string, paths: readonly string[]): void => {
-  console.log(`  ${title}: ${paths.length}`)
-  for (const path of paths) console.log(`    ${path}`)
+  console.log(
+    [`  ${title}: ${paths.length}`, ...paths.map((path) => `    ${path}`)].join(
+      '\n',
+    ),
+  )
 }
 
 const printVerify = (report: VerifyReport, hasSecret: boolean): void => {
   console.log(`verified ${plural(report.checked, 'file')} against the source`)
   console.log(`  identical to the masked source: ${report.identical}`)
   printList(
-    'grown since the export (live session, exported part matches)',
+    'grown since the export (live .jsonl, exported part matches and ends on a line break)',
     report.grown,
   )
   printList('different from the masked source', report.mismatched)
