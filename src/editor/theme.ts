@@ -80,7 +80,7 @@ export const editorTheme = EditorView.theme(
       fontFamily: 'var(--font-mono)',
       fontSize: '0.9em',
       backgroundColor: 'var(--color-code-bg)',
-      padding: '0 0.75rem',
+      borderInline: '0.75rem solid transparent',
     },
     '.cm-codeblock-line span': {
       backgroundColor: 'transparent',
