@@ -7,7 +7,7 @@ export const suggestionSchema = z.object({
   rationale: z
     .string()
     .describe(
-      'One short sentence explaining the change, in the language of the Document text.',
+      'One short sentence explaining the change, in the same language as the replacement.',
     ),
 })
 
@@ -19,7 +19,7 @@ export const reviewEditSchema = z.object({
   rationale: z
     .string()
     .describe(
-      'One short sentence explaining the change, in the language of the Document text.',
+      'One short sentence explaining the change, in the same language as the replacement.',
     ),
 })
 
