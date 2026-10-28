@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { createBrowserModelClient } from '../ai/browser-client'
+import { createLazyModelClient } from '../ai/lazy-client'
 import { createEditorView } from '../editor/create-editor-view'
 import { suggestionExtensions } from '../editor/suggestions'
 import type { SuggestionNotice } from '../suggestions/types'
@@ -33,7 +33,11 @@ export function EditorPane({
       doc: initialDocRef.current,
       onChange: (doc) => onChangeRef.current(doc),
       extensions: suggestionExtensions({
-        client: createBrowserModelClient(),
+        client: createLazyModelClient(() =>
+          import('../ai/browser-client').then((module) =>
+            module.createBrowserModelClient(),
+          ),
+        ),
         onNotice: (notice) => onNoticeRef.current(notice),
       }),
     })
