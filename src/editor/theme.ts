@@ -40,7 +40,6 @@ export const markdownHighlightStyle = HighlightStyle.define([
     fontFamily: 'var(--font-mono)',
     fontSize: '0.9em',
     backgroundColor: 'var(--color-code-bg)',
-    borderRadius: '4px',
     padding: '0.1em 0.3em',
   },
   { tag: tags.link, color: 'var(--color-accent)' },

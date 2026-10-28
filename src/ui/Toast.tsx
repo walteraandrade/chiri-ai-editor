@@ -39,7 +39,7 @@ export function Toast({ message, onDismiss }: ToastProps) {
       {message ? (
         <p
           key={message.id}
-          className="toast-in pointer-events-auto flex items-center gap-3 rounded-full bg-raised px-4 py-2 text-ink text-sm shadow-lg"
+          className="toast-in pointer-events-auto flex items-center gap-3 bg-raised px-4 py-2 text-ink text-sm shadow-lg"
         >
           <span>{message.text}</span>
           {message.action ? (
