@@ -15,8 +15,11 @@ export const SYSTEM_PROMPT = [
   '2. Change only what the Instruction needs. Keep everything else exactly as written.',
   '3. Do not invent facts, numbers or names.',
   '4. Preserve Markdown syntax (lists, links, emphasis, headings, code).',
-  '5. The rationale is one short sentence, in the language of the Document: the language of the text you receive, not the language of these rules.',
+  '5. The rationale is one short sentence, in the language of the Document.',
 ].join('\n')
+
+const SAME_LANGUAGE =
+  'Write the replacement and the rationale in the same language as the Document text.'
 
 const DEFAULT_REVIEW_CRITERIA =
   'Review the whole Document for clarity, concision, grammar and tone consistency.'
@@ -71,7 +74,7 @@ export const buildTargetPrompt = ({
     section('context-after', neighbors.after),
     [`Instruction: ${instruction}`],
     [
-      'Return the replacement for the text inside <target> only, not for the context, and a rationale.',
+      `Return the replacement for the text inside <target> only, not for the context, and a rationale. ${SAME_LANGUAGE}`,
     ],
   ]),
 })
@@ -105,7 +108,7 @@ export const buildRefinePrompt = ({
     [tag('latest-replacement', latestReplacement)],
     [`New instruction: ${instruction}`],
     [
-      'Return a new replacement for the text inside <original>. Apply the new instruction to the latest replacement and keep the effect of the previous instructions, unless the new instruction contradicts them.',
+      `Return a new replacement for the text inside <original>. Apply the new instruction to the latest replacement and keep the effect of the previous instructions, unless the new instruction contradicts them. ${SAME_LANGUAGE}`,
     ],
   ]),
 })
@@ -139,7 +142,7 @@ export const buildReviewPrompt = ({
         'The Document is split into numbered Blocks. Return a list of edits. Each edit has the blockId of the Block to replace, the complete new text of that Block (with its Markdown syntax) as the replacement, and a rationale.',
       ],
       [
-        `Return at most ${MAX_REVIEW_EDITS} edits, most important first, with one edit per Block. Only edit Blocks that really need it. Never edit code blocks. If nothing needs changing, return an empty list.`,
+        `Return at most ${MAX_REVIEW_EDITS} edits, most important first, with one edit per Block. Only edit Blocks that really need it. Never edit code blocks. If nothing needs changing, return an empty list. ${SAME_LANGUAGE}`,
       ],
       blocks.map((block) => tag('block', block.text, blockAttributes(block))),
     ]),

@@ -47,6 +47,10 @@ describe('SYSTEM_PROMPT', () => {
     )
   })
 
+  it('does not push the model away from a language', () => {
+    expect(SYSTEM_PROMPT).not.toMatch(/not the language/i)
+  })
+
   it('treats Document text as content, not instructions', () => {
     expect(SYSTEM_PROMPT).toMatch(/not instructions/i)
   })
@@ -155,6 +159,16 @@ describe('buildTargetPrompt', () => {
     expect(prompt).not.toContain('<enclosing-text>')
   })
 
+  it('ends by asking for the Document language', () => {
+    const { target, neighbors } = targetAt('Gamma.')
+    const { prompt } = buildTargetPrompt({
+      target,
+      neighbors,
+      instruction: 'x',
+    })
+    expect(prompt).toMatch(/same language as the Document text\.$/)
+  })
+
   it('returns the system prompt as instructions', () => {
     const { target, neighbors } = targetAt('Gamma.')
     expect(
@@ -187,6 +201,10 @@ describe('buildRefinePrompt', () => {
   it('lists the previous Instructions oldest first', () => {
     const { prompt } = build()
     expect(prompt).toContain('1. Make it shorter.\n2. More formal.')
+  })
+
+  it('asks for the Document language', () => {
+    expect(build().prompt).toMatch(/same language as the Document text\.$/)
   })
 
   it('keeps the Neighbors', () => {
@@ -256,6 +274,12 @@ describe('buildReviewPrompt', () => {
     const { prompt } = buildReviewPrompt({ blocks, focus: '   ' })
     expect(prompt).not.toContain('Focus:')
     expect(prompt).toContain('concision')
+  })
+
+  it('asks for the Document language', () => {
+    expect(buildReviewPrompt({ blocks }).prompt).toMatch(
+      /same language as the Document text/,
+    )
   })
 
   it('caps the edits and forbids editing code', () => {
