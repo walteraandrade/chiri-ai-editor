@@ -102,3 +102,11 @@ Summary:
 - Cost of the 7 real calls: US$0.013696. A Review pass on the sample Document is about 975 tokens in and 130 to 350 out, US$0.0016 to US$0.0027. The Stopped pass was aborted after the first Suggestion and OpenRouter reported no usage for it, so it is not in the sum (at most about US$0.003, a whole pass).
 - Every real call finished with `stop` and none needed the silent retry. The only dropped edits were the two in the run with typing: p5 (`occupied`, dropped by the client) and p3 (`text-changed`, dropped when it arrived).
 - Records are in the log in order, nothing was lost to a reload.
+
+## Review re-check
+
+Re-run after the review of PR #12, in a real browser with `window.fetch` wrapped from `eval`: a fake streamed Review answer (5 edits, 900 ms apart) and a Refine that never answers. 0 real model calls, 0 cost.
+
+- Active Suggestion during a pass: with the cursor in no Suggestion, the Active one stayed on the first (most important) Suggestion through all 5 arrivals, instead of following each new one.
+- Sticky header and tooltips: scrolled with the Active card open and with the ask bubble near the header. Both stay below the header ([5-21](img/5-21.png), [5-22](img/5-22.png)); a card whose Suggestion has scrolled behind the header is hidden, not painted over it.
+- Accept all with a Refine in flight: the Suggestion that was refining stayed open and untouched, the other 4 were applied in one step, and the toolbar went back to a lone Review button ([5-23](img/5-23.png)). One `Ctrl+Z` restored the Document.
