@@ -510,7 +510,7 @@ export const costsRow = (date: string, summary: ModelSummary): string => {
     `${ms(summary.targetMedianMs)} / ${ms(summary.reviewMs)} (median Target / Review)`,
     finishCell(summary.finishReasons),
     `${summary.succeeded}/${summary.requests}${summary.retries ? `, ${summary.retries} retry` : ', no retries'}`,
-    '[bakeoff.md](chiri/bakeoff.md)',
+    '[bakeoff.md](bakeoff.md)',
   ]
   return `| ${cells.join(' | ')} |`
 }

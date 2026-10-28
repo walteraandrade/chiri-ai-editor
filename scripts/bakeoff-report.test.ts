@@ -337,6 +337,6 @@ describe('costsRow', () => {
     expect(row).toContain('300 / 60 / 15 / 0')
     expect(row).toContain('0.007000')
     expect(row).toContain('1200 / 6000')
-    expect(row).toContain('[bakeoff.md](chiri/bakeoff.md)')
+    expect(row).toContain('[bakeoff.md](bakeoff.md)')
   })
 })
