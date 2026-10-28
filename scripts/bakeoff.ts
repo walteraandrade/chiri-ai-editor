@@ -3,6 +3,11 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { createModelClient, type ModelClient } from '../src/ai/client'
 import { FALLBACK_MODEL } from '../src/ai/default-model'
+import {
+  type AiCallLogTarget,
+  appendAiCall,
+  enrichAiCall,
+} from '../src/ai/dev-log'
 import type { ClientError } from '../src/ai/errors'
 import { getQuickAction, type QuickActionId } from '../src/ai/quick-actions'
 import type { AiCallRecord } from '../src/ai/records'
@@ -221,30 +226,36 @@ const main = async (): Promise<void> => {
     : allSpecs
   if (specs.length === 0) throw new Error('No matching requests')
 
-  const allRecords: AiCallRecord[] = []
-  const runs: ModelRun[] = []
+  const logs = new Map<string, AiCallLogTarget>()
+  const recordsOf = (model: string): readonly AiCallRecord[] =>
+    logs.get(model)?.__aiCalls ?? []
+  const spent = (): number =>
+    sumCost(args.models.flatMap((model) => recordsOf(model)))
+  const clients: ModelClient[] = []
+  const results = new Map<string, RequestResult[]>()
   let budgetExhausted = false
 
   for (const model of args.models) {
-    const records: AiCallRecord[] = []
+    const log: AiCallLogTarget = {}
+    logs.set(model, log)
     const client = createModelClient({
       baseURL: OPENROUTER_URL,
       apiKey,
       model,
-      onRecord: (record) => {
-        records.push(record)
-        allRecords.push(record)
-      },
+      onRecord: (record) => appendAiCall(log, record),
+      onRecordEnriched: (record) => enrichAiCall(log, record),
     })
-    const results: RequestResult[] = []
+    clients.push(client)
+    const modelResults: RequestResult[] = []
+    results.set(model, modelResults)
     for (const spec of specs) {
       const estimate = Math.max(
         FIRST_CALL_ESTIMATE_USD,
-        ...records.map((record) => record.costUsd ?? 0),
+        ...recordsOf(model).map((record) => record.costUsd ?? 0),
       )
-      if (budgetExhausted || sumCost(allRecords) + estimate > STOP_BEFORE_USD) {
+      if (budgetExhausted || spent() + estimate > STOP_BEFORE_USD) {
         budgetExhausted = true
-        results.push({
+        modelResults.push({
           requestId: spec.id,
           task: taskLabel(spec),
           wallMs: 0,
@@ -269,14 +280,24 @@ const main = async (): Promise<void> => {
           },
         }),
       )
-      await client.flush()
-      results.push(result)
+      await client.recorded()
+      modelResults.push(result)
       console.log(
-        `${model.padEnd(32)} ${spec.id.padEnd(12)} ${String(result.wallMs).padStart(6)} ms  ${describe(result)}  (spent US$${sumCost(allRecords).toFixed(4)})`,
+        `${model.padEnd(32)} ${spec.id.padEnd(12)} ${String(result.wallMs).padStart(6)} ms  ${describe(result)}  (spent US$${spent().toFixed(4)})`,
       )
     }
-    runs.push({ model, results, records })
   }
+
+  console.log(
+    '\nWaiting for the OpenRouter generation stats, which lag about a minute...',
+  )
+  await Promise.all(clients.map((client) => client.flush()))
+  const runs: ModelRun[] = args.models.map((model) => ({
+    model,
+    results: results.get(model) ?? [],
+    records: recordsOf(model),
+  }))
+  const allRecords = runs.flatMap((run) => run.records)
 
   const summaries = runs.map((run) => summarizeModel(run, specs))
   const total = sumCost(allRecords)
