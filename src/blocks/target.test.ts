@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import { extractBlocks } from './extract-blocks'
-import { findBlockAt, getNeighbors, headingText, resolveTarget } from './target'
+import {
+  findBlockAt,
+  getNeighbors,
+  headingText,
+  resolveTarget,
+  targetFromRange,
+} from './target'
 
 const DOC = [
   '# Title',
@@ -247,5 +253,50 @@ describe('getNeighbors', () => {
     expect(neighbors.section).toBe('Why we are changing')
     expect(neighbors.before.map((block) => block.id)).toEqual(['p3', 'p4'])
     expect(neighbors.after.map((block) => block.id)).toEqual(['p6', 'p7'])
+  })
+})
+
+describe('targetFromRange', () => {
+  it('rebuilds a selection Target from its range', () => {
+    const block = byText('A two.')
+    const rebuilt = targetFromRange(
+      blocks,
+      DOC,
+      { from: block.from + 2, to: block.to },
+      'selection',
+    )
+    const original = resolveTarget(blocks, DOC, {
+      from: block.from + 2,
+      to: block.to,
+    })
+    expect(rebuilt).toEqual(original)
+  })
+
+  it('rebuilds a Block Target from the Block range', () => {
+    const block = byText('A two.')
+    const rebuilt = targetFromRange(
+      blocks,
+      DOC,
+      { from: block.from, to: block.to },
+      'block',
+    )
+    expect(rebuilt).toEqual(
+      resolveTarget(blocks, DOC, { from: block.from + 1, to: block.from + 1 }),
+    )
+  })
+
+  it('lists every Block the range overlaps', () => {
+    const first = byText('A one.')
+    const second = byText('A two.')
+    const rebuilt = targetFromRange(
+      blocks,
+      DOC,
+      { from: first.from, to: second.to },
+      'selection',
+    )
+    expect(rebuilt.blocks.map((block) => block.text)).toEqual([
+      'A one.',
+      'A two.',
+    ])
   })
 })

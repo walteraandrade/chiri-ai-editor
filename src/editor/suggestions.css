@@ -1,0 +1,224 @@
+.cm-ai-suggestion {
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.025);
+}
+
+.cm-ai-suggestion.cm-ai-active {
+  background: var(--color-active-suggestion);
+}
+
+.cm-ai-deleted {
+  color: var(--color-deleted);
+  background: var(--color-deleted-bg);
+  border-radius: 2px;
+  text-decoration: line-through;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-deleted) 70%,
+    transparent
+  );
+}
+
+.cm-ai-inserted,
+.cm-ai-replacement ins {
+  color: var(--color-inserted);
+  background: var(--color-inserted-bg);
+  border-radius: 2px;
+  text-decoration: none;
+  white-space: pre-wrap;
+}
+
+.cm-ai-inserted-separated {
+  margin-left: 0.3em;
+}
+
+.cm-ai-replacement {
+  margin: 0.2rem 0 0.9rem;
+  padding: 0.35rem 0.75rem;
+  border-left: 2px solid var(--color-inserted);
+  border-radius: 0 6px 6px 0;
+  background: var(--color-inserted-bg);
+  color: var(--color-inserted);
+  white-space: pre-wrap;
+}
+
+.cm-ai-replacement ins {
+  background: transparent;
+}
+
+.cm-ai-target-preview {
+  background: var(--color-target-preview);
+  border-radius: 3px;
+}
+
+.cm-ai-pending {
+  border-radius: 3px;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-shimmer) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: cm-ai-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes cm-ai-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-ai-pending {
+    animation: none;
+    background-image: none;
+    background-color: var(--color-shimmer);
+  }
+}
+
+.cm-ai-failed {
+  text-decoration: underline wavy var(--color-danger);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.cm-ai-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.3rem 0 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 8px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.cm-ai-error-actions {
+  display: flex;
+  flex: none;
+  gap: 0.4rem;
+}
+
+.cm-editor .cm-tooltip.cm-ai-bubble,
+.cm-editor .cm-tooltip.cm-ai-card {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
+  animation: cm-ai-fade-in 120ms ease-out;
+}
+
+.cm-editor .cm-tooltip.cm-ai-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(26rem, 90vw);
+  padding: 0.5rem;
+}
+
+.cm-editor .cm-tooltip.cm-ai-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: min(28rem, 90vw);
+  padding: 0.4rem;
+}
+
+.cm-editor .cm-tooltip.cm-ai-card-hover {
+  pointer-events: none;
+  animation-delay: 160ms;
+  animation-fill-mode: backwards;
+}
+
+@keyframes cm-ai-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.cm-ai-bubble-actions,
+.cm-ai-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cm-ai-bubble-ask {
+  display: flex;
+}
+
+.cm-ai-bubble-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.04);
+  color: var(--color-ink-strong);
+  font: inherit;
+}
+
+.cm-ai-bubble-input::placeholder {
+  color: var(--color-ink-faint);
+}
+
+.cm-ai-bubble-input:focus {
+  outline: none;
+  border-color: var(--color-accent-dim);
+  box-shadow: 0 0 0 2px rgb(122 162 247 / 0.25);
+}
+
+.cm-ai-chip,
+.cm-ai-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cm-ai-chip:hover,
+.cm-ai-button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-ink-strong);
+}
+
+.cm-ai-chip:focus-visible,
+.cm-ai-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.cm-ai-kbd {
+  margin-left: 0.5rem;
+  color: var(--color-ink-faint);
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.cm-ai-rationale {
+  margin: 0;
+  padding: 0.15rem 0.35rem 0;
+  color: var(--color-ink-muted);
+}
+
+.toast-in {
+  animation: cm-ai-fade-in 160ms ease-out;
+}

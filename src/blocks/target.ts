@@ -87,6 +87,19 @@ const resolveCursorTarget = (
       }
 }
 
+export const targetFromRange = (
+  blocks: readonly Block[],
+  text: string,
+  { from, to }: Selection,
+  source: Target['source'],
+): Target => ({
+  source,
+  from,
+  to,
+  text: text.slice(from, to),
+  blocks: blocks.filter((block) => overlaps(block, from, to)),
+})
+
 export const resolveTarget = (
   blocks: readonly Block[],
   text: string,

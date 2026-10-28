@@ -1,19 +1,29 @@
 import { useEffect, useRef } from 'react'
+import { createBrowserModelClient } from '../ai/browser-client'
 import { createEditorView } from '../editor/create-editor-view'
+import { suggestionExtensions } from '../editor/suggestions'
+import type { SuggestionNotice } from '../suggestions/types'
 
 type EditorPaneProps = {
   readonly initialDoc: string
   readonly onChange: (doc: string) => void
+  readonly onNotice: (notice: SuggestionNotice) => void
 }
 
-export function EditorPane({ initialDoc, onChange }: EditorPaneProps) {
+export function EditorPane({
+  initialDoc,
+  onChange,
+  onNotice,
+}: EditorPaneProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const initialDocRef = useRef(initialDoc)
   const onChangeRef = useRef(onChange)
+  const onNoticeRef = useRef(onNotice)
 
   useEffect(() => {
     onChangeRef.current = onChange
-  }, [onChange])
+    onNoticeRef.current = onNotice
+  }, [onChange, onNotice])
 
   useEffect(() => {
     const parent = parentRef.current
@@ -22,6 +32,10 @@ export function EditorPane({ initialDoc, onChange }: EditorPaneProps) {
       parent,
       doc: initialDocRef.current,
       onChange: (doc) => onChangeRef.current(doc),
+      extensions: suggestionExtensions({
+        client: createBrowserModelClient(),
+        onNotice: (notice) => onNoticeRef.current(notice),
+      }),
     })
     return () => view.destroy()
   }, [])
