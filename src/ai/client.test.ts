@@ -389,6 +389,21 @@ describe('AI call records', () => {
     expect(enriched).toEqual([])
   })
 
+  it('survives a record callback that throws', async () => {
+    const { client } = setup(
+      [() => chatCompletion(suggestionJson('Short.'), { id: 'gen-x' })],
+      {
+        onRecord: () => {
+          throw new Error('listener bug')
+        },
+      },
+      () => generationResponse({ id: 'gen-x' }),
+    )
+    const result = await client.requestSuggestion(targetRequest())
+    await expect(client.flush()).resolves.toBeUndefined()
+    expect(result.ok).toBe(true)
+  })
+
   it('records failed calls too', async () => {
     const { client, records } = setup([() => errorResponse(402, 'No credit')])
     await client.requestSuggestion(targetRequest())

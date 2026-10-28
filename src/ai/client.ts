@@ -139,6 +139,14 @@ const outcomeOf = (failure: ClientError | undefined): CallOutcome =>
       ? 'invalid'
       : 'error'
 
+const safely = (callback: () => void): void => {
+  try {
+    callback()
+  } catch {
+    return
+  }
+}
+
 const combineSignals = (
   external: AbortSignal | undefined,
   internal: AbortSignal,
@@ -233,7 +241,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
         generation,
       })
     const recorded = attempt.observation.then((observation) => {
-      config.onRecord?.(shape(observation))
+      safely(() => config.onRecord?.(shape(observation)))
       return observation
     })
     track(
@@ -253,7 +261,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
           initialDelayMs: config.generationInitialDelayMs,
           delaysMs: config.generationDelaysMs,
         })
-        if (generation) enrich(shape(observation, generation))
+        if (generation) safely(() => enrich(shape(observation, generation)))
       }),
     )
   }
