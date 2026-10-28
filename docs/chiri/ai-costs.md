@@ -52,7 +52,7 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-28 | #5 | review document → default criteria, tall viewport (Accept all, `Ctrl+Z`; 5 Suggestions) | `openai/gpt-6.1-terra` → OpenAI | 975 / 331 / 0 / 0 | 0.002630 | 5566 / 1122 / 5199 (first 1898) | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
 | 2026-10-28 | #5 | Forced failures (2 stubbed out-of-credit, 2 stubbed streams broken mid-answer) | `openai/gpt-6.1-terra` | – | 0 | 5 to 411 (client) | – | 4 stubs | [5-review-pass.md](verification/5-review-pass.md) |
 
-**Running total:** US$0.266 of 5.00 (recorded: 0.252 before this slice plus 0.0137 from slice 5; the Stopped pass is not reported, at most about 0.003 more)
+**Running total:** US$0.269 of 5.00 (the key's usage counter read US$9.012 in slice 6, against US$8.743 before slice 2; the rows add up to 0.265, 0.254 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -71,3 +71,7 @@ Notes on slice 4:
 Notes on slice 5:
 - Slice cost is about US$0.0137 recorded: 5 Review passes at US$0.0016 to US$0.0027, 1 Refine and 1 Quick action. The Stopped pass was aborted before the answer was complete and OpenRouter reported no usage for it, so it is not in the sum; a whole pass costs about US$0.0026. The failures were stubs and never reached OpenRouter. The slice budget was US$0.06.
 - A Review pass on the 13-Block sample Document sends about 975 tokens, against about 520 for a Target request, because the whole Document goes in.
+
+Notes on slice 6:
+- No model calls. The fresh-clone check only used `GET /models` and `GET /auth/key` through the proxy, which are not generations and cost nothing.
+- The counter is the lifetime usage of the key, so US$0.269 is an upper bound for this project. It agrees with the rows within the unreported aborted requests (the Stopped pass of slice 5 and the aborted requests of slices 3 and 4).
