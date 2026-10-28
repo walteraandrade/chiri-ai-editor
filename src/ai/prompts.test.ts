@@ -166,7 +166,9 @@ describe('buildTargetPrompt', () => {
       neighbors,
       instruction: 'x',
     })
-    expect(prompt).toMatch(/same language as the Document text\.$/)
+    expect(prompt).toMatch(
+      /replacement in the language of the Target and the rationale in the language of the Document\.$/,
+    )
   })
 
   it('returns the system prompt as instructions', () => {
@@ -204,7 +206,9 @@ describe('buildRefinePrompt', () => {
   })
 
   it('asks for the Document language', () => {
-    expect(build().prompt).toMatch(/same language as the Document text\.$/)
+    expect(build().prompt).toMatch(
+      /replacement in the language of the Target and the rationale in the language of the Document\.$/,
+    )
   })
 
   it('keeps the Neighbors', () => {
@@ -278,7 +282,7 @@ describe('buildReviewPrompt', () => {
 
   it('asks for the Document language', () => {
     expect(buildReviewPrompt({ blocks }).prompt).toMatch(
-      /<\/block>\n\nWrite the replacement and the rationale in the same language as the Document text\.$/,
+      /<\/block>\n\nWrite each replacement in the language of its Block and each rationale in the language of the Document\.$/,
     )
   })
 

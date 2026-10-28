@@ -65,3 +65,27 @@ describe('reviewEditSchema', () => {
     strictObjectShape(reviewEditSchema, ['blockId', 'replacement', 'rationale'])
   })
 })
+
+describe('language anchors', () => {
+  const descriptionOf = (schema: z.ZodType, key: string): string => {
+    const json = z.toJSONSchema(schema) as {
+      properties?: Record<string, { description?: string }>
+    }
+    return json.properties?.[key]?.description ?? ''
+  }
+
+  it('puts the Replacement in the Target language and the Rationale in the Document language', () => {
+    expect(descriptionOf(suggestionSchema, 'replacement')).toMatch(
+      /language of the Target/,
+    )
+    expect(descriptionOf(suggestionSchema, 'rationale')).toMatch(
+      /language of the Document/,
+    )
+    expect(descriptionOf(reviewEditSchema, 'replacement')).toMatch(
+      /language of that Block/,
+    )
+    expect(descriptionOf(reviewEditSchema, 'rationale')).toMatch(
+      /language of the Document/,
+    )
+  })
+})

@@ -16,14 +16,15 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-28 | #2 | Bake-off run 1, superseded: 4 Quick actions + Review pass, 9 models (first Rationale wording; 4 models switched language) | all 9 candidates | 31258 / 12029 / 5047 / 1152 | 0.055091 | – | – | 44/45 calls ok, 1 timeout | not kept |
 | 2026-10-28 | #2 | Bake-off run 2, superseded: same, after the Rationale fix (the Review prompt made Sonnet and GLM return one junk edit) | all 9 candidates | 31067 / 10332 / 4640 / 2432 | 0.051438 | – | – | 44/45 calls ok, 1 timeout | not kept |
 | 2026-10-28 | #2 | Prompt checks: 16 calls on 4 cheap models, then 14 calls on Sonnet, GLM and DeepSeek (Review prompt variants) | `z-ai/glm-5.3-flash`, `deepseek/deepseek-v4.1-flash`, `google/gemini-3.5-flash-lite`, `google/gemini-3.8-flash`, `anthropic/claude-sonnet-5.5` | 28866 / 11008 / 3054 / 3584 | 0.058738 | – | – | – | not kept |
+| 2026-10-28 | #2 | Run 4, language-anchor re-check with the ADR 0006 wording: 4 Quick actions + Review pass on 3 models (median Target / Review: DeepSeek 1718 / 5632, GLM 1591 / 4017, Haiku 2308 / 3743 ms) | `deepseek/deepseek-v4.1-flash`, `z-ai/glm-5.3-flash`, `anthropic/claude-haiku-5.5` | 10826 / 4053 / 1457 / 640 | 0.003777 | – | stop ×15 | 15/15, no retries | not kept |
 | 2026-10-28 | #2 | Dry runs of `pnpm bakeoff` (4 calls on DeepSeek) and 3 raw probes of the generation endpoint | `deepseek/deepseek-v4.1-flash` | – | ~0.0016 | – | – | – | not kept |
 | 2026-10-28 | #2 | Browser check through the Vite proxy: Fix grammar on the `recieve` paragraph (the one recorded call; two earlier calls of the same check left no record) | `deepseek/deepseek-v4.1-flash` → Relace | 372 / 82 / 16 / 256 | 0.000051 | 1293 / 854 / 1030 | stop | 1/1 | [2-model-client.md](verification/2-model-client.md) |
 | 2026-10-28 | #2 | Calls without a record: 3 timed-out Qwen requests and 2 browser-check calls (estimated from the key's `usage` counter) | `qwen/qwen3.8-flash`, `deepseek/deepseek-v4.1-flash` | – | ~0.0069 | – | – | – | not kept |
 
-**Running total:** US$0.23 of 5.00
+**Running total:** US$0.234 of 5.00
 
 Notes on slice 2:
-- The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is US$0.23.
+- The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
 - Latency for the Bake-off rows is the median Target request / the Review pass, client wall time. A dash means the request failed (Qwen's Review pass timed out at 60 s).
 - Cost per call is the `usage.cost` OpenRouter returns. Calls that time out return no usage, so their cost is estimated from the rise of the key's `usage` counter (US$8.743 to US$8.973 across the slice, minus the recorded rows). That counter is the lifetime usage of the key, not this project's.
 - OpenRouter publishes `/generation` data (provider, `latency`, `generation_time`) about a minute after the call, so the client records a call right away and enriches it later.

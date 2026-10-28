@@ -60,6 +60,18 @@ The Bake-off ran three times because the prompts changed in between (see below),
 
 Run 2 is not a clean sample for the Review pass: its prompt made `anthropic/claude-sonnet-5.5` and `z-ai/glm-5.3-flash` return one junk edit, which is why their run 2 totals are short.
 
+### Run 4 (language-anchor re-check, 3 models)
+
+After the review, the language wording was made to match [ADR 0006](adr/0006-context-and-prompt-rules.md) exactly: the Replacement is in the Target's language, the Rationale in the Document's language, in the closing prompt sentence and in the schema field descriptions (before, the prompt said "same language as the Document text" and the Rationale field said "same language as the replacement"). Same positive phrasing and same placement as run 3. Re-checked on `deepseek/deepseek-v4.1-flash`, `z-ai/glm-5.3-flash` and `anthropic/claude-haiku-5.5`, 5 requests each (4 Quick actions and a Review pass), US$0.0038. This is not a full run and is not in the tables above.
+
+| Model | Rationale not in English, run 3 | Rationale not in English, run 4 | Junk edits |
+| --- | --- | --- | --- |
+| `deepseek/deepseek-v4.1-flash` | 7/9 | 6/9 | none |
+| `z-ai/glm-5.3-flash` | 2/9 | 3/9 | none |
+| `anthropic/claude-haiku-5.5` | 0/8 | 0/9 | none |
+
+No difference beyond noise: one sample of 9 Rationales per model. All 15 requests were valid on the first try, and there were no junk edits (no tiny or non-English Replacement). The ADR-faithful wording stays.
+
 ### Why three runs
 
 1. **Run 1.** The Rationale rule said "the language of the text you receive, not the language of these rules". Four models (GLM, DeepSeek, both small Gemini) answered in French, German or Spanish on an English Document, probably because the negative wording pushes a model away from English.

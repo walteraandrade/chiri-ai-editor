@@ -18,8 +18,8 @@ The tests in `src/ai/client.test.ts` inject a `fetch` that captures the request 
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "replacement": { "type": "string", "description": "The new text that replaces the Target, in Markdown." },
-          "rationale": { "type": "string", "description": "One short sentence explaining the change, in the same language as the replacement." }
+          "replacement": { "type": "string", "description": "The new text that replaces the Target, in Markdown, in the language of the Target." },
+          "rationale": { "type": "string", "description": "One short sentence explaining the change, in the language of the Document." }
         },
         "required": ["replacement", "rationale"],
         "additionalProperties": false
