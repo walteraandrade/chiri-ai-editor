@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { TargetRequest } from './client'
+import type { RefineRequest, TargetRequest } from './client'
 import type { SuggestionResult } from './edits'
 import type { Result } from './errors'
 import { createLazyModelClient } from './lazy-client'
@@ -16,6 +16,12 @@ const request = {
   instruction: 'Shorter',
 } satisfies TargetRequest
 
+const refineRequest = {
+  ...request,
+  history: ['Shorter'],
+  latestReplacement: 'Hi',
+} satisfies RefineRequest
+
 const answer: Result<SuggestionResult> = {
   ok: true,
   value: { replacement: 'Hi', rationale: 'Shorter.', unchanged: false },
@@ -24,7 +30,10 @@ const answer: Result<SuggestionResult> = {
 describe('createLazyModelClient', () => {
   it('loads the client on the first request and reuses it', async () => {
     const requestSuggestion = vi.fn(async () => answer)
-    const load = vi.fn(async () => ({ requestSuggestion }))
+    const load = vi.fn(async () => ({
+      requestSuggestion,
+      refineSuggestion: async () => answer,
+    }))
     const client = createLazyModelClient(load)
 
     expect(load).not.toHaveBeenCalled()
@@ -36,7 +45,10 @@ describe('createLazyModelClient', () => {
   })
 
   it('shares one load between concurrent requests', async () => {
-    const load = vi.fn(async () => ({ requestSuggestion: async () => answer }))
+    const load = vi.fn(async () => ({
+      requestSuggestion: async () => answer,
+      refineSuggestion: async () => answer,
+    }))
     const client = createLazyModelClient(load)
 
     await Promise.all([
@@ -53,7 +65,10 @@ describe('createLazyModelClient', () => {
       .mockRejectedValueOnce(
         new TypeError('Failed to fetch dynamically imported module'),
       )
-      .mockResolvedValue({ requestSuggestion: async () => answer })
+      .mockResolvedValue({
+        requestSuggestion: async () => answer,
+        refineSuggestion: async () => answer,
+      })
     const client = createLazyModelClient(load)
 
     const failed = await client.requestSuggestion(request)
@@ -62,5 +77,29 @@ describe('createLazyModelClient', () => {
 
     expect(await client.requestSuggestion(request)).toBe(answer)
     expect(load).toHaveBeenCalledTimes(2)
+  })
+
+  it('loads the client for a Refine and forwards the request', async () => {
+    const refineSuggestion = vi.fn(async () => answer)
+    const load = vi.fn(async () => ({
+      requestSuggestion: async () => answer,
+      refineSuggestion,
+    }))
+    const client = createLazyModelClient(load)
+
+    expect(await client.refineSuggestion(refineRequest)).toBe(answer)
+
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(refineSuggestion).toHaveBeenCalledWith(refineRequest)
+  })
+
+  it('turns a failed load into the reload error for a Refine too', async () => {
+    const load = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    const client = createLazyModelClient(load)
+
+    const failed = await client.refineSuggestion(refineRequest)
+
+    expect(failed).toMatchObject({ ok: false, error: { type: 'unknown' } })
+    expect(!failed.ok && failed.error.message).toMatch(/reload the page/i)
   })
 })

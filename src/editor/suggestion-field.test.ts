@@ -14,8 +14,10 @@ import {
 } from './suggestion-commands'
 import {
   beginEffect,
+  beginRefineEffect,
   failEffect,
   resolveEffect,
+  resolveRefineEffect,
   suggestionsField,
   suggestionsOf,
 } from './suggestion-field'
@@ -221,5 +223,74 @@ describe('Reject', () => {
     open(outside, 'a', FIRST.from, FIRST.to)
     expect(rejectAtCursor(outside)).toBe(false)
     expect(suggestionsOf(outside.state).items).toHaveLength(1)
+  })
+})
+
+describe('Accept after Refine', () => {
+  const refined = (handle: EditorHandle, id: string, replacement: string) => {
+    handle.dispatch({
+      effects: beginRefineEffect.of({
+        id,
+        instruction: { type: 'free-text', text: 'tighter' },
+      }),
+    })
+    handle.dispatch({
+      effects: resolveRefineEffect.of({ id, result: result(replacement) }),
+    })
+  }
+
+  it('applies the latest Replacement in one transaction that one undo reverts', () => {
+    const handle = createHandle()
+    open(handle, 'a', FIRST.from, FIRST.to)
+    refined(handle, 'a', 'first refine')
+    refined(handle, 'a', 'second refine')
+
+    expect(acceptSuggestionById(handle, 'a')).toBe(true)
+    expect(handle.state.doc.toString()).toBe(
+      DOC.replace('First paragraph here.', 'second refine'),
+    )
+    expect(suggestionsOf(handle.state).items).toEqual([])
+
+    undo({
+      state: handle.state,
+      dispatch: (transaction) => {
+        handle.dispatch(transaction)
+      },
+    })
+    expect(handle.state.doc.toString()).toBe(DOC)
+  })
+
+  it('applies the current Replacement when accepted during a Refine', () => {
+    const handle = createHandle()
+    open(handle, 'a', FIRST.from, FIRST.to)
+    handle.dispatch({
+      effects: beginRefineEffect.of({
+        id: 'a',
+        instruction: { type: 'free-text', text: 'tighter' },
+      }),
+    })
+
+    expect(acceptSuggestionById(handle, 'a')).toBe(true)
+
+    expect(handle.state.doc.toString()).toBe(
+      DOC.replace('First paragraph here.', 'rewritten a'),
+    )
+    expect(suggestionsOf(handle.state).items).toEqual([])
+  })
+
+  it('discards a Suggestion that is edited inside while it refines', () => {
+    const handle = createHandle()
+    open(handle, 'a', FIRST.from, FIRST.to)
+    handle.dispatch({
+      effects: beginRefineEffect.of({
+        id: 'a',
+        instruction: { type: 'free-text', text: 'tighter' },
+      }),
+    })
+
+    handle.dispatch({ changes: { from: 5, insert: 'x' } })
+
+    expect(suggestionsOf(handle.state).items).toEqual([])
+    expect(suggestionsOf(handle.state).notice?.kind).toBe('text-changed')
   })
 })

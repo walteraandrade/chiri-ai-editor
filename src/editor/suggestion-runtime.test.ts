@@ -1,6 +1,6 @@
 import { EditorState, type TransactionSpec } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import type { TargetRequest } from '../ai/client'
+import type { RefineRequest, TargetRequest } from '../ai/client'
 import type { SuggestionResult } from '../ai/edits'
 import type { ClientError, Result } from '../ai/errors'
 import {
@@ -8,27 +8,38 @@ import {
   quickActionInstruction,
 } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
-import type { EditorHandle } from './suggestion-commands'
-import { suggestionsField, suggestionsOf } from './suggestion-field'
+import type { ReadySuggestion } from '../suggestions/types'
+import { acceptSuggestionById, type EditorHandle } from './suggestion-commands'
+import {
+  rejectEffect,
+  suggestionsField,
+  suggestionsOf,
+} from './suggestion-field'
 import { createSuggestionRuntime } from './suggestion-runtime'
 
 const DOC = '# Title\n\nFirst paragraph here.\n\nSecond paragraph here.\n'
 const FIRST = { from: 9, to: 30 }
 const SECOND = { from: 32, to: 54 }
 
-type Call = {
-  readonly request: TargetRequest
+type Call<Request = TargetRequest> = {
+  readonly request: Request
   readonly resolve: (result: Result<SuggestionResult>) => void
 }
 
 const createClient = () => {
   const calls: Call[] = []
+  const refines: Call<RefineRequest>[] = []
   return {
     calls,
+    refines,
     client: {
       requestSuggestion: (request: TargetRequest) =>
         new Promise<Result<SuggestionResult>>((resolve) => {
           calls.push({ request, resolve })
+        }),
+      refineSuggestion: (request: RefineRequest) =>
+        new Promise<Result<SuggestionResult>>((resolve) => {
+          refines.push({ request, resolve })
         }),
     },
   }
@@ -266,5 +277,285 @@ describe('abort on Discard', () => {
       false,
     ])
     expect(suggestionsOf(handle.state).items).toHaveLength(2)
+  })
+})
+
+describe('refine', () => {
+  const FORMAL = freeTextInstruction('now more formal')
+  const SHORTER_FREE = freeTextInstruction('make it shorter')
+
+  const openReady = async (cursor = FIRST.from + 3) => {
+    const context = createClient()
+    const runtime = createSuggestionRuntime({
+      client: context.client,
+      createId: () => 'a',
+    })
+    const handle = createHandle(cursor)
+    runtime.actions.ask(handle, quickActionInstruction('clearer'))
+    only(context.calls).resolve(ok('First paragraph, clearer.'))
+    await settle()
+    return { ...context, runtime, handle }
+  }
+
+  const readyOf = (handle: EditorHandle): ReadySuggestion => {
+    const found = findSuggestion(suggestionsOf(handle.state), 'a')
+    if (found?.status !== 'ready') throw new Error('not ready')
+    return found
+  }
+
+  it('keeps the Replacement visible and sends the full context', async () => {
+    const { runtime, handle, refines } = await openReady()
+
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+
+    expect(readyOf(handle)).toMatchObject({
+      status: 'ready',
+      replacement: 'First paragraph, clearer.',
+      refine: { status: 'working', instruction: SHORTER_FREE },
+    })
+    const { request } = only(refines)
+    expect(request.target.text).toBe('First paragraph here.')
+    expect(request.history).toEqual([quickActionInstruction('clearer').text])
+    expect(request.latestReplacement).toBe('First paragraph, clearer.')
+    expect(request.instruction).toBe('make it shorter')
+    expect(request.task).toBe('refine p2 → make it shorter')
+    expect(request.neighbors.before.map((block) => block.id)).toEqual(['p1'])
+    expect(request.neighbors.after.map((block) => block.id)).toEqual(['p3'])
+    expect(request.signal?.aborted).toBe(false)
+  })
+
+  it('replaces the Replacement and Rationale in place', async () => {
+    const { runtime, handle, refines } = await openReady()
+    const before = readyOf(handle)
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+
+    only(refines).resolve({
+      ok: true,
+      value: {
+        replacement: 'First, clearer.',
+        rationale: 'Shorter.',
+        unchanged: false,
+      },
+    })
+    await settle()
+
+    expect(readyOf(handle)).toMatchObject({
+      id: 'a',
+      from: before.from,
+      to: before.to,
+      original: 'First paragraph here.',
+      replacement: 'First, clearer.',
+      rationale: 'Shorter.',
+      refine: { status: 'idle' },
+    })
+    expect(readyOf(handle).history).toHaveLength(2)
+  })
+
+  it('sends every earlier Instruction and the latest Replacement on a second Refine', async () => {
+    const { runtime, handle, refines } = await openReady()
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+    only(refines).resolve(ok('First, clearer.'))
+    await settle()
+
+    runtime.actions.refine(handle, 'a', FORMAL)
+
+    const second = refines[1]?.request
+    expect(second?.history).toEqual([
+      quickActionInstruction('clearer').text,
+      'make it shorter',
+    ])
+    expect(second?.latestReplacement).toBe('First, clearer.')
+    expect(second?.target.text).toBe('First paragraph here.')
+    expect(second?.task).toBe('refine p2 → now more formal')
+  })
+
+  it('shows "no change" and keeps the Replacement when the model repeats it', async () => {
+    const { runtime, handle, refines } = await openReady()
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+
+    only(refines).resolve(ok('First paragraph, clearer.'))
+    await settle()
+
+    expect(readyOf(handle)).toMatchObject({
+      replacement: 'First paragraph, clearer.',
+      refine: { status: 'idle' },
+    })
+    expect(readyOf(handle).history).toHaveLength(1)
+    expect(suggestionsOf(handle.state).notice?.kind).toBe('no-change')
+  })
+
+  it('keeps the Replacement on failure and retries the same Refine', async () => {
+    const { runtime, handle, refines } = await openReady()
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+
+    only(refines).resolve(fail({ type: 'out-of-credit', message: 'No credit' }))
+    await settle()
+
+    expect(readyOf(handle)).toMatchObject({
+      status: 'ready',
+      replacement: 'First paragraph, clearer.',
+      rationale: 'Because.',
+      refine: { status: 'failed', error: { type: 'out-of-credit' } },
+    })
+
+    runtime.actions.retryRefine(handle, 'a')
+    expect(readyOf(handle).refine.status).toBe('working')
+    expect(refines).toHaveLength(2)
+    const retried = refines[1]
+    expect(retried?.request.instruction).toBe('make it shorter')
+    expect(retried?.request.latestReplacement).toBe('First paragraph, clearer.')
+    expect(retried?.request.history).toEqual([
+      quickActionInstruction('clearer').text,
+    ])
+    expect(retried?.request.task).toBe('refine p2 → make it shorter')
+
+    retried?.resolve(ok('First, clearer.'))
+    await settle()
+    expect(readyOf(handle)).toMatchObject({
+      replacement: 'First, clearer.',
+      refine: { status: 'idle' },
+    })
+    expect(readyOf(handle).history).toHaveLength(2)
+  })
+
+  it('lets a failed Refine start over with a new Instruction', async () => {
+    const { runtime, handle, refines } = await openReady()
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+    only(refines).resolve(fail({ type: 'network', message: 'offline' }))
+    await settle()
+
+    runtime.actions.refine(handle, 'a', FORMAL)
+
+    expect(refines[1]?.request.instruction).toBe('now more formal')
+    expect(readyOf(handle).refine).toEqual({
+      status: 'working',
+      instruction: FORMAL,
+    })
+  })
+
+  it('does not start a second Refine while one is running', async () => {
+    const { runtime, handle, refines } = await openReady()
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+
+    runtime.actions.refine(handle, 'a', FORMAL)
+
+    expect(refines).toHaveLength(1)
+    expect(readyOf(handle).refine).toEqual({
+      status: 'working',
+      instruction: SHORTER_FREE,
+    })
+  })
+
+  it('ignores Refine and its retry for Suggestions that cannot take them', async () => {
+    const { client, calls, refines } = createClient()
+    const runtime = createSuggestionRuntime({ client, createId: () => 'a' })
+    const handle = createHandle(FIRST.from + 3)
+    runtime.actions.ask(handle, quickActionInstruction('shorter'))
+
+    runtime.actions.refine(handle, 'a', FORMAL)
+    runtime.actions.retryRefine(handle, 'a')
+    runtime.actions.refine(handle, 'missing', FORMAL)
+
+    expect(refines).toEqual([])
+    expect(calls).toHaveLength(1)
+
+    only(calls).resolve(ok('First one.'))
+    await settle()
+    runtime.actions.retryRefine(handle, 'a')
+    expect(refines).toEqual([])
+  })
+
+  it('uses the mapped range after an edit before the Suggestion', async () => {
+    const { runtime, handle, refines } = await openReady(SECOND.from + 3)
+    handle.dispatch({ changes: { from: 0, insert: 'Intro.\n\n' } })
+
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+
+    expect(only(refines).request.target.text).toBe('Second paragraph here.')
+  })
+
+  describe('while refining', () => {
+    it('aborts the Refine on Reject and ignores the late answer', async () => {
+      const { runtime, handle, refines } = await openReady()
+      runtime.actions.refine(handle, 'a', SHORTER_FREE)
+      const call = only(refines)
+
+      handle.dispatch({ effects: rejectEffect.of('a') })
+      runtime.reconcile(handle.state)
+      expect(call.request.signal?.aborted).toBe(true)
+
+      call.resolve(ok('Late answer.'))
+      await settle()
+      expect(suggestionsOf(handle.state).items).toEqual([])
+      expect(suggestionsOf(handle.state).notice).toBeNull()
+    })
+
+    it('aborts the Refine on Accept', async () => {
+      const { runtime, handle, refines } = await openReady()
+      runtime.actions.refine(handle, 'a', SHORTER_FREE)
+      const call = only(refines)
+
+      acceptSuggestionById(handle, 'a')
+      runtime.reconcile(handle.state)
+
+      expect(call.request.signal?.aborted).toBe(true)
+      expect(handle.state.doc.toString()).toContain('First paragraph, clearer.')
+      call.resolve(ok('Late answer.'))
+      await settle()
+      expect(handle.state.doc.toString()).not.toContain('Late answer.')
+    })
+
+    it('aborts the Refine and Discards the Suggestion on an edit inside', async () => {
+      const { runtime, handle, refines } = await openReady()
+      runtime.actions.refine(handle, 'a', SHORTER_FREE)
+      const call = only(refines)
+
+      handle.dispatch({ changes: { from: FIRST.from + 5, insert: 'x' } })
+      runtime.reconcile(handle.state)
+
+      expect(call.request.signal?.aborted).toBe(true)
+      expect(suggestionsOf(handle.state).items).toEqual([])
+      expect(suggestionsOf(handle.state).notice?.kind).toBe('text-changed')
+    })
+
+    it('keeps refining through an edit outside the Suggestion', async () => {
+      const { runtime, handle, refines } = await openReady()
+      runtime.actions.refine(handle, 'a', SHORTER_FREE)
+      const call = only(refines)
+
+      handle.dispatch({ changes: { from: 0, insert: 'Intro.\n\n' } })
+      runtime.reconcile(handle.state)
+      expect(call.request.signal?.aborted).toBe(false)
+
+      call.resolve(ok('First, clearer.'))
+      await settle()
+      expect(readyOf(handle)).toMatchObject({
+        replacement: 'First, clearer.',
+        from: FIRST.from + 8,
+      })
+    })
+
+    it('aborts the Refine when a newer request overlaps the Suggestion', async () => {
+      const { client, calls, refines } = createClient()
+      const ids = ['a', 'b']
+      const runtime = createSuggestionRuntime({
+        client,
+        createId: () => ids.shift() ?? 'z',
+      })
+      const handle = createHandle(FIRST.from + 3)
+      runtime.actions.ask(handle, quickActionInstruction('clearer'))
+      only(calls).resolve(ok('First paragraph, clearer.'))
+      await settle()
+      runtime.actions.refine(handle, 'a', SHORTER_FREE)
+      const call = only(refines)
+
+      runtime.actions.ask(handle, quickActionInstruction('shorter'))
+      runtime.reconcile(handle.state)
+
+      expect(call.request.signal?.aborted).toBe(true)
+      expect(suggestionsOf(handle.state).items.map((item) => item.id)).toEqual([
+        'b',
+      ])
+    })
   })
 })
