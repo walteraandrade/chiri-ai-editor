@@ -1,10 +1,13 @@
 import { isolateHistory } from '@codemirror/commands'
 import type { EditorState, TransactionSpec } from '@codemirror/state'
+import { acceptAllPlan, openReviewCount } from '../suggestions/review'
 import { findSuggestion } from '../suggestions/state'
 import type { SuggestionId } from '../suggestions/types'
 import {
   acceptEffect,
+  acceptManyEffect,
   rejectEffect,
+  rejectReviewEffect,
   suggestionAtCursor,
   suggestionsOf,
 } from './suggestion-field'
@@ -38,6 +41,24 @@ export const rejectSuggestionById = (
   if (findSuggestion(suggestionsOf(handle.state), id) === undefined)
     return false
   handle.dispatch({ effects: rejectEffect.of(id) })
+  return true
+}
+
+export const acceptAllReviewSuggestions = (handle: EditorHandle): boolean => {
+  const { ids, changes } = acceptAllPlan(suggestionsOf(handle.state))
+  if (ids.length === 0) return false
+  handle.dispatch({
+    changes: [...changes],
+    effects: acceptManyEffect.of(ids),
+    annotations: isolateHistory.of('full'),
+    userEvent: 'input.accept',
+  })
+  return true
+}
+
+export const rejectAllReviewSuggestions = (handle: EditorHandle): boolean => {
+  if (openReviewCount(suggestionsOf(handle.state)) === 0) return false
+  handle.dispatch({ effects: rejectReviewEffect.of(null) })
   return true
 }
 

@@ -6,6 +6,8 @@ export type SuggestionId = string
 
 export type TargetSource = 'selection' | 'block'
 
+export type SuggestionOrigin = 'ask' | 'review'
+
 export type Instruction =
   | {
       readonly type: 'quick-action'
@@ -23,6 +25,7 @@ export type SuggestionBase = {
   readonly original: string
   readonly instruction: Instruction
   readonly sequence: number
+  readonly origin: SuggestionOrigin
 }
 
 export type PendingSuggestion = SuggestionBase & {
@@ -80,4 +83,5 @@ export type SuggestionDraft = {
   readonly source: TargetSource
   readonly original: string
   readonly instruction: Instruction
+  readonly origin?: SuggestionOrigin
 }

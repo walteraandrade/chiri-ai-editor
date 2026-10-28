@@ -63,7 +63,12 @@ export const beginSuggestion = (
     ...state,
     items: [
       ...survivors,
-      { ...draft, status: 'pending', sequence: state.nextSequence },
+      {
+        ...draft,
+        origin: draft.origin ?? 'ask',
+        status: 'pending',
+        sequence: state.nextSequence,
+      },
     ],
     nextSequence: state.nextSequence + 1,
   }
@@ -222,6 +227,21 @@ export const rejectSuggestion = (
 ): SuggestionsState =>
   findSuggestion(state, id) === undefined ? state : without(state, id)
 
+export const rejectSuggestions = (
+  state: SuggestionsState,
+  ids: readonly SuggestionId[],
+): SuggestionsState => {
+  const items = state.items.filter((item) => !ids.includes(item.id))
+  return items.length === state.items.length ? state : { ...state, items }
+}
+
+export const rejectReviewSuggestions = (
+  state: SuggestionsState,
+): SuggestionsState => {
+  const items = state.items.filter((item) => item.origin !== 'review')
+  return items.length === state.items.length ? state : { ...state, items }
+}
+
 export const discardSuggestion = (
   state: SuggestionsState,
   id: SuggestionId,
@@ -260,11 +280,17 @@ export const mapSuggestions = (
     : withNotice(next, 'text-changed')
 }
 
+export const acceptSuggestions = (
+  state: SuggestionsState,
+  ids: readonly SuggestionId[],
+  changes: ChangeDesc,
+): SuggestionsState => mapSuggestions(rejectSuggestions(state, ids), changes)
+
 export const acceptSuggestion = (
   state: SuggestionsState,
   id: SuggestionId,
   changes: ChangeDesc,
-): SuggestionsState => mapSuggestions(without(state, id), changes)
+): SuggestionsState => acceptSuggestions(state, [id], changes)
 
 const isInFlight = (item: Suggestion): boolean =>
   item.status === 'pending' ||

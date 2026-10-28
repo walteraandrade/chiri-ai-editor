@@ -4,6 +4,7 @@ import type { ClientError } from '../ai/errors'
 import { adaptiveDiff } from '../diff/adaptive-diff'
 import {
   acceptSuggestion,
+  acceptSuggestions,
   activeSuggestion,
   beginRefine,
   beginSuggestion,
@@ -16,7 +17,9 @@ import {
   inFlightSuggestionIds,
   instructionHistory,
   mapSuggestions,
+  rejectReviewSuggestions,
   rejectSuggestion,
+  rejectSuggestions,
   resolveRefine,
   resolveSuggestion,
   retryRefine,
@@ -91,9 +94,18 @@ describe('beginSuggestion', () => {
         instruction: SHORTER,
         status: 'pending',
         sequence: 0,
+        origin: 'ask',
       },
     ])
     expect(state.notice).toBeNull()
+  })
+
+  it('keeps the origin the request came with', () => {
+    const state = begun(
+      draft('a', 0, 10),
+      draft('b', 20, 30, { origin: 'review' }),
+    )
+    expect(state.items.map((item) => item.origin)).toEqual(['ask', 'review'])
   })
 
   it('keeps many Suggestions open at once, in creation order', () => {
@@ -276,6 +288,50 @@ describe('reject and discard', () => {
   })
 })
 
+describe('rejectSuggestions', () => {
+  it('removes every listed Suggestion without a notice', () => {
+    const state = begun(
+      draft('a', 0, 10),
+      draft('b', 20, 30),
+      draft('c', 40, 50),
+    )
+    const next = rejectSuggestions(state, ['a', 'c', 'missing'])
+    expect(idsOf(next)).toEqual(['b'])
+    expect(next.notice).toBeNull()
+  })
+
+  it('returns the same state when nothing matches', () => {
+    const state = begun(draft('a', 0, 10))
+    expect(rejectSuggestions(state, ['x'])).toBe(state)
+  })
+})
+
+describe('rejectReviewSuggestions', () => {
+  const mixed = () =>
+    begun(
+      draft('a', 0, 10),
+      draft('r1', 20, 30, { origin: 'review' }),
+      draft('r2', 40, 50, { origin: 'review' }),
+      draft('b', 60, 70),
+    )
+
+  it('drops only Suggestions that came from a Review pass', () => {
+    const next = rejectReviewSuggestions(ready(ready(mixed(), 'r1'), 'a'))
+    expect(idsOf(next)).toEqual(['a', 'b'])
+    expect(next.notice).toBeNull()
+  })
+
+  it('drops them whatever their status', () => {
+    const refining = beginRefine(ready(mixed(), 'r1'), 'r1', SHORTER)
+    expect(idsOf(rejectReviewSuggestions(refining))).toEqual(['a', 'b'])
+  })
+
+  it('returns the same state without review Suggestions', () => {
+    const state = begun(draft('a', 0, 10))
+    expect(rejectReviewSuggestions(state)).toBe(state)
+  })
+})
+
 describe('mapSuggestions', () => {
   const doc = 'x'.repeat(100)
   const change = (from: number, to: number, insert: string) =>
@@ -405,6 +461,32 @@ describe('acceptSuggestion', () => {
       ChangeSet.of({ from: 30, to: 70, insert: '' }, doc.length),
     )
     expect(next.items).toEqual([])
+  })
+})
+
+describe('acceptSuggestions', () => {
+  it('removes every accepted Suggestion and maps the others through the one change', () => {
+    const state = ready(
+      ready(
+        ready(
+          begun(draft('a', 0, 10), draft('b', 20, 30), draft('c', 40, 50)),
+          'a',
+        ),
+        'b',
+      ),
+      'c',
+    )
+    const changes = ChangeSet.of(
+      [
+        { from: 0, to: 10, insert: 'x' },
+        { from: 20, to: 30, insert: 'yy' },
+      ],
+      60,
+    )
+    const next = acceptSuggestions(state, ['a', 'b'], changes)
+    expect(idsOf(next)).toEqual(['c'])
+    expect(next.items[0]).toMatchObject({ from: 40 - 9 - 8, to: 50 - 9 - 8 })
+    expect(next.notice).toBeNull()
   })
 })
 

@@ -2,7 +2,7 @@ import { type EditorState, StateEffect, StateField } from '@codemirror/state'
 import type { SuggestionResult } from '../ai/edits'
 import type { ClientError } from '../ai/errors'
 import {
-  acceptSuggestion,
+  acceptSuggestions,
   activeSuggestion,
   beginRefine,
   beginSuggestion,
@@ -11,6 +11,7 @@ import {
   failRefine,
   failSuggestion,
   mapSuggestions,
+  rejectReviewSuggestions,
   rejectSuggestion,
   resolveRefine,
   resolveSuggestion,
@@ -53,6 +54,8 @@ export const retryRefineEffect = StateEffect.define<SuggestionId>()
 export const cancelRefineEffect = StateEffect.define<SuggestionId>()
 export const rejectEffect = StateEffect.define<SuggestionId>()
 export const acceptEffect = StateEffect.define<SuggestionId>()
+export const acceptManyEffect = StateEffect.define<readonly SuggestionId[]>()
+export const rejectReviewEffect = StateEffect.define<null>()
 
 const applyEffect = (
   state: SuggestionsState,
@@ -73,18 +76,24 @@ const applyEffect = (
   if (effect.is(retryRefineEffect)) return retryRefine(state, effect.value)
   if (effect.is(cancelRefineEffect)) return cancelRefine(state, effect.value)
   if (effect.is(rejectEffect)) return rejectSuggestion(state, effect.value)
+  if (effect.is(rejectReviewEffect)) return rejectReviewSuggestions(state)
   return state
 }
 
 export const suggestionsField = StateField.define<SuggestionsState>({
   create: () => emptySuggestions,
   update: (value, transaction) => {
-    const accepted = transaction.effects.find((effect) =>
-      effect.is(acceptEffect),
+    const acceptedIds = transaction.effects.flatMap((effect) =>
+      effect.is(acceptEffect)
+        ? [effect.value]
+        : effect.is(acceptManyEffect)
+          ? effect.value
+          : [],
     )
-    const mapped = accepted
-      ? acceptSuggestion(value, accepted.value, transaction.changes)
-      : mapSuggestions(value, transaction.changes)
+    const mapped =
+      acceptedIds.length > 0
+        ? acceptSuggestions(value, acceptedIds, transaction.changes)
+        : mapSuggestions(value, transaction.changes)
     return transaction.effects.reduce(applyEffect, mapped)
   },
 })
