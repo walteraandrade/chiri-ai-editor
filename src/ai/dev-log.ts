@@ -10,3 +10,17 @@ export const appendAiCall = (
   log.push(record)
   target.__aiCalls = log
 }
+
+export const enrichAiCall = (
+  target: AiCallLogTarget,
+  record: AiCallRecord,
+): void => {
+  const log = target.__aiCalls ?? []
+  const index = log.findIndex(
+    (entry) =>
+      entry.generationId !== null && entry.generationId === record.generationId,
+  )
+  if (index === -1) log.push(record)
+  else log[index] = record
+  target.__aiCalls = log
+}

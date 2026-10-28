@@ -15,7 +15,7 @@ export const SYSTEM_PROMPT = [
   '2. Change only what the Instruction needs. Keep everything else exactly as written.',
   '3. Do not invent facts, numbers or names.',
   '4. Preserve Markdown syntax (lists, links, emphasis, headings, code).',
-  '5. The rationale is one short sentence, in the language of the Document.',
+  '5. The rationale is one short sentence, in the language of the Document: the language of the text you receive, not the language of these rules.',
 ].join('\n')
 
 const DEFAULT_REVIEW_CRITERIA =

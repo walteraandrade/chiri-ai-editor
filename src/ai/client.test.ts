@@ -39,17 +39,20 @@ const setup = (
 ) => {
   const fake = createFakeOpenRouter({ chat, generation })
   const records: AiCallRecord[] = []
+  const enriched: AiCallRecord[] = []
   const client = createModelClient({
     baseURL: 'http://localhost/api/openrouter',
     apiKey: 'placeholder',
     model: 'vendor/model-a',
     fetch: fake.fetch,
     maxRetries: 0,
+    generationInitialDelayMs: 0,
     generationDelaysMs: [],
     onRecord: (record) => records.push(record),
+    onRecordEnriched: (record) => enriched.push(record),
     ...overrides,
   })
-  return { fake, client, records }
+  return { fake, client, records, enriched }
 }
 
 const collect = async (events: AsyncIterable<ReviewEvent>) => {
@@ -285,22 +288,49 @@ describe('refineSuggestion', () => {
 })
 
 describe('AI call records', () => {
-  it('merges telemetry with the generation endpoint', async () => {
-    const { client, records } = setup(
-      [
-        () =>
-          chatCompletion(suggestionJson('Short.'), {
-            id: 'gen-rec',
-            usage: usage({
-              prompt_tokens: 300,
-              completion_tokens: 50,
-              total_tokens: 350,
-              cost: 0.00123,
-              completion_tokens_details: { reasoning_tokens: 7 },
-              prompt_tokens_details: { cached_tokens: 11 },
-            }),
+  it('records the call right away from telemetry', async () => {
+    const { client, records, enriched } = setup([
+      () =>
+        chatCompletion(suggestionJson('Short.'), {
+          id: 'gen-rec',
+          usage: usage({
+            prompt_tokens: 300,
+            completion_tokens: 50,
+            total_tokens: 350,
+            cost: 0.00123,
+            completion_tokens_details: { reasoning_tokens: 7 },
+            prompt_tokens_details: { cached_tokens: 11 },
           }),
-      ],
+        }),
+    ])
+    await client.requestSuggestion({
+      ...targetRequest(),
+      task: 'select paragraph 2 → Shorter',
+    })
+    await client.recorded()
+    expect(enriched).toEqual([])
+    expect(records).toHaveLength(1)
+    const [record] = records
+    expect(record).toMatchObject({
+      task: 'select paragraph 2 → Shorter',
+      attempt: 1,
+      outcome: 'valid',
+      requestedModel: 'vendor/model-a',
+      servedModel: 'vendor/model-served',
+      provider: 'Acme',
+      tokens: { input: 300, output: 50, reasoning: 7, cached: 11 },
+      costUsd: 0.00123,
+      finishReason: 'stop',
+      generationId: 'gen-rec',
+      error: null,
+    })
+    expect(record?.latencyMs.openRouter).toBeNull()
+    expect(record?.latencyMs.client).toBeGreaterThanOrEqual(0)
+  })
+
+  it('enriches the record with the generation endpoint later', async () => {
+    const { client, enriched } = setup(
+      [() => chatCompletion(suggestionJson('Short.'), { id: 'gen-rec' })],
       {},
       () =>
         generationResponse({
@@ -310,29 +340,15 @@ describe('AI call records', () => {
           generation_time: 650,
         }),
     )
-    await client.requestSuggestion({
-      ...targetRequest(),
-      task: 'select paragraph 2 → Shorter',
-    })
+    await client.requestSuggestion(targetRequest())
     await client.flush()
-    expect(records).toHaveLength(1)
-    const [record] = records
-    expect(record).toMatchObject({
-      task: 'select paragraph 2 → Shorter',
-      attempt: 1,
-      outcome: 'valid',
-      requestedModel: 'vendor/model-a',
-      servedModel: 'vendor/model-served',
+    expect(enriched).toHaveLength(1)
+    expect(enriched[0]).toMatchObject({
       provider: 'Parasail',
-      tokens: { input: 300, output: 50, reasoning: 7, cached: 11 },
-      costUsd: 0.00123,
-      finishReason: 'stop',
       generationId: 'gen-rec',
-      error: null,
     })
-    expect(record?.latencyMs.openRouter).toBe(800)
-    expect(record?.latencyMs.generation).toBe(650)
-    expect(record?.latencyMs.client).toBeGreaterThanOrEqual(0)
+    expect(enriched[0]?.latencyMs.openRouter).toBe(800)
+    expect(enriched[0]?.latencyMs.generation).toBe(650)
   })
 
   it('asks the generation endpoint with the response id', async () => {
@@ -351,18 +367,26 @@ describe('AI call records', () => {
     )
   })
 
-  it('still records the call when the generation endpoint has nothing', async () => {
-    const { client, records } = setup([
+  it('does not poll the generation endpoint when nobody listens', async () => {
+    const { fake, client } = setup(
+      [() => chatCompletion(suggestionJson('Short.'))],
+      { onRecordEnriched: undefined },
+    )
+    await client.requestSuggestion(targetRequest())
+    await client.flush()
+    expect(
+      fake.requests.some((request) => request.url.includes('/generation')),
+    ).toBe(false)
+  })
+
+  it('keeps the preliminary record when the generation endpoint has nothing', async () => {
+    const { client, records, enriched } = setup([
       () => chatCompletion(suggestionJson('Short.'), { id: 'gen-404' }),
     ])
     await client.requestSuggestion(targetRequest())
     await client.flush()
-    expect(records[0]).toMatchObject({
-      provider: 'Acme',
-      generationId: 'gen-404',
-      costUsd: 0.0002,
-    })
-    expect(records[0]?.latencyMs.openRouter).toBeNull()
+    expect(records).toHaveLength(1)
+    expect(enriched).toEqual([])
   })
 
   it('records failed calls too', async () => {

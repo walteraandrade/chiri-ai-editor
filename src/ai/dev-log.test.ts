@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendAiCall } from './dev-log'
+import { appendAiCall, enrichAiCall } from './dev-log'
 import { shapeAiCallRecord } from './records'
 
 const record = shapeAiCallRecord({
@@ -25,5 +25,36 @@ describe('appendAiCall', () => {
     appendAiCall(target, { ...record, task: 'second' })
     expect(target.__aiCalls).toBe(log)
     expect(log?.map((entry) => entry.task)).toEqual(['task', 'second'])
+  })
+})
+
+describe('enrichAiCall', () => {
+  const withId = { ...record, generationId: 'gen-1' }
+
+  it('replaces the record with the same generation id', () => {
+    const target: { __aiCalls?: (typeof record)[] } = {}
+    appendAiCall(target, withId)
+    const log = target.__aiCalls
+    const enriched = { ...withId, provider: 'Acme' }
+    enrichAiCall(target, enriched)
+    expect(target.__aiCalls).toBe(log)
+    expect(log).toEqual([enriched])
+  })
+
+  it('appends when no record has that generation id', () => {
+    const target: { __aiCalls?: (typeof record)[] } = {}
+    appendAiCall(target, withId)
+    enrichAiCall(target, { ...withId, generationId: 'gen-2' })
+    expect(target.__aiCalls?.map((entry) => entry.generationId)).toEqual([
+      'gen-1',
+      'gen-2',
+    ])
+  })
+
+  it('never matches records without a generation id', () => {
+    const target: { __aiCalls?: (typeof record)[] } = {}
+    appendAiCall(target, record)
+    enrichAiCall(target, record)
+    expect(target.__aiCalls).toHaveLength(2)
   })
 })

@@ -20,15 +20,19 @@ const generationSchema = z.object({
   }),
 })
 
-export const DEFAULT_GENERATION_DELAYS_MS: readonly number[] = [
-  400, 800, 1600, 3200, 3200,
-]
+export const DEFAULT_GENERATION_INITIAL_DELAY_MS = 30_000
+
+export const DEFAULT_GENERATION_DELAYS_MS: readonly number[] = Array.from(
+  { length: 24 },
+  () => 10_000,
+)
 
 export type FetchGenerationOptions = {
   readonly baseURL: string
   readonly apiKey: string
   readonly id: string | undefined
   readonly fetch?: typeof fetch
+  readonly initialDelayMs?: number
   readonly delaysMs?: readonly number[]
   readonly sleep?: (ms: number) => Promise<void>
 }
@@ -58,11 +62,13 @@ export const fetchGeneration = async ({
   apiKey,
   id,
   fetch: fetchFn = fetch,
+  initialDelayMs = DEFAULT_GENERATION_INITIAL_DELAY_MS,
   delaysMs = DEFAULT_GENERATION_DELAYS_MS,
   sleep = defaultSleep,
 }: FetchGenerationOptions): Promise<OpenRouterGeneration | undefined> => {
   if (id === undefined) return undefined
   const url = `${baseURL}/generation?id=${encodeURIComponent(id)}`
+  if (initialDelayMs > 0) await sleep(initialDelayMs)
   for (let attempt = 0; attempt <= delaysMs.length; attempt += 1) {
     const generation = await attemptOnce(fetchFn, url, apiKey)
     if (generation) return generation

@@ -28,6 +28,7 @@ import {
   type AiCallRecord,
   type CallObservation,
   type CallOutcome,
+  type OpenRouterGeneration,
   shapeAiCallRecord,
 } from './records'
 import { type ReviewEdit, reviewEditSchema, suggestionSchema } from './schemas'
@@ -57,6 +58,8 @@ export type ModelClientConfig = {
   readonly timeoutsMs?: RequestKindLimits
   readonly maxOutputTokens?: RequestKindLimits
   readonly onRecord?: (record: AiCallRecord) => void
+  readonly onRecordEnriched?: (record: AiCallRecord) => void
+  readonly generationInitialDelayMs?: number
   readonly generationDelaysMs?: readonly number[]
   readonly clock?: () => number
 }
@@ -118,6 +121,7 @@ export type ModelClient = {
   readonly reviewDocument: (
     request: ReviewRequest,
   ) => AsyncGenerator<ReviewEvent, void>
+  readonly recorded: () => Promise<void>
   readonly flush: () => Promise<void>
 }
 
@@ -159,7 +163,8 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     compatibility: 'strict',
   })
   const collector = getSharedTelemetryCollector()
-  const pending = new Set<Promise<void>>()
+  const pendingRecords = new Set<Promise<void>>()
+  const pendingEnrichment = new Set<Promise<void>>()
 
   const buildModel = () =>
     provider.chat(model, {
@@ -168,9 +173,13 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
       ...(reasoning === 'default' ? {} : { reasoning: { effort: reasoning } }),
     })
 
-  const track = (work: Promise<void>): void => {
-    pending.add(work)
-    work.finally(() => pending.delete(work))
+  const track = (set: Set<Promise<void>>, work: Promise<void>): void => {
+    set.add(work)
+    work.finally(() => set.delete(work))
+  }
+
+  const drain = async (set: ReadonlySet<Promise<void>>): Promise<void> => {
+    while (set.size > 0) await Promise.all([...set])
   }
 
   type Attempt = {
@@ -201,36 +210,51 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     },
   ): void => {
     const clientTotalMs = Math.round(clock() - attempt.startedMs)
+    collector.release(attempt.requestId)
+    const shape = (
+      observation: CallObservation,
+      generation?: OpenRouterGeneration,
+    ): AiCallRecord =>
+      shapeAiCallRecord({
+        task: meta.task,
+        attempt: meta.number,
+        outcome: outcomeOf(meta.failure),
+        startedAt: attempt.startedAt,
+        timing: {
+          clientTotalMs,
+          firstElementMs: meta.firstElementMs,
+          firstSuggestionMs: meta.firstSuggestionMs,
+        },
+        observation: {
+          ...observation,
+          requestedModel: model,
+          error: meta.failure?.type,
+        },
+        generation,
+      })
+    const recorded = attempt.observation.then((observation) => {
+      config.onRecord?.(shape(observation))
+      return observation
+    })
     track(
-      (async () => {
-        const observation = await attempt.observation
+      pendingRecords,
+      recorded.then(() => undefined),
+    )
+    if (config.onRecordEnriched === undefined) return
+    const enrich = config.onRecordEnriched
+    track(
+      pendingEnrichment,
+      recorded.then(async (observation) => {
         const generation = await fetchGeneration({
           baseURL,
           apiKey,
           id: observation.responseId,
           fetch: config.fetch,
+          initialDelayMs: config.generationInitialDelayMs,
           delaysMs: config.generationDelaysMs,
         })
-        config.onRecord?.(
-          shapeAiCallRecord({
-            task: meta.task,
-            attempt: meta.number,
-            outcome: outcomeOf(meta.failure),
-            startedAt: attempt.startedAt,
-            timing: {
-              clientTotalMs,
-              firstElementMs: meta.firstElementMs,
-              firstSuggestionMs: meta.firstSuggestionMs,
-            },
-            observation: {
-              ...observation,
-              requestedModel: model,
-              error: meta.failure?.type,
-            },
-            generation,
-          }),
-        )
-      })(),
+        if (generation) enrich(shape(observation, generation))
+      }),
     )
   }
 
@@ -424,8 +448,10 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
         request.signal,
       ),
     reviewDocument,
+    recorded: () => drain(pendingRecords),
     flush: async () => {
-      while (pending.size > 0) await Promise.all([...pending])
+      await drain(pendingRecords)
+      await drain(pendingEnrichment)
     },
   }
 }

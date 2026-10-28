@@ -9,12 +9,13 @@ const openRouterMetadataSchema = z.object({
 
 const requestIdSchema = z.object({ requestId: z.string() })
 
-const OBSERVATION_TIMEOUT_MS = 2000
+const DEFAULT_GRACE_MS = 2000
 
 type Entry = {
   readonly requestedModel: string
   readonly observation: Partial<CallObservation>
   readonly settle: (observation: CallObservation) => void
+  readonly startGrace: () => void
 }
 
 export type TelemetryCollector = {
@@ -23,6 +24,7 @@ export type TelemetryCollector = {
     requestId: string,
     requestedModel: string,
   ) => Promise<CallObservation>
+  readonly release: (requestId: string) => void
 }
 
 const requestIdOf = (event: unknown): string | undefined => {
@@ -51,7 +53,9 @@ const complete = (entry: Entry): CallObservation => ({
   requestedModel: entry.requestedModel,
 })
 
-export const createTelemetryCollector = (): TelemetryCollector => {
+export const createTelemetryCollector = (
+  graceMs = DEFAULT_GRACE_MS,
+): TelemetryCollector => {
   const entries = new Map<string, Entry>()
   const requestByCall = new Map<string, string>()
 
@@ -126,19 +130,32 @@ export const createTelemetryCollector = (): TelemetryCollector => {
     requestedModel: string,
   ): Promise<CallObservation> =>
     new Promise((resolve) => {
+      let timer: ReturnType<typeof setTimeout> | undefined
       const settle = (observation: CallObservation): void => {
         clearTimeout(timer)
         entries.delete(requestId)
         resolve(observation)
       }
-      const timer = setTimeout(() => {
-        const entry = entries.get(requestId)
-        settle(entry ? complete(entry) : { requestedModel })
-      }, OBSERVATION_TIMEOUT_MS)
-      entries.set(requestId, { requestedModel, observation: {}, settle })
+      const startGrace = (): void => {
+        clearTimeout(timer)
+        timer = setTimeout(() => {
+          const entry = entries.get(requestId)
+          settle(entry ? complete(entry) : { requestedModel })
+        }, graceMs)
+      }
+      entries.set(requestId, {
+        requestedModel,
+        observation: {},
+        settle,
+        startGrace,
+      })
     })
 
-  return { integration, expect }
+  const release = (requestId: string): void => {
+    entries.get(requestId)?.startGrace()
+  }
+
+  return { integration, expect, release }
 }
 
 let sharedCollector: TelemetryCollector | undefined

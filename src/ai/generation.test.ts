@@ -54,6 +54,7 @@ describe('fetchGeneration', () => {
       fetch: fetchStub,
       id: 'gen-1',
       sleep,
+      initialDelayMs: 0,
     })
     expect(generation).toMatchObject({ id: 'gen-1', provider_name: 'Acme' })
     expect(calls).toHaveLength(1)
@@ -61,6 +62,21 @@ describe('fetchGeneration', () => {
       'http://localhost/api/openrouter/generation?id=gen-1',
     )
     expect(calls[0]?.headers.get('authorization')).toBe('Bearer placeholder')
+  })
+
+  it('waits before the first attempt', async () => {
+    const { fetchStub, calls } = scripted([json(200, { data: GENERATION })])
+    const { sleep, delays } = noSleep()
+    await fetchGeneration({
+      baseURL: 'http://localhost/api/openrouter',
+      apiKey: 'k',
+      fetch: fetchStub,
+      id: 'gen-1',
+      sleep,
+      initialDelayMs: 500,
+    })
+    expect(delays).toEqual([500])
+    expect(calls).toHaveLength(1)
   })
 
   it('retries a 404 with backoff until the generation shows up', async () => {
@@ -76,6 +92,7 @@ describe('fetchGeneration', () => {
       fetch: fetchStub,
       id: 'gen-1',
       sleep,
+      initialDelayMs: 0,
       delaysMs: [100, 200, 400],
     })
     expect(generation?.id).toBe('gen-1')
@@ -92,6 +109,7 @@ describe('fetchGeneration', () => {
       fetch: fetchStub,
       id: 'gen-1',
       sleep,
+      initialDelayMs: 0,
       delaysMs: [10, 20],
     })
     expect(generation).toBeUndefined()

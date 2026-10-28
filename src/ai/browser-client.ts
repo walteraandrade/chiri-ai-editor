@@ -4,7 +4,7 @@ import {
   type ModelClientConfig,
 } from './client'
 import { resolveModel } from './default-model'
-import { type AiCallLogTarget, appendAiCall } from './dev-log'
+import { type AiCallLogTarget, appendAiCall, enrichAiCall } from './dev-log'
 
 export const BROWSER_PLACEHOLDER_KEY = 'browser-placeholder-key'
 
@@ -22,7 +22,12 @@ export const browserClientConfig = ({
   baseURL: `${origin}/api/openrouter`,
   apiKey: BROWSER_PLACEHOLDER_KEY,
   model: resolveModel(configuredModel),
-  ...(dev ? { onRecord: (record) => appendAiCall(logTarget, record) } : {}),
+  ...(dev
+    ? {
+        onRecord: (record) => appendAiCall(logTarget, record),
+        onRecordEnriched: (record) => enrichAiCall(logTarget, record),
+      }
+    : {}),
 })
 
 export const createBrowserModelClient = (): ModelClient =>
