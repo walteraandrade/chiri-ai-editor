@@ -9,7 +9,7 @@ import {
 import type { ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
 import { suggestionExtensions } from '../editor/suggestions'
-import { tooltipSpaceBelow } from '../editor/tooltip-space'
+import { spaceBelowHeader } from '../editor/tooltip-space'
 import type { SuggestionNotice } from '../suggestions/types'
 
 type EditorPaneProps = {
@@ -68,7 +68,7 @@ export function EditorPane({
       doc: initialDocRef.current,
       onChange: (doc) => handlersRef.current.onChange(doc),
       extensions: [
-        tooltipSpaceBelow(() => handlersRef.current.getTopInset()),
+        spaceBelowHeader(() => handlersRef.current.getTopInset()),
         ...suggestionExtensions({
           client: createLazyModelClient(() =>
             import('../ai/browser-client').then((module) =>

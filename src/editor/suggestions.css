@@ -1,10 +1,9 @@
 .cm-ai-suggestion {
-  border-radius: 3px;
-  background: rgb(255 255 255 / 0.025);
+  background: rgb(241 241 243 / 0.03);
 }
 
 .cm-ai-suggestion.cm-ai-active {
-  background: var(--color-active-suggestion);
+  background: var(--color-fill);
 }
 
 .cm-ai-refine-failed {
@@ -14,22 +13,15 @@
 }
 
 .cm-ai-deleted {
-  color: var(--color-deleted);
-  background: var(--color-deleted-bg);
-  border-radius: 2px;
+  color: var(--color-ink-faint);
   text-decoration: line-through;
-  text-decoration-color: color-mix(
-    in srgb,
-    var(--color-deleted) 70%,
-    transparent
-  );
+  text-decoration-color: var(--color-ink-faint);
 }
 
 .cm-ai-inserted,
 .cm-ai-replacement ins {
-  color: var(--color-inserted);
-  background: var(--color-inserted-bg);
-  border-radius: 2px;
+  color: var(--color-accent-soft);
+  background: var(--color-accent-tint);
   text-decoration: none;
   white-space: pre-wrap;
 }
@@ -41,10 +33,8 @@
 .cm-ai-replacement {
   margin: 0.2rem 0 0.9rem;
   padding: 0.35rem 0.75rem;
-  border-left: 2px solid var(--color-inserted);
-  border-radius: 0 6px 6px 0;
-  background: var(--color-inserted-bg);
-  color: var(--color-inserted);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-soft);
   white-space: pre-wrap;
 }
 
@@ -53,13 +43,11 @@
 }
 
 .cm-ai-target-preview {
-  background: var(--color-target-preview);
-  border-radius: 3px;
+  background: var(--color-accent-tint);
 }
 
 .cm-ai-pending,
 .cm-ai-refining {
-  border-radius: 3px;
   background-image: linear-gradient(
     90deg,
     transparent 0%,
@@ -103,9 +91,7 @@
   gap: 1rem;
   margin: 0.3rem 0 0.9rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-danger-border);
-  border-radius: 8px;
-  background: var(--color-danger-bg);
+  background: var(--color-danger-tint);
   color: var(--color-danger);
   font-family: var(--font-sans);
   font-size: 0.875rem;
@@ -120,14 +106,14 @@
 
 .cm-editor .cm-tooltip.cm-ai-bubble,
 .cm-editor .cm-tooltip.cm-ai-card {
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
+  z-index: 20;
+  border: 0;
+  background: var(--color-raised);
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.4;
-  box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.5);
   animation: cm-ai-fade-in 120ms ease-out;
 }
 
@@ -174,9 +160,8 @@
   flex: 1;
   min-width: 0;
   padding: 0.4rem 0.65rem;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 0.04);
+  border: 0;
+  background: var(--color-fill);
   color: var(--color-ink-strong);
   font: inherit;
 }
@@ -185,20 +170,13 @@
   color: var(--color-ink-faint);
 }
 
-.cm-ai-bubble-input:focus {
-  outline: none;
-  border-color: var(--color-accent-dim);
-  box-shadow: 0 0 0 2px rgb(122 162 247 / 0.25);
-}
-
 .cm-ai-chip,
 .cm-ai-button {
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.65rem;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: transparent;
+  border: 0;
+  background: var(--color-fill);
   color: var(--color-ink);
   font: inherit;
   cursor: pointer;
@@ -206,10 +184,11 @@
 
 .cm-ai-chip:hover,
 .cm-ai-button:hover {
-  background: var(--color-surface-hover);
+  background: var(--color-fill-hover);
   color: var(--color-ink-strong);
 }
 
+.cm-ai-bubble-input:focus-visible,
 .cm-ai-chip:focus-visible,
 .cm-ai-button:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -217,12 +196,12 @@
 }
 
 .cm-ai-button:disabled {
-  color: var(--color-ink-muted);
+  color: var(--color-ink-faint);
   cursor: default;
 }
 
 .cm-ai-button:disabled:hover {
-  background-color: transparent;
+  background-color: var(--color-fill);
 }
 
 .cm-ai-button[aria-busy="true"] {
@@ -256,9 +235,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.35rem 0.5rem;
-  border: 1px solid var(--color-danger-border);
-  border-radius: 8px;
-  background: var(--color-danger-bg);
+  background: var(--color-danger-tint);
   color: var(--color-danger);
 }
 

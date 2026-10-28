@@ -17,6 +17,7 @@ import {
 } from '../suggestions/instruction'
 import { currentTarget } from './current-target'
 import { el } from './dom'
+import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
 import { beginEffect } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
@@ -160,6 +161,12 @@ const buildBubble = (view: EditorView) => {
         mousedown: (event) => {
           if (event.target !== input) event.preventDefault()
         },
+        keydown: (event) => {
+          if (event.key !== 'Escape') return cycleTab(dom, event)
+          event.preventDefault()
+          view.dispatch({ effects: dismissBubbleEffect.of(null) })
+          view.focus()
+        },
       },
     },
     [
@@ -189,10 +196,21 @@ const buildBubble = (view: EditorView) => {
   return tooltipView
 }
 
+type Placement = { readonly pos: number; readonly above: boolean }
+
+export const bubblePlacement = (state: EditorState): Placement | undefined => {
+  const target = currentTarget(state)
+  if (target === undefined) return undefined
+  const { anchor, head, empty } = state.selection.main
+  return empty
+    ? { pos: target.from, above: true }
+    : { pos: head, above: head < anchor }
+}
+
 const bubbleTooltip = (state: EditorState): Tooltip | null => {
   if (!bubbleVisible(state)) return null
-  const target = currentTarget(state)
-  return target ? { pos: target.from, above: true, create: buildBubble } : null
+  const placement = bubblePlacement(state)
+  return placement ? { ...placement, clip: false, create: buildBubble } : null
 }
 
 export const askBubble = [

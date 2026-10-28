@@ -1,5 +1,5 @@
 import type { Extension } from '@codemirror/state'
-import { type EditorView, tooltips } from '@codemirror/view'
+import { EditorView, tooltips } from '@codemirror/view'
 
 type Viewport = { readonly width: number; readonly height: number }
 
@@ -25,7 +25,11 @@ const viewportOf = (view: EditorView): Viewport => {
   return { width: root.clientWidth, height: root.clientHeight }
 }
 
-export const tooltipSpaceBelow = (getInset: () => number): Extension =>
+export const spaceBelowHeader = (getInset: () => number): Extension => [
   tooltips({
     tooltipSpace: (view) => spaceBelow(getInset(), viewportOf(view)),
-  })
+  }),
+  EditorView.scrollMargins.of((view) => ({
+    top: spaceBelow(getInset(), viewportOf(view)).top,
+  })),
+]

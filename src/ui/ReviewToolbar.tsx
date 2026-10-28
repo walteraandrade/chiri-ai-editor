@@ -110,7 +110,7 @@ export function ReviewToolbar({ status, controls }: ReviewToolbarProps) {
           id={popoverId}
           role="dialog"
           aria-label="Review the Document"
-          className="absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 rounded-xl border border-border bg-surface p-2 shadow-lg"
+          className="absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 bg-raised p-2 shadow-lg"
           onSubmit={(event) => {
             event.preventDefault()
             submit()

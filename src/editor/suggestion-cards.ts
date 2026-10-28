@@ -12,6 +12,7 @@ import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion, SuggestionId } from '../suggestions/types'
 import { detectApplePlatform, formatShortcut } from '../ui/platform'
 import { el } from './dom'
+import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
 import {
   closeRefineEffect,
@@ -276,6 +277,11 @@ const cardCreator =
         mousedown: (event) => {
           if (event.target !== refineForm.input) event.preventDefault()
         },
+        keydown: (event) => {
+          if (event.key !== 'Escape') return cycleTab(dom, event)
+          event.preventDefault()
+          view.focus()
+        },
       },
     })
     let renderedKey = ''
@@ -318,7 +324,9 @@ const tooltipFor = (
   create: (view: EditorView) => TooltipView,
 ): Tooltip | null => {
   const content = contentFor(kind, state)
-  return content ? { pos: content.suggestion.from, above: true, create } : null
+  return content
+    ? { pos: content.suggestion.from, above: true, clip: false, create }
+    : null
 }
 
 export const suggestionCards = showTooltip.computeN(
