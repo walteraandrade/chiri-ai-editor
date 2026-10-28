@@ -19,11 +19,15 @@ import { suggestionActionsFacet } from './suggestion-runtime'
 
 const idAttributes = (id: SuggestionId) => ({ 'data-suggestion-id': id })
 
+const classNames = (...names: readonly (string | false)[]): string =>
+  names.filter((name) => name !== false).join(' ')
+
 class InsertedWidget extends WidgetType {
   constructor(
     readonly id: SuggestionId,
     readonly text: string,
     readonly separated: boolean,
+    readonly refining: boolean,
   ) {
     super()
   }
@@ -32,7 +36,8 @@ class InsertedWidget extends WidgetType {
     return (
       other.id === this.id &&
       other.text === this.text &&
-      other.separated === this.separated
+      other.separated === this.separated &&
+      other.refining === this.refining
     )
   }
 
@@ -40,7 +45,11 @@ class InsertedWidget extends WidgetType {
     return el(
       'ins',
       {
-        class: `cm-ai-inserted${this.separated ? ' cm-ai-inserted-separated' : ''}`,
+        class: classNames(
+          'cm-ai-inserted',
+          this.separated && 'cm-ai-inserted-separated',
+          this.refining && 'cm-ai-refining',
+        ),
         attrs: idAttributes(this.id),
       },
       [this.text],
@@ -56,19 +65,27 @@ class ReplacementWidget extends WidgetType {
   constructor(
     readonly id: SuggestionId,
     readonly text: string,
+    readonly refining: boolean,
   ) {
     super()
   }
 
   eq(other: ReplacementWidget): boolean {
-    return other.id === this.id && other.text === this.text
+    return (
+      other.id === this.id &&
+      other.text === this.text &&
+      other.refining === this.refining
+    )
   }
 
   toDOM(): HTMLElement {
     return el(
       'div',
       {
-        class: 'cm-ai-replacement',
+        class: classNames(
+          'cm-ai-replacement',
+          this.refining && 'cm-ai-refining',
+        ),
         attrs: idAttributes(this.id),
       },
       [el('ins', {}, [this.text])],
@@ -162,6 +179,7 @@ const readyRanges = (
   active: boolean,
 ): readonly Range<Decoration>[] => {
   const { id, from, to, diff } = suggestion
+  const refining = suggestion.refine.status === 'working'
   const hunks = diff.hunks.flatMap((hunk, index): Range<Decoration>[] => {
     if (hunk.type === 'deleted') {
       return hunk.from === hunk.to
@@ -172,7 +190,7 @@ const readyRanges = (
     if (diff.mode === 'block') {
       return [
         Decoration.widget({
-          widget: new ReplacementWidget(id, hunk.text),
+          widget: new ReplacementWidget(id, hunk.text, refining),
           block: true,
           side: 1,
         }).range(to),
@@ -181,7 +199,7 @@ const readyRanges = (
     const separated = diff.hunks[index - 1]?.type === 'deleted'
     return [
       Decoration.widget({
-        widget: new InsertedWidget(id, hunk.text, separated),
+        widget: new InsertedWidget(id, hunk.text, separated, refining),
         side: 1,
       }).range(from + hunk.at),
     ]
