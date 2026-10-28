@@ -459,7 +459,7 @@ describe('reviewDocument', () => {
     expect(second).toMatchObject({ type: 'edit', edit: { blockId: 'p5' } })
     expect(done).toMatchObject({
       type: 'done',
-      accepted: 2,
+      validated: 2,
       dropped: 0,
       attempts: 1,
       incomplete: false,
@@ -507,7 +507,7 @@ describe('reviewDocument', () => {
     ).toEqual(['unknown-block', 'unchanged', 'code-block'])
     expect(events.at(-1)).toMatchObject({
       type: 'done',
-      accepted: 1,
+      validated: 1,
       dropped: 3,
     })
   })
@@ -523,7 +523,7 @@ describe('reviewDocument', () => {
     expect(events.map((event) => event.type)).toEqual(['dropped', 'done'])
   })
 
-  it('caps the accepted edits at 6', async () => {
+  it('caps the validated edits at 6', async () => {
     const doc = Array.from({ length: 8 }, (_, i) => `Paragraph ${i + 1}.`).join(
       '\n\n',
     )
@@ -539,7 +539,7 @@ describe('reviewDocument', () => {
     expect(events.filter((event) => event.type === 'edit')).toHaveLength(6)
     expect(events.at(-1)).toMatchObject({
       type: 'done',
-      accepted: 6,
+      validated: 6,
       dropped: 2,
     })
   })

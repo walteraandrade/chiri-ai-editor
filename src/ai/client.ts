@@ -2,12 +2,12 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateId, generateText, Output, streamText } from 'ai'
 import type { Block } from '../blocks/extract-blocks'
 import {
-  type AcceptedEdit,
-  acceptReviewEdit,
   checkSuggestion,
   type DropReason,
   initialReviewState,
   type SuggestionResult,
+  type ValidatedEdit,
+  validateReviewEdit,
 } from './edits'
 import {
   type ClientError,
@@ -92,7 +92,7 @@ export type ReviewRequest = RequestOptions & {
 export type ReviewEvent =
   | {
       readonly type: 'edit'
-      readonly edit: AcceptedEdit
+      readonly edit: ValidatedEdit
       readonly elapsedMs: number
     }
   | {
@@ -102,7 +102,7 @@ export type ReviewEvent =
     }
   | {
       readonly type: 'done'
-      readonly accepted: number
+      readonly validated: number
       readonly dropped: number
       readonly attempts: number
       readonly incomplete: boolean
@@ -126,7 +126,7 @@ export type ModelClient = {
 }
 
 type AttemptSummary = {
-  readonly accepted: number
+  readonly validated: number
   readonly dropped: number
   readonly firstSuggestionSinceStartMs: number | null
   readonly failure: ClientError | undefined
@@ -344,7 +344,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     const controller = new AbortController()
     const streamErrors: unknown[] = []
     let state = initialReviewState
-    let accepted = 0
+    let validated = 0
     let dropped = 0
     let firstElementMs: number | undefined
     let firstSuggestionMs: number | undefined
@@ -368,10 +368,10 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
       })
       for await (const element of result.elementStream) {
         firstElementMs ??= Math.round(clock() - attempt.startedMs)
-        const step = acceptReviewEdit(context, state, element)
+        const step = validateReviewEdit(context, state, element)
         state = step.state
-        if (step.outcome.type === 'accepted') {
-          accepted += 1
+        if (step.outcome.type === 'validated') {
+          validated += 1
           firstSuggestionMs ??= Math.round(clock() - attempt.startedMs)
           firstSuggestionSinceStartMs ??= Math.round(clock() - overallStartMs)
           yield {
@@ -405,7 +405,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
       })
     }
     return {
-      accepted,
+      validated,
       dropped,
       firstSuggestionSinceStartMs: firstSuggestionSinceStartMs ?? null,
       failure,
@@ -420,18 +420,18 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     const first = yield* reviewAttempt(request, task, 1, overallStartMs)
     const retry =
       first.failure !== undefined &&
-      first.accepted === 0 &&
+      first.validated === 0 &&
       isRetryableOutputError(first.failure)
     const last = retry
       ? yield* reviewAttempt(request, task, 2, overallStartMs)
       : first
-    if (last.failure !== undefined && last.accepted === 0) {
+    if (last.failure !== undefined && last.validated === 0) {
       yield { type: 'error', error: last.failure }
       return
     }
     yield {
       type: 'done',
-      accepted: last.accepted,
+      validated: last.validated,
       dropped: last.dropped,
       attempts: retry ? 2 : 1,
       incomplete: last.failure !== undefined,

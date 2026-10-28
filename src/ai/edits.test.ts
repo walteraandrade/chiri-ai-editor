@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { extractBlocks } from '../blocks/extract-blocks'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import {
-  acceptReviewEdit,
   checkSuggestion,
   initialReviewState,
   MAX_REVIEW_EDITS,
+  validateReviewEdit,
   validateReviewEdits,
 } from './edits'
 
@@ -47,23 +47,23 @@ const edit = (text: string, replacement = `${text} edited`) => ({
 })
 
 describe('validateReviewEdits', () => {
-  it('accepts an edit that changes a known Block', () => {
-    const { accepted, dropped } = validateReviewEdits([edit('One.')], blocks)
+  it('keeps an edit that changes a known Block', () => {
+    const { validated, dropped } = validateReviewEdits([edit('One.')], blocks)
     expect(dropped).toEqual([])
-    expect(accepted).toHaveLength(1)
-    expect(accepted[0]).toMatchObject({
+    expect(validated).toHaveLength(1)
+    expect(validated[0]).toMatchObject({
       blockId: idOf('One.'),
       replacement: 'One. edited',
     })
-    expect(accepted[0]?.block.text).toBe('One.')
+    expect(validated[0]?.block.text).toBe('One.')
   })
 
   it('drops an edit with an unknown blockId', () => {
-    const { accepted, dropped } = validateReviewEdits(
+    const { validated, dropped } = validateReviewEdits(
       [{ blockId: 'p99', replacement: 'x', rationale: 'y' }],
       blocks,
     )
-    expect(accepted).toEqual([])
+    expect(validated).toEqual([])
     expect(dropped.map(({ reason }) => reason)).toEqual(['unknown-block'])
   })
 
@@ -84,35 +84,35 @@ describe('validateReviewEdits', () => {
 
   it('never edits code blocks', () => {
     const code = blocks.find((block) => block.kind === 'code')
-    const { accepted, dropped } = validateReviewEdits(
+    const { validated, dropped } = validateReviewEdits(
       [{ blockId: code?.id ?? '', replacement: 'changed', rationale: 'x' }],
       blocks,
     )
-    expect(accepted).toEqual([])
+    expect(validated).toEqual([])
     expect(dropped.map(({ reason }) => reason)).toEqual(['code-block'])
   })
 
   it('skips occupied Blocks', () => {
     const occupied = new Set([idOf('One.')])
-    const { accepted, dropped } = validateReviewEdits(
+    const { validated, dropped } = validateReviewEdits(
       [edit('One.'), edit('Two.')],
       blocks,
       occupied,
     )
-    expect(accepted.map((entry) => entry.blockId)).toEqual([idOf('Two.')])
+    expect(validated.map((entry) => entry.blockId)).toEqual([idOf('Two.')])
     expect(dropped.map(({ reason }) => reason)).toEqual(['occupied'])
   })
 
   it('keeps only the first edit for a Block', () => {
-    const { accepted, dropped } = validateReviewEdits(
+    const { validated, dropped } = validateReviewEdits(
       [edit('One.', 'First'), edit('One.', 'Second')],
       blocks,
     )
-    expect(accepted.map((entry) => entry.replacement)).toEqual(['First'])
+    expect(validated.map((entry) => entry.replacement)).toEqual(['First'])
     expect(dropped.map(({ reason }) => reason)).toEqual(['duplicate-block'])
   })
 
-  it('caps the accepted edits at 6, keeping the first ones', () => {
+  it('caps the validated edits at 6, keeping the first ones', () => {
     const texts = [
       'One.',
       'Two.',
@@ -123,12 +123,14 @@ describe('validateReviewEdits', () => {
       'Seven.',
       'Eight.',
     ]
-    const { accepted, dropped } = validateReviewEdits(
+    const { validated, dropped } = validateReviewEdits(
       texts.map((text) => edit(text)),
       blocks,
     )
     expect(MAX_REVIEW_EDITS).toBe(6)
-    expect(accepted.map((entry) => entry.block.text)).toEqual(texts.slice(0, 6))
+    expect(validated.map((entry) => entry.block.text)).toEqual(
+      texts.slice(0, 6),
+    )
     expect(dropped.map(({ reason }) => reason)).toEqual([
       'over-limit',
       'over-limit',
@@ -141,47 +143,51 @@ describe('validateReviewEdits', () => {
       edit('One.', 'One.'),
       edit('Two.'),
     ]
-    expect(validateReviewEdits(edits, blocks).accepted).toHaveLength(1)
+    expect(validateReviewEdits(edits, blocks).validated).toHaveLength(1)
   })
 
   it('handles an empty edit list', () => {
     expect(validateReviewEdits([], blocks)).toEqual({
-      accepted: [],
+      validated: [],
       dropped: [],
     })
   })
 
   it('validates against the sample Document', () => {
     const sample = extractBlocks(SAMPLE_DOCUMENT)
-    const { accepted } = validateReviewEdits(
+    const { validated } = validateReviewEdits(
       [
         { blockId: 'p12', replacement: 'Fixed', rationale: 'Typo.' },
         { blockId: 'p11', replacement: 'Nope', rationale: 'Code.' },
       ],
       sample,
     )
-    expect(accepted.map((entry) => entry.blockId)).toEqual(['p12'])
+    expect(validated.map((entry) => entry.blockId)).toEqual(['p12'])
   })
 })
 
-describe('acceptReviewEdit', () => {
+describe('validateReviewEdit', () => {
   const context = { blocks, occupied: new Set<string>() }
 
   it('threads state through successive edits without mutating it', () => {
-    const first = acceptReviewEdit(context, initialReviewState, edit('One.'))
-    expect(first.outcome.type).toBe('accepted')
-    expect(initialReviewState.accepted).toBe(0)
-    const second = acceptReviewEdit(context, first.state, edit('One.', 'Again'))
+    const first = validateReviewEdit(context, initialReviewState, edit('One.'))
+    expect(first.outcome.type).toBe('validated')
+    expect(initialReviewState.validated).toBe(0)
+    const second = validateReviewEdit(
+      context,
+      first.state,
+      edit('One.', 'Again'),
+    )
     expect(second.outcome).toMatchObject({
       type: 'dropped',
       reason: 'duplicate-block',
     })
-    expect(first.state.accepted).toBe(1)
+    expect(first.state.validated).toBe(1)
   })
 })
 
 describe('checkSuggestion', () => {
-  it('accepts a changed replacement', () => {
+  it('passes a changed replacement', () => {
     expect(
       checkSuggestion('Hello world', {
         replacement: 'Hi',

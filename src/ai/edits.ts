@@ -12,7 +12,7 @@ export type DropReason =
   | 'unchanged'
   | 'over-limit'
 
-export type AcceptedEdit = ReviewEdit & { readonly block: Block }
+export type ValidatedEdit = ReviewEdit & { readonly block: Block }
 
 export type DroppedEdit = {
   readonly edit: ReviewEdit
@@ -20,7 +20,7 @@ export type DroppedEdit = {
 }
 
 export type ReviewValidationState = {
-  readonly accepted: number
+  readonly validated: number
   readonly seen: ReadonlySet<string>
 }
 
@@ -30,11 +30,11 @@ export type ReviewValidationContext = {
 }
 
 export type ReviewOutcome =
-  | { readonly type: 'accepted'; readonly edit: AcceptedEdit }
+  | { readonly type: 'validated'; readonly edit: ValidatedEdit }
   | ({ readonly type: 'dropped' } & DroppedEdit)
 
 export const initialReviewState: ReviewValidationState = {
-  accepted: 0,
+  validated: 0,
   seen: new Set(),
 }
 
@@ -51,11 +51,11 @@ const dropReason = (
   const replacement = edit.replacement.trim()
   if (replacement === '') return 'empty'
   if (replacement === block.text.trim()) return 'unchanged'
-  if (state.accepted >= MAX_REVIEW_EDITS) return 'over-limit'
+  if (state.validated >= MAX_REVIEW_EDITS) return 'over-limit'
   return undefined
 }
 
-export const acceptReviewEdit = (
+export const validateReviewEdit = (
   context: ReviewValidationContext,
   state: ReviewValidationState,
   edit: ReviewEdit,
@@ -75,10 +75,10 @@ export const acceptReviewEdit = (
   }
   return {
     state: {
-      accepted: state.accepted + 1,
+      validated: state.validated + 1,
       seen: new Set([...state.seen, block.id]),
     },
-    outcome: { type: 'accepted', edit: { ...edit, block } },
+    outcome: { type: 'validated', edit: { ...edit, block } },
   }
 }
 
@@ -87,20 +87,20 @@ export const validateReviewEdits = (
   blocks: readonly Block[],
   occupied: ReadonlySet<string> = new Set(),
 ): {
-  readonly accepted: readonly AcceptedEdit[]
+  readonly validated: readonly ValidatedEdit[]
   readonly dropped: readonly DroppedEdit[]
 } => {
   const context = { blocks, occupied }
-  const accepted: AcceptedEdit[] = []
+  const validated: ValidatedEdit[] = []
   const dropped: DroppedEdit[] = []
   let state = initialReviewState
   for (const edit of edits) {
-    const step = acceptReviewEdit(context, state, edit)
+    const step = validateReviewEdit(context, state, edit)
     state = step.state
-    if (step.outcome.type === 'accepted') accepted.push(step.outcome.edit)
+    if (step.outcome.type === 'validated') validated.push(step.outcome.edit)
     else dropped.push({ edit: step.outcome.edit, reason: step.outcome.reason })
   }
-  return { accepted, dropped }
+  return { validated, dropped }
 }
 
 export type SuggestionResult = SuggestionOutput & {
