@@ -210,7 +210,7 @@ export const bubblePlacement = (state: EditorState): Placement | undefined => {
 const bubbleTooltip = (state: EditorState): Tooltip | null => {
   if (!bubbleVisible(state)) return null
   const placement = bubblePlacement(state)
-  return placement ? { ...placement, create: buildBubble } : null
+  return placement ? { ...placement, clip: false, create: buildBubble } : null
 }
 
 export const askBubble = [

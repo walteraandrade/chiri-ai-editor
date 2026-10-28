@@ -106,6 +106,7 @@
 
 .cm-editor .cm-tooltip.cm-ai-bubble,
 .cm-editor .cm-tooltip.cm-ai-card {
+  z-index: 20;
   border: 0;
   background: var(--color-raised);
   color: var(--color-ink);

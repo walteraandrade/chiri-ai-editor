@@ -324,7 +324,9 @@ const tooltipFor = (
   create: (view: EditorView) => TooltipView,
 ): Tooltip | null => {
   const content = contentFor(kind, state)
-  return content ? { pos: content.suggestion.from, above: true, create } : null
+  return content
+    ? { pos: content.suggestion.from, above: true, clip: false, create }
+    : null
 }
 
 export const suggestionCards = showTooltip.computeN(
