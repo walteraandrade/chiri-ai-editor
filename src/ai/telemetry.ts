@@ -29,23 +29,15 @@ export type TelemetryCollector = {
 
 const requestIdOf = (event: unknown): string | undefined => {
   if (typeof event !== 'object' || event === null) return undefined
-  const parsed = requestIdSchema.safeParse(
-    (event as { runtimeContext?: unknown }).runtimeContext,
-  )
+  if (!('runtimeContext' in event)) return undefined
+  const parsed = requestIdSchema.safeParse(event.runtimeContext)
   return parsed.success ? parsed.data.requestId : undefined
 }
 
-const callIdOf = (event: unknown): string | undefined =>
-  typeof event === 'object' && event !== null
-    ? ((event as { callId?: unknown }).callId as string | undefined)
-    : undefined
-
-const errorMessageOf = (event: unknown): string => {
-  const error =
-    typeof event === 'object' && event !== null
-      ? (event as { error?: unknown }).error
-      : undefined
-  return error instanceof Error ? error.message : String(error ?? 'unknown')
+const callIdOf = (event: unknown): string | undefined => {
+  if (typeof event !== 'object' || event === null) return undefined
+  if (!('callId' in event)) return undefined
+  return typeof event.callId === 'string' ? event.callId : undefined
 }
 
 const complete = (entry: Entry): CallObservation => ({
@@ -114,13 +106,13 @@ export const createTelemetryCollector = (
       requestByCall.delete(event.callId)
     },
     onAbort: (event) => {
-      update(requestByCall.get(event.callId), { error: 'aborted' }, true)
+      update(requestByCall.get(event.callId), {}, true)
       requestByCall.delete(event.callId)
     },
     onError: (event) => {
       const callId = callIdOf(event)
       if (callId === undefined) return
-      update(requestByCall.get(callId), { error: errorMessageOf(event) }, true)
+      update(requestByCall.get(callId), {}, true)
       requestByCall.delete(callId)
     },
   }
@@ -158,12 +150,20 @@ export const createTelemetryCollector = (
   return { integration, expect, release }
 }
 
-let sharedCollector: TelemetryCollector | undefined
+const COLLECTOR_KEY = Symbol.for('chiri.telemetry')
+
+const isTelemetryCollector = (value: unknown): value is TelemetryCollector =>
+  typeof value === 'object' &&
+  value !== null &&
+  'integration' in value &&
+  'expect' in value &&
+  'release' in value
 
 export const getSharedTelemetryCollector = (): TelemetryCollector => {
-  if (sharedCollector === undefined) {
-    sharedCollector = createTelemetryCollector()
-    registerTelemetry(sharedCollector.integration)
-  }
-  return sharedCollector
+  const existing: unknown = Reflect.get(globalThis, COLLECTOR_KEY)
+  if (isTelemetryCollector(existing)) return existing
+  const collector = createTelemetryCollector()
+  Reflect.set(globalThis, COLLECTOR_KEY, collector)
+  registerTelemetry(collector.integration)
+  return collector
 }

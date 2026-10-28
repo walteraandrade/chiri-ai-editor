@@ -681,6 +681,18 @@ describe('reviewDocument', () => {
     expect(fake.chatRequests()).toHaveLength(1)
   })
 
+  it('surfaces 429 as rate-limited', async () => {
+    const { fake, client } = setup([() => errorResponse(429, 'Slow down')])
+    const events = await collect(client.reviewDocument({ blocks }))
+    expect(events).toEqual([
+      {
+        type: 'error',
+        error: expect.objectContaining({ type: 'rate-limited' }),
+      },
+    ])
+    expect(fake.chatRequests()).toHaveLength(1)
+  })
+
   it('keeps delivered edits when the output is cut short', async () => {
     const complete = reviewContent([
       { blockId: 'p3', replacement: 'Second, shorter.' },

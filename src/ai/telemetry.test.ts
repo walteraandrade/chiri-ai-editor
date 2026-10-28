@@ -1,5 +1,5 @@
 import type { Telemetry } from 'ai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createTelemetryCollector } from './telemetry'
 
 type StartEvent = Parameters<NonNullable<Telemetry['onStart']>>[0]
@@ -101,7 +101,7 @@ describe('createTelemetryCollector', () => {
     })
   })
 
-  it('records the error message when the call fails', async () => {
+  it('settles the request when the call fails', async () => {
     const collector = createTelemetryCollector()
     const observed = collector.expect('r1', 'vendor/m')
     await collector.integration.onStart?.(startEvent('c1', 'r1'))
@@ -109,7 +109,15 @@ describe('createTelemetryCollector', () => {
       callId: 'c1',
       error: new Error('Insufficient credits'),
     })
-    expect(await observed).toMatchObject({ error: 'Insufficient credits' })
+    expect(await observed).toEqual({ requestedModel: 'vendor/m' })
+  })
+
+  it('settles the request when the call is aborted', async () => {
+    const collector = createTelemetryCollector()
+    const observed = collector.expect('r1', 'vendor/m')
+    await collector.integration.onStart?.(startEvent('c1', 'r1'))
+    await collector.integration.onAbort?.({ callId: 'c1' } as never)
+    expect(await observed).toEqual({ requestedModel: 'vendor/m' })
   })
 
   it('ignores calls that carry no request id', async () => {
@@ -122,5 +130,25 @@ describe('createTelemetryCollector', () => {
     await collector.integration.onLanguageModelCallEnd?.(callEndEvent('c9'))
     collector.release('r1')
     expect(await observed).toEqual({ requestedModel: 'vendor/m' })
+  })
+})
+
+describe('getSharedTelemetryCollector', () => {
+  const registered = (): readonly unknown[] => {
+    const list: unknown = Reflect.get(
+      globalThis,
+      'AI_SDK_TELEMETRY_INTEGRATIONS',
+    )
+    return Array.isArray(list) ? list : []
+  }
+
+  it('reuses the collector when the module is evaluated again', async () => {
+    const first = (await import('./telemetry')).getSharedTelemetryCollector()
+    vi.resetModules()
+    const second = (await import('./telemetry')).getSharedTelemetryCollector()
+    expect(second).toBe(first)
+    expect(
+      registered().filter((entry) => entry === first.integration),
+    ).toHaveLength(1)
   })
 })
