@@ -17,8 +17,10 @@ import { SAMPLE_DOCUMENT } from '../src/document/sample-document'
 import {
   costsRow,
   type ModelRun,
+  type QuickSpec,
   type RequestResult,
   type RequestSpec,
+  type ReviewSpec,
   renderBakeoffReport,
   summarizeModel,
 } from './bakeoff-report'
@@ -114,8 +116,8 @@ const taskLabel = (spec: RequestSpec): string =>
     ? `Bake-off: ${spec.label} on ${spec.blockId}`
     : 'Bake-off: Review pass (no Focus)'
 
-const quickRequest = (spec: RequestSpec) => {
-  const block = requireBlock(spec.blockId ?? '', '')
+const quickRequest = (spec: QuickSpec) => {
+  const block = requireBlock(spec.blockId, '')
   const target = resolveTarget(blocks, SAMPLE_DOCUMENT, {
     from: block.from + 1,
     to: block.from + 1,
@@ -124,14 +126,14 @@ const quickRequest = (spec: RequestSpec) => {
   return {
     target,
     neighbors: getNeighbors(blocks, target),
-    instruction: getQuickAction(spec.id as QuickActionId).instruction,
+    instruction: getQuickAction(spec.id).instruction,
     task: taskLabel(spec),
   }
 }
 
 const runQuick = async (
   client: ModelClient,
-  spec: RequestSpec,
+  spec: QuickSpec,
 ): Promise<RequestResult> => {
   const started = performance.now()
   const result = await client.requestSuggestion(quickRequest(spec))
@@ -148,7 +150,7 @@ const runQuick = async (
 
 const runReview = async (
   client: ModelClient,
-  spec: RequestSpec,
+  spec: ReviewSpec,
 ): Promise<RequestResult> => {
   const started = performance.now()
   const edits: { blockId: string; replacement: string; rationale: string }[] =

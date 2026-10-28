@@ -1,16 +1,31 @@
 import type { ClientError } from '../src/ai/errors'
+import type { QuickActionId } from '../src/ai/quick-actions'
 import { type AiCallRecord, formatRecordsTable } from '../src/ai/records'
 import type { Block } from '../src/blocks/extract-blocks'
 
 export const DRAFT_REOPEN_THRESHOLD_MS = 3000
 
-export type RequestSpec = {
-  readonly id: string
+export type QuickSpec = {
+  readonly id: QuickActionId
   readonly label: string
-  readonly kind: 'quick' | 'review'
-  readonly blockId?: string
-  readonly original?: string
+  readonly kind: 'quick'
+  readonly blockId: string
+  readonly original: string
 }
+
+export type ReviewSpec = {
+  readonly id: 'review'
+  readonly label: string
+  readonly kind: 'review'
+}
+
+export type RequestSpec = QuickSpec | ReviewSpec
+
+export const isQuickSpec = (spec: RequestSpec): spec is QuickSpec =>
+  spec.kind === 'quick'
+
+export const isReviewSpec = (spec: RequestSpec): spec is ReviewSpec =>
+  spec.kind === 'review'
 
 export type SuggestionPayload = {
   readonly replacement: string
@@ -237,7 +252,7 @@ const summaryTable = (
   summaries: readonly ModelSummary[],
   specs: readonly RequestSpec[],
 ): string => {
-  const quick = specs.filter((spec) => spec.kind === 'quick')
+  const quick = specs.filter(isQuickSpec)
   const headers = [
     'Model',
     'Served by',
@@ -306,7 +321,7 @@ const describeOutcome = (result: RequestResult): string => {
   }
 }
 
-const quickSection = (spec: RequestSpec, runs: readonly ModelRun[]): string => {
+const quickSection = (spec: QuickSpec, runs: readonly ModelRun[]): string => {
   const entries = runs.map((run) => {
     const result = run.results.find(
       (candidate) => candidate.requestId === spec.id,
@@ -325,11 +340,11 @@ const quickSection = (spec: RequestSpec, runs: readonly ModelRun[]): string => {
     ].join('\n')
   })
   return [
-    `### ${spec.label} (${spec.blockId ?? '–'})`,
+    `### ${spec.label} (${spec.blockId})`,
     '',
     '**Original**',
     '',
-    fence(spec.original ?? ''),
+    fence(spec.original),
     '',
     ...entries.flatMap((entry) => [entry, '']),
   ].join('\n')
@@ -452,8 +467,8 @@ export const renderBakeoffReport = ({
 }: BakeoffInput): string => {
   const summaries = runs.map((run) => summarizeModel(run, specs))
   const total = sum(summaries.map((summary) => summary.costUsd))
-  const quick = specs.filter((spec) => spec.kind === 'quick')
-  const review = specs.filter((spec) => spec.kind === 'review')
+  const quick = specs.filter(isQuickSpec)
+  const review = specs.filter(isReviewSpec)
   const records = runs.flatMap((run) => run.records)
   return [
     '# Bake-off',
