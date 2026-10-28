@@ -4,6 +4,9 @@ import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import {
   checkSuggestion,
   initialReviewState,
+  isJunkReplacement,
+  JUNK_MAX_REPLACEMENT_WORDS,
+  JUNK_MIN_ORIGINAL_WORDS,
   MAX_REVIEW_EDITS,
   validateReviewEdit,
   validateReviewEdits,
@@ -157,12 +160,78 @@ describe('validateReviewEdits', () => {
     const sample = extractBlocks(SAMPLE_DOCUMENT)
     const { validated } = validateReviewEdits(
       [
-        { blockId: 'p12', replacement: 'Fixed', rationale: 'Typo.' },
+        {
+          blockId: 'p12',
+          replacement:
+            'Once the canary looks healthy, you will receive a prompt to promote it to all traffic. If anything looks wrong, the rollback happens automatically and the on-call engineer is notified.',
+          rationale: 'Typo.',
+        },
         { blockId: 'p11', replacement: 'Nope', rationale: 'Code.' },
       ],
       sample,
     )
     expect(validated.map((entry) => entry.blockId)).toEqual(['p12'])
+  })
+})
+
+describe('junk guard', () => {
+  const LONG =
+    'Our pipeline has changed a lot since then and every deploy now runs automated smoke tests before it reaches customers.'
+  const longBlocks = extractBlocks(`${LONG}\n\nShort one.\n`)
+
+  it('names its thresholds', () => {
+    expect(JUNK_MIN_ORIGINAL_WORDS).toBe(15)
+    expect(JUNK_MAX_REPLACEMENT_WORDS).toBe(3)
+  })
+
+  it('flags a tiny stub for a substantial Block', () => {
+    expect(isJunkReplacement(LONG, 'x')).toBe(true)
+    expect(isJunkReplacement(LONG, 'Fixed it.')).toBe(true)
+    expect(isJunkReplacement(LONG, '- ')).toBe(true)
+  })
+
+  it('lets a legitimate condensing pass', () => {
+    expect(isJunkReplacement(LONG, 'Every deploy now runs smoke tests.')).toBe(
+      false,
+    )
+    expect(isJunkReplacement(LONG, 'Smoke tests run before each deploy.')).toBe(
+      false,
+    )
+  })
+
+  it('does not apply to short Blocks', () => {
+    expect(isJunkReplacement('Short one here.', 'x')).toBe(false)
+    expect(isJunkReplacement('Item one two three four.', 'Done.')).toBe(false)
+  })
+
+  it('does not count Markdown syntax as words', () => {
+    expect(isJunkReplacement(LONG, '## - * 1.')).toBe(true)
+    expect(isJunkReplacement(LONG, '- Smoke tests\n- Canary')).toBe(false)
+  })
+
+  it('drops a junk review edit and says why', () => {
+    const { validated, dropped } = validateReviewEdits(
+      [{ blockId: 'p1', replacement: 'x', rationale: 'Shorter.' }],
+      longBlocks,
+    )
+    expect(validated).toEqual([])
+    expect(dropped.map(({ reason }) => reason)).toEqual(['junk'])
+  })
+
+  it('does not count a junk edit towards the cap or mark its Block as seen', () => {
+    const context = { blocks: longBlocks, occupied: new Set<string>() }
+    const junk = validateReviewEdit(context, initialReviewState, {
+      blockId: 'p1',
+      replacement: 'x',
+      rationale: 'y',
+    })
+    expect(junk.state).toBe(initialReviewState)
+    const retry = validateReviewEdit(context, junk.state, {
+      blockId: 'p1',
+      replacement: 'Every deploy now runs smoke tests.',
+      rationale: 'Shorter.',
+    })
+    expect(retry.outcome.type).toBe('validated')
   })
 })
 

@@ -2,6 +2,19 @@ import type { Block } from '../blocks/extract-blocks'
 import type { ReviewEdit, SuggestionOutput } from './schemas'
 
 export const MAX_REVIEW_EDITS = 6
+export const JUNK_MIN_ORIGINAL_WORDS = 15
+export const JUNK_MAX_REPLACEMENT_WORDS = 3
+
+const WORD = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu
+
+const wordCount = (text: string): number => text.match(WORD)?.length ?? 0
+
+export const isJunkReplacement = (
+  original: string,
+  replacement: string,
+): boolean =>
+  wordCount(original) > JUNK_MIN_ORIGINAL_WORDS &&
+  wordCount(replacement) < JUNK_MAX_REPLACEMENT_WORDS
 
 export type DropReason =
   | 'unknown-block'
@@ -10,6 +23,7 @@ export type DropReason =
   | 'duplicate-block'
   | 'empty'
   | 'unchanged'
+  | 'junk'
   | 'over-limit'
 
 export type ValidatedEdit = ReviewEdit & { readonly block: Block }
@@ -51,6 +65,7 @@ const dropReason = (
   const replacement = edit.replacement.trim()
   if (replacement === '') return 'empty'
   if (replacement === block.text.trim()) return 'unchanged'
+  if (isJunkReplacement(block.text, replacement)) return 'junk'
   if (state.validated >= MAX_REVIEW_EDITS) return 'over-limit'
   return undefined
 }
