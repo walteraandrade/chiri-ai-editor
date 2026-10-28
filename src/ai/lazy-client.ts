@@ -5,7 +5,7 @@ const LOAD_FAILED_MESSAGE =
 
 type SuggestionClient = Pick<
   ModelClient,
-  'requestSuggestion' | 'refineSuggestion'
+  'requestSuggestion' | 'refineSuggestion' | 'reviewDocument'
 >
 
 const loadFailure = {
@@ -34,6 +34,11 @@ export const createLazyModelClient = (
     refineSuggestion: async (request) => {
       const client = await get().catch(() => undefined)
       return client ? client.refineSuggestion(request) : loadFailure
+    },
+    reviewDocument: async function* (request) {
+      const client = await get().catch(() => undefined)
+      if (client) yield* client.reviewDocument(request)
+      else yield { type: 'error', error: loadFailure.error }
     },
   }
 }

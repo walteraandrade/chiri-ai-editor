@@ -6,9 +6,11 @@ import { quickActionInstruction } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
 import type { SuggestionDraft } from '../suggestions/types'
 import {
+  acceptAllReviewSuggestions,
   acceptAtCursor,
   acceptSuggestionById,
   type EditorHandle,
+  rejectAllReviewSuggestions,
   rejectAtCursor,
   rejectSuggestionById,
 } from './suggestion-commands'
@@ -61,8 +63,16 @@ const result = (replacement: string): SuggestionResult => ({
   unchanged: false,
 })
 
-const open = (handle: EditorHandle, id: string, from: number, to: number) => {
-  handle.dispatch({ effects: beginEffect.of(draft(id, from, to)) })
+const open = (
+  handle: EditorHandle,
+  id: string,
+  from: number,
+  to: number,
+  origin: SuggestionDraft['origin'] = 'ask',
+) => {
+  handle.dispatch({
+    effects: beginEffect.of({ ...draft(id, from, to), origin }),
+  })
   handle.dispatch({
     effects: resolveEffect.of({ id, result: result(`rewritten ${id}`) }),
   })
@@ -292,5 +302,116 @@ describe('Accept after Refine', () => {
 
     expect(suggestionsOf(handle.state).items).toEqual([])
     expect(suggestionsOf(handle.state).notice?.kind).toBe('text-changed')
+  })
+})
+
+describe('Accept all and Reject all', () => {
+  const THIRD = { from: 47, to: 57 }
+
+  const withReview = () => {
+    const handle = createHandle()
+    open(handle, 'r1', FIRST.from, FIRST.to, 'review')
+    open(handle, 'ask', SECOND.from, SECOND.to)
+    open(handle, 'r2', THIRD.from, THIRD.to, 'review')
+    return handle
+  }
+
+  const undoAll = (handle: EditorHandle) =>
+    undo({
+      state: handle.state,
+      dispatch: (transaction) => {
+        handle.dispatch(transaction)
+      },
+    })
+
+  it('applies every ready review Suggestion and nothing else', () => {
+    const handle = withReview()
+
+    expect(acceptAllReviewSuggestions(handle)).toBe(true)
+
+    expect(handle.state.doc.toString()).toBe(
+      'rewritten r1\n\nSecond paragraph here.\n\nrewritten r2',
+    )
+    const state = suggestionsOf(handle.state)
+    expect(state.items.map((item) => item.id)).toEqual(['ask'])
+    expect(state.notice).toBeNull()
+    expect(findSuggestion(state, 'ask')).toMatchObject({
+      from: 'rewritten r1\n\n'.length,
+      to: 'rewritten r1\n\nSecond paragraph here.'.length,
+    })
+  })
+
+  it('is one transaction: a single undo restores every Replacement', () => {
+    const handle = withReview()
+    acceptAllReviewSuggestions(handle)
+
+    undoAll(handle)
+
+    expect(handle.state.doc.toString()).toBe(DOC)
+  })
+
+  it('does one transaction even for many Suggestions', () => {
+    let count = 0
+    const base = withReview()
+    const handle: EditorHandle = {
+      get state() {
+        return base.state
+      },
+      dispatch: (spec) => {
+        count += 1
+        base.dispatch(spec)
+      },
+    }
+
+    acceptAllReviewSuggestions(handle)
+
+    expect(count).toBe(1)
+  })
+
+  it('keeps the other Suggestions mapped through the combined change', () => {
+    const handle = createHandle()
+    open(handle, 'r1', FIRST.from, FIRST.to, 'review')
+    open(handle, 'ask', SECOND.from, SECOND.to)
+
+    acceptAllReviewSuggestions(handle)
+
+    const kept = findSuggestion(suggestionsOf(handle.state), 'ask')
+    expect(kept).toMatchObject({ status: 'ready', origin: 'ask' })
+    expect(handle.state.doc.sliceString(kept?.from ?? 0, kept?.to ?? 0)).toBe(
+      'Second paragraph here.',
+    )
+  })
+
+  it('does nothing without a ready review Suggestion', () => {
+    const handle = createHandle()
+    open(handle, 'ask', FIRST.from, FIRST.to)
+    handle.dispatch({
+      effects: beginEffect.of({
+        ...draft('pending', SECOND.from, SECOND.to),
+        origin: 'review',
+      }),
+    })
+
+    expect(acceptAllReviewSuggestions(handle)).toBe(false)
+    expect(handle.state.doc.toString()).toBe(DOC)
+    expect(suggestionsOf(handle.state).items).toHaveLength(2)
+  })
+
+  it('rejects only review Suggestions and leaves the Document alone', () => {
+    const handle = withReview()
+
+    expect(rejectAllReviewSuggestions(handle)).toBe(true)
+
+    expect(handle.state.doc.toString()).toBe(DOC)
+    expect(suggestionsOf(handle.state).items.map((item) => item.id)).toEqual([
+      'ask',
+    ])
+    expect(suggestionsOf(handle.state).notice).toBeNull()
+  })
+
+  it('reports nothing to reject without review Suggestions', () => {
+    const handle = createHandle()
+    open(handle, 'ask', FIRST.from, FIRST.to)
+    expect(rejectAllReviewSuggestions(handle)).toBe(false)
   })
 })

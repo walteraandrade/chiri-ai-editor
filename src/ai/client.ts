@@ -109,6 +109,7 @@ export type ReviewEvent =
       readonly dropped: number
       readonly attempts: number
       readonly incomplete: boolean
+      readonly error?: ClientError
       readonly firstSuggestionMs: number | null
     }
   | { readonly type: 'error'; readonly error: ClientError }
@@ -471,6 +472,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
       dropped: last.dropped,
       attempts: retry ? 2 : 1,
       incomplete: last.failure !== undefined,
+      ...(last.failure !== undefined && { error: last.failure }),
       firstSuggestionMs: last.firstSuggestionSinceStartMs,
     }
   }

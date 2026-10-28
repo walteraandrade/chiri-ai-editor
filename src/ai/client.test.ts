@@ -717,7 +717,11 @@ describe('reviewDocument', () => {
     ])
     const events = await collect(client.reviewDocument({ blocks }))
     expect(events.filter((event) => event.type === 'edit')).toHaveLength(1)
-    expect(events.at(-1)).toMatchObject({ type: 'done', incomplete: true })
+    expect(events.at(-1)).toMatchObject({
+      type: 'done',
+      incomplete: true,
+      error: { type: 'invalid-output' },
+    })
     expect(fake.chatRequests()).toHaveLength(1)
   })
 

@@ -63,7 +63,12 @@ export const beginSuggestion = (
     ...state,
     items: [
       ...survivors,
-      { ...draft, status: 'pending', sequence: state.nextSequence },
+      {
+        ...draft,
+        origin: draft.origin ?? 'ask',
+        status: 'pending',
+        sequence: state.nextSequence,
+      },
     ],
     nextSequence: state.nextSequence + 1,
   }
@@ -222,6 +227,21 @@ export const rejectSuggestion = (
 ): SuggestionsState =>
   findSuggestion(state, id) === undefined ? state : without(state, id)
 
+export const rejectSuggestions = (
+  state: SuggestionsState,
+  ids: readonly SuggestionId[],
+): SuggestionsState => {
+  const items = state.items.filter((item) => !ids.includes(item.id))
+  return items.length === state.items.length ? state : { ...state, items }
+}
+
+export const rejectReviewSuggestions = (
+  state: SuggestionsState,
+): SuggestionsState => {
+  const items = state.items.filter((item) => item.origin !== 'review')
+  return items.length === state.items.length ? state : { ...state, items }
+}
+
 export const discardSuggestion = (
   state: SuggestionsState,
   id: SuggestionId,
@@ -260,11 +280,17 @@ export const mapSuggestions = (
     : withNotice(next, 'text-changed')
 }
 
+export const acceptSuggestions = (
+  state: SuggestionsState,
+  ids: readonly SuggestionId[],
+  changes: ChangeDesc,
+): SuggestionsState => mapSuggestions(rejectSuggestions(state, ids), changes)
+
 export const acceptSuggestion = (
   state: SuggestionsState,
   id: SuggestionId,
   changes: ChangeDesc,
-): SuggestionsState => mapSuggestions(without(state, id), changes)
+): SuggestionsState => acceptSuggestions(state, [id], changes)
 
 const isInFlight = (item: Suggestion): boolean =>
   item.status === 'pending' ||
@@ -278,12 +304,19 @@ export const inFlightSuggestionIds = (
 const contains = (item: Suggestion, position: number): boolean =>
   item.from <= position && position <= item.to
 
-const mostRecent = <T extends Suggestion>(items: readonly T[]): T | undefined =>
-  items.reduce<T | undefined>(
-    (best, item) =>
-      best === undefined || item.sequence > best.sequence ? item : best,
-    undefined,
-  )
+const pickBy =
+  (better: (candidate: number, best: number) => boolean) =>
+  <T extends Suggestion>(items: readonly T[]): T | undefined =>
+    items.reduce<T | undefined>(
+      (best, item) =>
+        best === undefined || better(item.sequence, best.sequence)
+          ? item
+          : best,
+      undefined,
+    )
+
+const mostRecent = pickBy((candidate, best) => candidate > best)
+const oldest = pickBy((candidate, best) => candidate < best)
 
 export const activeSuggestion = (
   state: SuggestionsState,
@@ -294,7 +327,11 @@ export const activeSuggestion = (
   )
   const containing =
     cursor === null ? [] : ready.filter((item) => contains(item, cursor))
-  return mostRecent(containing) ?? mostRecent(ready)
+  return (
+    mostRecent(containing) ??
+    mostRecent(ready.filter((item) => item.origin !== 'review')) ??
+    oldest(ready)
+  )
 }
 
 export const suggestionAt = (

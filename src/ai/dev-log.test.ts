@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendAiCall, enrichAiCall } from './dev-log'
+import { appendAiCall, appendReviewDrop, enrichAiCall } from './dev-log'
 import { shapeAiCallRecord } from './records'
 
 const record = shapeAiCallRecord({
@@ -56,5 +56,21 @@ describe('enrichAiCall', () => {
     appendAiCall(target, record)
     enrichAiCall(target, record)
     expect(target.__aiCalls).toHaveLength(2)
+  })
+})
+
+describe('appendReviewDrop', () => {
+  it('keeps one entry per dropped Review edit, in order', () => {
+    const target: {
+      __reviewDrops?: { blockId: string; reason: string }[]
+    } = {}
+    appendReviewDrop(target, { blockId: 'p3', reason: 'junk' })
+    const log = target.__reviewDrops
+    appendReviewDrop(target, { blockId: 'p5', reason: 'text-changed' })
+    expect(target.__reviewDrops).toBe(log)
+    expect(log).toEqual([
+      { blockId: 'p3', reason: 'junk' },
+      { blockId: 'p5', reason: 'text-changed' },
+    ])
   })
 })

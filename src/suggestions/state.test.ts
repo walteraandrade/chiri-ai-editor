@@ -4,6 +4,7 @@ import type { ClientError } from '../ai/errors'
 import { adaptiveDiff } from '../diff/adaptive-diff'
 import {
   acceptSuggestion,
+  acceptSuggestions,
   activeSuggestion,
   beginRefine,
   beginSuggestion,
@@ -16,7 +17,9 @@ import {
   inFlightSuggestionIds,
   instructionHistory,
   mapSuggestions,
+  rejectReviewSuggestions,
   rejectSuggestion,
+  rejectSuggestions,
   resolveRefine,
   resolveSuggestion,
   retryRefine,
@@ -91,9 +94,18 @@ describe('beginSuggestion', () => {
         instruction: SHORTER,
         status: 'pending',
         sequence: 0,
+        origin: 'ask',
       },
     ])
     expect(state.notice).toBeNull()
+  })
+
+  it('keeps the origin the request came with', () => {
+    const state = begun(
+      draft('a', 0, 10),
+      draft('b', 20, 30, { origin: 'review' }),
+    )
+    expect(state.items.map((item) => item.origin)).toEqual(['ask', 'review'])
   })
 
   it('keeps many Suggestions open at once, in creation order', () => {
@@ -276,6 +288,50 @@ describe('reject and discard', () => {
   })
 })
 
+describe('rejectSuggestions', () => {
+  it('removes every listed Suggestion without a notice', () => {
+    const state = begun(
+      draft('a', 0, 10),
+      draft('b', 20, 30),
+      draft('c', 40, 50),
+    )
+    const next = rejectSuggestions(state, ['a', 'c', 'missing'])
+    expect(idsOf(next)).toEqual(['b'])
+    expect(next.notice).toBeNull()
+  })
+
+  it('returns the same state when nothing matches', () => {
+    const state = begun(draft('a', 0, 10))
+    expect(rejectSuggestions(state, ['x'])).toBe(state)
+  })
+})
+
+describe('rejectReviewSuggestions', () => {
+  const mixed = () =>
+    begun(
+      draft('a', 0, 10),
+      draft('r1', 20, 30, { origin: 'review' }),
+      draft('r2', 40, 50, { origin: 'review' }),
+      draft('b', 60, 70),
+    )
+
+  it('drops only Suggestions that came from a Review pass', () => {
+    const next = rejectReviewSuggestions(ready(ready(mixed(), 'r1'), 'a'))
+    expect(idsOf(next)).toEqual(['a', 'b'])
+    expect(next.notice).toBeNull()
+  })
+
+  it('drops them whatever their status', () => {
+    const refining = beginRefine(ready(mixed(), 'r1'), 'r1', SHORTER)
+    expect(idsOf(rejectReviewSuggestions(refining))).toEqual(['a', 'b'])
+  })
+
+  it('returns the same state without review Suggestions', () => {
+    const state = begun(draft('a', 0, 10))
+    expect(rejectReviewSuggestions(state)).toBe(state)
+  })
+})
+
 describe('mapSuggestions', () => {
   const doc = 'x'.repeat(100)
   const change = (from: number, to: number, insert: string) =>
@@ -408,6 +464,32 @@ describe('acceptSuggestion', () => {
   })
 })
 
+describe('acceptSuggestions', () => {
+  it('removes every accepted Suggestion and maps the others through the one change', () => {
+    const state = ready(
+      ready(
+        ready(
+          begun(draft('a', 0, 10), draft('b', 20, 30), draft('c', 40, 50)),
+          'a',
+        ),
+        'b',
+      ),
+      'c',
+    )
+    const changes = ChangeSet.of(
+      [
+        { from: 0, to: 10, insert: 'x' },
+        { from: 20, to: 30, insert: 'yy' },
+      ],
+      60,
+    )
+    const next = acceptSuggestions(state, ['a', 'b'], changes)
+    expect(idsOf(next)).toEqual(['c'])
+    expect(next.items[0]).toMatchObject({ from: 40 - 9 - 8, to: 50 - 9 - 8 })
+    expect(next.notice).toBeNull()
+  })
+})
+
 describe('activeSuggestion', () => {
   const open = () =>
     ready(
@@ -451,6 +533,61 @@ describe('activeSuggestion', () => {
       draft('b', 20, 30),
     )
     expect(activeSuggestion(state, 25)?.id).toBe('a')
+  })
+
+  describe('with review Suggestions', () => {
+    const reviewDraft = (id: string, from: number, to: number) =>
+      draft(id, from, to, { origin: 'review' })
+
+    const streamed = () =>
+      ready(
+        ready(
+          ready(
+            begun(
+              reviewDraft('r1', 0, 10),
+              reviewDraft('r2', 20, 30),
+              reviewDraft('r3', 40, 50),
+            ),
+            'r1',
+          ),
+          'r2',
+        ),
+        'r3',
+      )
+
+    it('falls back to the first, most important one, not the newest arrival', () => {
+      expect(activeSuggestion(streamed(), null)?.id).toBe('r1')
+      expect(activeSuggestion(streamed(), 15)?.id).toBe('r1')
+    })
+
+    it('does not jump while more arrive', () => {
+      const early = ready(begun(reviewDraft('r1', 0, 10)), 'r1')
+      const later = ready(
+        beginSuggestion(early, reviewDraft('r2', 20, 30)),
+        'r2',
+      )
+      expect(activeSuggestion(early, null)?.id).toBe('r1')
+      expect(activeSuggestion(later, null)?.id).toBe('r1')
+    })
+
+    it('still follows the cursor into a review Suggestion', () => {
+      expect(activeSuggestion(streamed(), 45)?.id).toBe('r3')
+    })
+
+    it('prefers the newest Suggestion the user asked for', () => {
+      const state = ready(beginSuggestion(streamed(), draft('a', 60, 70)), 'a')
+      expect(activeSuggestion(state, null)?.id).toBe('a')
+      expect(activeSuggestion(state, 25)?.id).toBe('r2')
+    })
+
+    it('uses the newest asked one when it was created before the pass', () => {
+      const asked = ready(begun(draft('a', 60, 70)), 'a')
+      const state = ready(
+        beginSuggestion(asked, reviewDraft('r1', 0, 10)),
+        'r1',
+      )
+      expect(activeSuggestion(state, null)?.id).toBe('a')
+    })
   })
 })
 
