@@ -42,8 +42,17 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-28 | #4 | cursor in p5 → More formal | `openai/gpt-6.1-terra` → OpenAI | 533 / 69 / 0 / 0 | 0.000878 | 2380 / 1923 / 2089 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
 | 2026-10-28 | #4 | cursor in p1 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 404 / 30 / 0 / 0 | 0.000554 | 1566 / 1327 / 1327 | stop | 1/1 | [4-refine.md](verification/4-refine.md) |
 | 2026-10-28 | #4 | Forced failures (1 network, 1 out-of-credit), 3 Refines held in flight and aborted by Reject, Accept and typing, 1 stubbed answer for the "no change" check | `openai/gpt-6.1-terra` | – | 0 for the failures and the stub, not reported for the aborted requests (they never reached OpenRouter) | 3 to 1454 (client) | – | 2 failures, 3 aborted, 1 stub | [4-refine.md](verification/4-refine.md) |
+| 2026-10-28 | #5 | review document → default criteria (5 Suggestions) | `openai/gpt-6.1-terra` → OpenAI | 975 / 330 / 0 / 0 | 0.002625 | 5422 / 1191 / 4634 (first Suggestion 2348) | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | #5 | refine p12 → make it more formal (on a review Suggestion) | `openai/gpt-6.1-terra` → OpenAI | 484 / 65 / 0 / 0 | 0.000809 | 2277 / 1959 / 1975 | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | #5 | review document → focus: tone only (3 Suggestions) | `openai/gpt-6.1-terra` → OpenAI | 970 / 352 / 91 / 0 | 0.002730 | 5589 / 2297 / 4745 (first 3619) | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | #5 | review document → focus: grammar only (1 Suggestion) | `openai/gpt-6.1-terra` → OpenAI | 970 / 128 / 49 / 0 | 0.001610 | 3910 / 2525 / 3663 (first 3859) | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | #5 | cursor in p5 → free text: make it shorter (the occupying Suggestion) | `openai/gpt-6.1-terra` → OpenAI | 517 / 48 / 0 / 0 | 0.000757 | 1726 / 1479 / 1479 | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | #5 | review document → default criteria, p5 occupied and edits during the stream (3 Suggestions) | `openai/gpt-6.1-terra` → OpenAI | 975 / 312 / 0 / 0 | 0.002535 | 4795 / 1131 / 4514 (first 2999) | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | #5 | review document → default criteria, stopped with Stop after the first Suggestion | `openai/gpt-6.1-terra` | – | not reported | 2154 (client) | aborted | aborted | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | #5 | review document → default criteria, tall viewport (Accept all, `Ctrl+Z`; 5 Suggestions) | `openai/gpt-6.1-terra` → OpenAI | 975 / 331 / 0 / 0 | 0.002630 | 5566 / 1122 / 5199 (first 1898) | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | #5 | Forced failures (2 stubbed out-of-credit, 2 stubbed streams broken mid-answer) | `openai/gpt-6.1-terra` | – | 0 | 5 to 411 (client) | – | 4 stubs | [5-review-pass.md](verification/5-review-pass.md) |
 
-**Running total:** US$0.252 of 5.00
+**Running total:** US$0.266 of 5.00 (recorded: 0.252 before this slice plus 0.0137 from slice 5; the Stopped pass is not reported, at most about 0.003 more)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -58,3 +67,7 @@ Notes on slice 3:
 Notes on slice 4:
 - Slice cost is about US$0.0071: 8 real calls, all recorded (5 Quick actions to open Suggestions, 3 Refines). The failures, the aborted requests and the stub never reached OpenRouter. The slice budget was US$0.05.
 - A Refine request carries about 100 input tokens more than a Quick action (history and latest Replacement), so it costs about US$0.001 against US$0.0009.
+
+Notes on slice 5:
+- Slice cost is about US$0.0137 recorded: 5 Review passes at US$0.0016 to US$0.0027, 1 Refine and 1 Quick action. The Stopped pass was aborted before the answer was complete and OpenRouter reported no usage for it, so it is not in the sum; a whole pass costs about US$0.0026. The failures were stubs and never reached OpenRouter. The slice budget was US$0.06.
+- A Review pass on the 13-Block sample Document sends about 975 tokens, against about 520 for a Target request, because the whole Document goes in.
