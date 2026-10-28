@@ -1,0 +1,583 @@
+# Bake-off
+
+Run on 2026-10-28 by `pnpm bakeoff`, which uses the same client and prompts as the app ([ADR 0010](adr/0010-model-bakeoff.md)).
+
+- Input: the sample Document; 4 Quick actions on fixed Targets plus 1 Review pass without Focus.
+- Settings for every model: strict JSON schema, `provider.require_parameters: true`, reasoning effort `low`, 30 s timeout for Target requests and 60 s for the Review pass, one silent retry on invalid output, models called one after another.
+- The sample Document is English, so a Rationale in another language is a slip of the model (rule 5 of [ADR 0006](adr/0006-context-and-prompt-rules.md)). "Rationale not in English" is a heuristic count, read the outputs to confirm.
+- Latencies are client wall time per request, including the silent retry when there was one. Cost comes from the OpenRouter `usage.cost` of each call.
+- **Total cost: US$0.0559** of the US$0.50 Bake-off budget.
+
+## Summary
+
+| Model | Served by | Target median (ms) | Shorter (ms) | Clearer (ms) | More formal (ms) | Fix grammar (ms) | Review total (ms) | Review first Suggestion (ms) | Review edits | Cost (US$) | OK | Valid first try | Retries | Failures | Rationale not in English |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `z-ai/glm-5.3-flash` | Cohere, InferenceNet, DigitalOcean | 1731 | 1662 | 1799 | 1838 | 1063 | 3221 | 2280 | 5 | 0.0008 | 5/5 | 5/5 | 0 | 0 | 2/9 |
+| `deepseek/deepseek-v4.1-flash` | AtlasCloud, Fireworks, Relace, PrimeIntellect | 2108 | 3334 | 1426 | 2480 | 1736 | 5078 | 4204 | 5 | 0.0019 | 5/5 | 5/5 | 0 | 0 | 7/9 |
+| `qwen/qwen3.8-flash` | Alibaba | **13643** (above ~3 s) | 13239 | 18550 | 14047 | 7918 | – | – | 0 | 0.0014 | 4/5 | 4/5 | 0 | 1 | 0/4 |
+| `google/gemini-3.5-flash-lite` | Google | 1813 | 1824 | 2101 | 1802 | 1518 | 2183 | 1544 | 4 | 0.0023 | 5/5 | 5/5 | 0 | 0 | 0/8 |
+| `google/gemini-3.8-flash` | Google | **5379** (above ~3 s) | 3369 | 6501 | 4256 | 6960 | 6451 | 4439 | 5 | 0.0069 | 5/5 | 5/5 | 0 | 0 | 0/9 |
+| `google/gemini-4-argon` | Google AI Studio, Google | **10305** (above ~3 s) | 15279 | 5628 | 5167 | 14982 | 7973 | 4991 | 5 | 0.0149 | 5/5 | 5/5 | 0 | 0 | 0/9 |
+| `anthropic/claude-haiku-5.5` | Azure | 2541 | 2671 | 2410 | 5076 | 1729 | 3194 | 2067 | 4 | 0.0010 | 5/5 | 5/5 | 0 | 0 | 0/8 |
+| `openai/gpt-6.1-terra` | OpenAI | 2125 | 2407 | 1843 | 4368 | 1837 | 5549 | 1627 | 5 | 0.0058 | 5/5 | 5/5 | 0 | 0 | 0/9 |
+| `anthropic/claude-sonnet-5.5` | Azure | 2145 | 2524 | 2100 | 2145 | 2144 | 4324 | 2266 | 5 | 0.0208 | 5/5 | 5/5 | 0 | 0 | 0/9 |
+
+## Draft reopen rule
+
+[ADR 0008](adr/0008-validated-streaming-only.md): if the chosen model's median Target-request latency is above ~3 s, the Draft preview is reopened. Median of the 4 Quick actions, client wall time including a silent retry when there was one.
+
+- `qwen/qwen3.8-flash`: median 13643 ms, above ~3 s
+- `google/gemini-3.8-flash`: median 5379 ms, above ~3 s
+- `google/gemini-4-argon`: median 10305 ms, above ~3 s
+
+## Notes for the choice
+
+Written by hand after the run. The tables above and below are generated.
+
+- **Timeout.** The runs used 60 s for the Review pass. After the run it was set back to 30 s, as [ADR 0007](adr/0007-suggestion-lifecycle.md) says; every model except `qwen/qwen3.8-flash` finished its Review pass in under 8 s.
+- **Validity.** All 9 models returned schema-valid output on the first try in every request: 0 retries and 0 edits dropped by the app checks, in all three runs. The strict JSON schema with `require_parameters: true` held for every candidate.
+- **Latency.** Six models have a median Target request under ~3 s in all three runs (see the table below). `google/gemini-3.8-flash` (3.8 to 5.4 s), `google/gemini-4-argon` (5.0 to 10.3 s) and `qwen/qwen3.8-flash` (11 to 15 s) are over the ADR 0008 line, so picking one of them reopens the Draft preview.
+- **Review pass.** The first Suggestion arrives after 30 to 85 % of the total time in this run: `openai/gpt-6.1-terra` is the earliest (1.6 s of 5.5 s), `deepseek/deepseek-v4.1-flash` the latest (4.2 s of 5.1 s). `qwen/qwen3.8-flash` finished the Review pass once in three runs (26.9 s) and timed out at 60 s the other two times.
+- **Rationale language.** The Document is English. `deepseek/deepseek-v4.1-flash` and `z-ai/glm-5.3-flash` write the Rationale in German, French, Dutch, Italian, Portuguese and others, in 7 of 9 and 2 of 9 Rationales in this run. They did it in the earlier runs too, with different wording of rule 5. With the final wording the other seven models never did; the two small Gemini models slipped only in run 1. This is a rule 5 failure, and it is the main quality difference between the cheap models.
+- **What the models edit.** Most Review passes pick the same Blocks: p3 (the overlong paragraph), p5 (the slang), p8 (the list), p9 (the repeated review rule) and p12 (the typo). `anthropic/claude-haiku-5.5` skips p9 and `google/gemini-3.5-flash-lite` skips p3.
+- **Cost.** US$0.0559 for this run. For the same 5 requests `anthropic/claude-sonnet-5.5` costs roughly 20 to 27 times what `anthropic/claude-haiku-5.5` and `z-ai/glm-5.3-flash` cost, and `google/gemini-4-argon` roughly 15 to 19 times.
+
+### Run-to-run spread
+
+The Bake-off ran three times because the prompts changed in between (see below), so each model has three samples. The columns are run 1 / run 2 / run 3. The numbers in this document are run 3.
+
+| Model | Target median (ms) | Review total (ms) |
+| --- | --- | --- |
+| `z-ai/glm-5.3-flash` | 1330 / 1930 / 1731 | 3162 / 1383 / 3221 |
+| `deepseek/deepseek-v4.1-flash` | 1529 / 1330 / 2108 | 3097 / 4017 / 5078 |
+| `qwen/qwen3.8-flash` | 14710 / 11440 / 13643 | 26862 / timeout / timeout |
+| `google/gemini-3.5-flash-lite` | 1926 / 2033 / 1813 | 2519 / 2853 / 2183 |
+| `google/gemini-3.8-flash` | 3837 / 4004 / 5379 | 4705 / 5930 / 6451 |
+| `google/gemini-4-argon` | 4958 / 5802 / 10305 | 7762 / 6626 / 7973 |
+| `anthropic/claude-haiku-5.5` | 1994 / 2106 / 2541 | 4397 / 3146 / 3194 |
+| `openai/gpt-6.1-terra` | 1973 / 1924 / 2125 | 4859 / 4695 / 5549 |
+| `anthropic/claude-sonnet-5.5` | 2374 / 2253 / 2145 | 5170 / 1959 / 4324 |
+
+Run 2 is not a clean sample for the Review pass: its prompt made `anthropic/claude-sonnet-5.5` and `z-ai/glm-5.3-flash` return one junk edit, which is why their run 2 totals are short.
+
+### Run 4 (language-anchor re-check, 3 models)
+
+After the review, the language wording was made to match [ADR 0006](adr/0006-context-and-prompt-rules.md) exactly: the Replacement is in the Target's language, the Rationale in the Document's language, in the closing prompt sentence and in the schema field descriptions (before, the prompt said "same language as the Document text" and the Rationale field said "same language as the replacement"). Same positive phrasing and same placement as run 3. Re-checked on `deepseek/deepseek-v4.1-flash`, `z-ai/glm-5.3-flash` and `anthropic/claude-haiku-5.5`, 5 requests each (4 Quick actions and a Review pass), US$0.0038. This is not a full run and is not in the tables above.
+
+| Model | Rationale not in English, run 3 | Rationale not in English, run 4 | Junk edits |
+| --- | --- | --- | --- |
+| `deepseek/deepseek-v4.1-flash` | 7/9 | 6/9 | none |
+| `z-ai/glm-5.3-flash` | 2/9 | 3/9 | none |
+| `anthropic/claude-haiku-5.5` | 0/8 | 0/9 | none |
+
+No difference beyond noise: one sample of 9 Rationales per model. All 15 requests were valid on the first try, and there were no junk edits (no tiny or non-English Replacement). The ADR-faithful wording stays.
+
+### Why three runs
+
+1. **Run 1.** The Rationale rule said "the language of the text you receive, not the language of these rules". Four models (GLM, DeepSeek, both small Gemini) answered in French, German or Spanish on an English Document, probably because the negative wording pushes a model away from English.
+2. **Run 2.** The rule was reworded as a positive anchor ("the same language as the Document text") and the Rationale schema field says "in the same language as the replacement". The anchor sentence was added at the end of the Review instructions, and `anthropic/claude-sonnet-5.5` and `z-ai/glm-5.3-flash` started returning a single junk edit (`replacement: "x"`, or the last paragraph replaced by "Thank you!"). Removing the sentence restored Sonnet in 2 of 2 checks.
+3. **Run 3.** The sentence now sits after the Blocks, at the very end of the Review prompt. Sonnet, GLM and the rest behave. This is the prompt the app ships.
+
+The junk edit passed every app check (known Block, changed, not empty). A guard against a Replacement that is a tiny fraction of the original is worth considering in slice 5.
+
+## Quick actions
+
+### Shorter (p3)
+
+**Original**
+
+```
+For the past two years our team has frozen all production deployments on Fridays, a rule introduced after a painful weekend incident in 2022 that was entirely reasonable at the time but has since hardened into a habit nobody questions, even though it slows down every sprint, pushes risky changes into the early part of the week when the team is already stretched thin by planning and support duties, and makes it harder to ship the small fixes that customers are actually waiting for.
+```
+
+#### `z-ai/glm-5.3-flash` (1662 ms)
+
+```
+For the past two years, we have frozen all production deployments on Fridays. The rule came after a painful weekend incident in 2022 and was reasonable at the time, but it has since hardened into a habit nobody questions. It slows every sprint, pushes risky changes into the early week when the team is stretched thin by planning and support, and makes it harder to ship the small fixes customers are waiting for.
+```
+
+Rationale: Divide the overloaded sentence into shorter ones while keeping every key point, eliminating the unnecessary filler like "entirely" and "actually".
+
+#### `deepseek/deepseek-v4.1-flash` (3334 ms)
+
+```
+For two years we froze all Friday production deployments, a rule born from a painful weekend incident in 2022. It was reasonable then, but it has hardened into an unquestioned habit: it slows every sprint, pushes risky changes into a week already stretched by planning and support, and delays the small fixes customers are waiting for.
+```
+
+Rationale: Trims filler and repetition while keeping the origin, the shift from reasonable rule to habit, and all three drawbacks.
+
+#### `qwen/qwen3.8-flash` (13239 ms)
+
+```
+For two years we have frozen production deployments on Fridays after a painful 2022 weekend incident. Once reasonable, the rule has hardened into an unquestioned habit that slows sprints, pushes risky changes into stretched early-week periods, and delays small fixes customers are waiting for.
+```
+
+Rationale: Shortened the sentence while keeping all key points: the incident-based rule, its outdated habit, and its effects on sprints, risky early-week changes, and small customer fixes.
+
+#### `google/gemini-3.5-flash-lite` (1824 ms)
+
+```
+For two years, we have frozen Friday deployments due to a 2022 incident. This rule now slows sprints, concentrates risky changes early in the week, and delays small fixes.
+```
+
+Rationale: Condensed the long sentence to remove filler while retaining all key points.
+
+#### `google/gemini-3.8-flash` (3369 ms)
+
+```
+For two years, we have frozen Friday production deployments following a painful 2022 weekend incident. While reasonable then, this rule now needlessly slows sprints, pushes risky changes into already busy early-week planning and support windows, and delays small customer fixes.
+```
+
+Rationale: Tightened the run-on sentence by removing wordiness while preserving all background and impact points.
+
+#### `google/gemini-4-argon` (15279 ms)
+
+```
+For the past two years, we have frozen Friday production deployments following a 2022 weekend incident. While reasonable then, this unquestioned habit now slows down sprints, pushes risky changes into busy early-week days alongside planning and support, and delays small fixes for customers.
+```
+
+Rationale: Shortened the paragraph by removing filler words while retaining all key points.
+
+#### `anthropic/claude-haiku-5.5` (2671 ms)
+
+```
+For the past two years we have frozen all production deployments on Fridays. The rule followed a painful weekend incident in 2022 and was reasonable then, but it has become a habit nobody questions. It slows every sprint, pushes risky changes early in the week when the team is already stretched by planning and support, and delays small fixes customers are waiting for.
+```
+
+Rationale: The rewrite cuts filler and repetition while keeping the rule, its origin, and its costs.
+
+#### `openai/gpt-6.1-terra` (2407 ms)
+
+```
+For the past two years, we have frozen Friday production deployments after a painful weekend incident in 2022. Reasonable at the time, the rule has become an unquestioned habit that slows every sprint, pushes risky changes into a week already crowded with planning and support, and delays the small fixes customers are waiting for.
+```
+
+Rationale: Shortened the paragraph while preserving its key points.
+
+#### `anthropic/claude-sonnet-5.5` (2524 ms)
+
+```
+For the past two years our team has frozen production deployments on Fridays, a rule introduced after a painful weekend incident in 2022. It was reasonable then, but it has become an unquestioned habit that slows every sprint, pushes risky changes into the early week when the team is already stretched by planning and support, and makes it harder to ship the small fixes customers are waiting for.
+```
+
+Rationale: Condensed the long sentence into two shorter ones, cutting filler while keeping every key point.
+
+
+### Clearer (p8)
+
+**Original**
+
+```
+- Tests are passing on the main branch
+- Get a review from a second engineer
+- Rollback plan, you must write one in the pull request.
+- No deploys during the on-call handover
+```
+
+#### `z-ai/glm-5.3-flash` (1799 ms)
+
+```
+- Tests are passing on the main branch
+- A second engineer has reviewed the change
+- A rollback plan is written in the pull request
+- No deploys during the on-call handover
+```
+
+Rationale (not in English): Vervangt de inconsistente formulering 'Rollback plan, you must write one' door volledige zinnen in dezelfde actieve vorm, zodat alle items even leesbaar zijn.
+
+#### `deepseek/deepseek-v4.1-flash` (1426 ms)
+
+```
+- All tests pass on the main branch
+- Your pull request is reviewed by a second engineer
+- You must write a rollback plan in the pull request
+- No deployments during the on-call handover
+```
+
+Rationale (not in English): Die Punkte sind nun parallel formuliert und der unklare Satzbau beim Rollback-Plan wurde geglättet, ohne die Bedeutung zu ändern.
+
+#### `qwen/qwen3.8-flash` (18550 ms)
+
+# AI costs
+
+Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every verification check that calls a model adds rows here (format in [AGENTS.md](../../AGENTS.md#ai-call-records)). Claude Code usage while building is not billed to this key and is not tracked here.
+
+| Date | Slice / PR | Task | Model → served by | Tokens in / out / reasoning / cached | Cost (US$) | Latency client / OpenRouter / generation (ms) | Finish | Valid | Record |
+|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `z-ai/glm-5.3-flash` → Cohere, InferenceNet, DigitalOcean | 2495 / 1002 / 258 / 384 | 0.000770 | 1731 / 3221 (median Target / Review) | stop ×5 | 5/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `deepseek/deepseek-v4.1-flash` → AtlasCloud, Fireworks, Relace, PrimeIntellect | 3062 / 1853 / 1107 / 1910 | 0.001853 | 2108 / 5078 (median Target / Review) | stop ×5 | 5/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `qwen/qwen3.8-flash` → Alibaba | 1867 / 2806 / 2451 / 1536 | 0.001393 | 13643 / – (median Target / Review) | stop ×4 | 4/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `google/gemini-3.5-flash-lite` → Google | 3201 / 544 / 0 / 0 | 0.002320 | 1813 / 2183 (median Target / Review) | stop ×5 | 5/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `google/gemini-3.8-flash` → Google | 3201 / 1204 / 504 / 0 | 0.006916 | 5379 / 6451 (median Target / Review) | stop ×5 | 5/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `google/gemini-4-argon` → Google AI Studio, Google | 3894 / 715 / 0 / 0 | 0.014938 | 10305 / 7973 (median Target / Review) | stop ×5 | 5/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `anthropic/claude-haiku-5.5` → Azure | 5261 / 983 / 0 / 0 | 0.001018 | 2541 / 3194 (median Target / Review) | stop ×5 | 5/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `openai/gpt-6.1-terra` → OpenAI | 2812 / 607 / 0 / 0 | 0.005847 | 2125 / 5549 (median Target / Review) | stop ×5 | 5/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off: 4 Quick actions + Review pass | `anthropic/claude-sonnet-5.5` → Azure | 5261 / 1032 / 0 / 0 | 0.020842 | 2145 / 4324 (median Target / Review) | stop ×5 | 5/5, no retries | [bakeoff.md](bakeoff.md) |
+| 2026-10-28 | #2 | Bake-off run 1, superseded: 4 Quick actions + Review pass, 9 models (first Rationale wording; 4 models switched language) | all 9 candidates | 31258 / 12029 / 5047 / 1152 | 0.055091 | – | – | 44/45 calls ok, 1 timeout | not kept |
+| 2026-10-28 | #2 | Bake-off run 2, superseded: same, after the Rationale fix (the Review prompt made Sonnet and GLM return one junk edit) | all 9 candidates | 31067 / 10332 / 4640 / 2432 | 0.051438 | – | – | 44/45 calls ok, 1 timeout | not kept |
+| 2026-10-28 | #2 | Prompt checks: 16 calls on 4 cheap models, then 14 calls on Sonnet, GLM and DeepSeek (Review prompt variants) | `z-ai/glm-5.3-flash`, `deepseek/deepseek-v4.1-flash`, `google/gemini-3.5-flash-lite`, `google/gemini-3.8-flash`, `anthropic/claude-sonnet-5.5` | 28866 / 11008 / 3054 / 3584 | 0.058738 | – | – | – | not kept |
+| 2026-10-28 | #2 | Run 4, language-anchor re-check with the ADR 0006 wording: 4 Quick actions + Review pass on 3 models (median Target / Review: DeepSeek 1718 / 5632, GLM 1591 / 4017, Haiku 2308 / 3743 ms) | `deepseek/deepseek-v4.1-flash`, `z-ai/glm-5.3-flash`, `anthropic/claude-haiku-5.5` | 10826 / 4053 / 1457 / 640 | 0.003777 | – | stop ×15 | 15/15, no retries | not kept |
+| 2026-10-28 | #2 | Dry runs of `pnpm bakeoff` (4 calls on DeepSeek) and 3 raw probes of the generation endpoint | `deepseek/deepseek-v4.1-flash` | – | ~0.0016 | – | – | – | not kept |
+| 2026-10-28 | #2 | Browser check through the Vite proxy: Fix grammar on the `recieve` paragraph (the one recorded call; two earlier calls of the same check left no record) | `deepseek/deepseek-v4.1-flash` → Relace | 372 / 82 / 16 / 256 | 0.000051 | 1293 / 854 / 1030 | stop | 1/1 | [2-model-client.md](verification/2-model-client.md) |
+| 2026-10-28 | #2 | Calls without a record: 3 timed-out Qwen requests and 2 browser-check calls (estimated from the key's `usage` counter) | `qwen/qwen3.8-flash`, `deepseek/deepseek-v4.1-flash` | – | ~0.0069 | – | – | – | not kept |
+
+**Running total:** US$0.234 of 5.00
+
+Notes on slice 2:
+- The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
+- Latency for the Bake-off rows is the median Target request / the Review pass, client wall time. A dash means the request failed (Qwen's Review pass timed out at 60 s).
+- Cost per call is the `usage.cost` OpenRouter returns. Calls that time out return no usage, so their cost is estimated from the rise of the key's `usage` counter (US$8.743 to US$8.973 across the slice, minus the recorded rows). That counter is the lifetime usage of the key, not this project's.
+- OpenRouter publishes `/generation` data (provider, `latency`, `generation_time`) about a minute after the call, so the client records a call right away and enriches it later.
+export const SAMPLE_DOCUMENT = `# Release process update: weekday deploys
+
+## Why we are changing
+
+For the past two years our team has frozen all production deployments on Fridays, a rule introduced after a painful weekend incident in 2022 that was entirely reasonable at the time but has since hardened into a habit nobody questions, even though it slows down every sprint, pushes risky changes into the early part of the week when the team is already stretched thin by planning and support duties, and makes it harder to ship the small fixes that customers are actually waiting for.
+
+Our pipeline has changed a lot since then. Every deploy now runs automated smoke tests, rolls out to ten percent of traffic first, and reverts itself if the error rate rises. The Friday freeze no longer protects us from much.
+
+Honestly, the old freeze was a total pain and everyone kinda hated it. So we're ditching it, no big deal, but please don't be that person who pushes a huge change at 5pm on Friday and then vanishes for the weekend lol.
+
+## What changes
+
+Starting on the first of next month, you may deploy on any weekday, as long as the following conditions are met:
+
+- Tests are passing on the main branch
+- Get a review from a second engineer
+- Rollback plan, you must write one in the pull request.
+- No deploys during the on-call handover
+
+All deploys need a reviewed pull request. Nothing may be deployed without a review. Every deployment has to be approved by a reviewer first.
+
+To start a canary rollout, run the deploy script from the repository root:
+
+\`\`\`bash
+./scripts/deploy --env production --canary 10
+./scripts/deploy --status
+\`\`\`
+
+Once the canary looks healthy, you will recieve a prompt to promote it to all traffic. If anything looks wrong, the rollback happens automatically and the on-call engineer is notified.
+
+If you have questions about the new process, ask in the #releases channel or contact Priya on the platform team.
+`
+# Slice 2 verification: model client and Bake-off
+
+Issue [#2](https://github.com/walteraandrade/chiri-ai-editor/issues/2). This slice has no UI, so the checks are a captured request body, one call through the Vite proxy from a real browser, and the Bake-off.
+
+## Strict structured output: confirmed
+
+`@openrouter/ai-sdk-provider@3.1.0` sends a strict JSON schema for both `Output.object` and `Output.array`, so the fallback `@ai-sdk/openai-compatible` is not needed and [ADR 0009](../adr/0009-ai-sdk-v7.md) stands.
+
+The tests in `src/ai/client.test.ts` inject a `fetch` that captures the request body (no network). A Target request (`Output.object` with `suggestionSchema`) sends:
+
+```json
+{
+  "model": "vendor/model-a",
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "replacement": { "type": "string", "description": "The new text that replaces the Target, in Markdown, in the language of the Target." },
+          "rationale": { "type": "string", "description": "One short sentence explaining the change, in the language of the Document." }
+        },
+        "required": ["replacement", "rationale"],
+        "additionalProperties": false
+      },
+      "strict": true,
+      "name": "response"
+    }
+  },
+  "messages": [{ "role": "system", "content": [{ "type": "text", "text": "…" }] }, { "role": "user", "content": "…" }],
+  "reasoning": { "effort": "low" },
+  "provider": { "require_parameters": true }
+}
+```
+
+The Review pass (`Output.array` + `streamText`) sends the same envelope with `"stream": true` and this schema. The SDK owns the array wrapper, so the wire shape is `{ "elements": [...] }`, not the `{ "edits": [...] }` of [ADR 0002](../adr/0002-structured-output-app-owned-anchors.md):
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": { "blockId": { "type": "string" }, "replacement": { "type": "string" }, "rationale": { "type": "string" } },
+        "required": ["blockId", "replacement", "rationale"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["elements"],
+  "additionalProperties": false
+}
+```
+
+Where the settings come from, read in the provider source (`dist/index.js`, `getArgs`): `provider` and `reasoning` are model settings (`provider.chat(model, { provider: { require_parameters: true }, structuredOutputs: { strict: true }, reasoning: { effort: 'low' } })`). `strict` already defaults to `true`; the client sets it anyway. The same keys also work through `providerOptions.openrouter`, which the provider spreads into the body.
+
+## Other findings from the SDK and the API
+
+- With `streamText`, a provider error (HTTP 402, 429, ...) does not throw from `elementStream`. The stream just ends and `output` rejects with `NoOutputGeneratedError`. The real error only arrives through the `onError` callback, so the client captures it there.
+- `elementStream` emits an element when the next one starts or the output is complete, so the first Suggestion is delayed by roughly one element.
+- A timeout raises a `TimeoutError` `DOMException`; the SDK does not retry it.
+- `GET /generation?id=…` answers 404 for about a minute after the call (measured at 64 s). The client records the call right away from telemetry and enriches the record later, polling every 10 s after a 30 s wait.
+- The top-level `reasoning` option of the AI SDK is not read by `getArgs` in this provider version (read from source, not tested); reasoning goes through the provider setting.
+- All 9 Bake-off candidates accept `reasoning.effort: "low"` together with `require_parameters: true` (checked against `GET /api/v1/models`: some cannot turn reasoning off, all accept `low`).
+
+## Browser check through the proxy
+
+`pnpm dev` with a temporary DEV-only hook in `src/main.tsx` (not committed) that built the client with `createBrowserModelClient()`. In the page, `fetch` was wrapped to record outgoing headers, then a "Fix grammar" Target request was made on the `recieve` paragraph of the sample Document, with `agent-browser`.
+
+- The request went to `http://localhost:5199/api/openrouter/chat/completions` with `Authorization: Bearer browser-placeholder-key`. The real key never reached the page; the proxy added it.
+- The Suggestion came back valid: `replacement` "Once the canary looks healthy, you will receive a prompt…", `rationale` "Corrected the spelling of "recieve" to "receive".".
+- `window.__aiCalls` got the record immediately, and about a minute later the same entry was replaced by the enriched one (`openRouter` and `generation` latencies, served model with its date suffix).
+- After `pnpm build`: `grep -r "sk-or-" dist/` returns nothing, and neither does a search for the key's value.
+
+![App with the client wired in, key present, no banner](img/2-1.png)
+
+AI call record of that check:
+export type CallObservation = {
+  readonly requestedModel: string
+  readonly servedModel?: string
+  readonly provider?: string
+  readonly finishReason?: string
+  readonly inputTokens?: number
+  readonly outputTokens?: number
+  readonly reasoningTokens?: number
+  readonly cachedTokens?: number
+  readonly costUsd?: number
+  readonly responseId?: string
+  readonly error?: string
+}
+
+export type OpenRouterGeneration = {
+  readonly id?: string
+  readonly model?: string
+  readonly provider_name?: string | null
+  readonly latency?: number | null
+  readonly generation_time?: number | null
+  readonly finish_reason?: string | null
+  readonly tokens_prompt?: number | null
+  readonly tokens_completion?: number | null
+  readonly native_tokens_reasoning?: number | null
+  readonly native_tokens_cached?: number | null
+  readonly total_cost?: number | null
+}
+
+export type CallTiming = {
+  readonly clientTotalMs: number
+  readonly firstElementMs?: number
+  readonly firstSuggestionMs?: number
+}
+
+export type CallOutcome = 'valid' | 'invalid' | 'error'
+
+export type AiCallRecord = {
+  readonly startedAt: string
+  readonly task: string
+  readonly attempt: number
+  readonly outcome: CallOutcome
+  readonly requestedModel: string
+  readonly servedModel: string | null
+  readonly provider: string | null
+  readonly tokens: {
+    readonly input: number | null
+    readonly output: number | null
+    readonly reasoning: number | null
+    readonly cached: number | null
+  }
+  readonly costUsd: number | null
+  readonly latencyMs: {
+    readonly client: number
+    readonly openRouter: number | null
+    readonly generation: number | null
+    readonly firstElement: number | null
+    readonly firstSuggestion: number | null
+  }
+  readonly finishReason: string | null
+  readonly generationId: string | null
+  readonly error: string | null
+}
+
+export type ShapeRecordInput = {
+  readonly task: string
+  readonly attempt: number
+  readonly outcome: CallOutcome
+  readonly startedAt: string
+  readonly observation: CallObservation
+  readonly generation?: OpenRouterGeneration
+  readonly timing: CallTiming
+}
+
+const firstDefined = <T>(
+  ...values: readonly (T | null | undefined)[]
+): T | null => values.find((value) => value != null) ?? null
+
+export const shapeAiCallRecord = ({
+  task,
+  attempt,
+  outcome,
+  startedAt,
+  observation,
+  generation,
+  timing,
+}: ShapeRecordInput): AiCallRecord => ({
+  startedAt,
+  task,
+  attempt,
+  outcome,
+  requestedModel: observation.requestedModel,
+  servedModel: firstDefined(generation?.model, observation.servedModel),
+  provider: firstDefined(generation?.provider_name, observation.provider),
+  tokens: {
+    input: firstDefined(observation.inputTokens, generation?.tokens_prompt),
+    output: firstDefined(
+      observation.outputTokens,
+      generation?.tokens_completion,
+    ),
+    reasoning: firstDefined(
+      observation.reasoningTokens,
+      generation?.native_tokens_reasoning,
+    ),
+    cached: firstDefined(
+      observation.cachedTokens,
+      generation?.native_tokens_cached,
+    ),
+  },
+  costUsd: firstDefined(observation.costUsd, generation?.total_cost),
+  latencyMs: {
+    client: timing.clientTotalMs,
+    openRouter: firstDefined(generation?.latency),
+    generation: firstDefined(generation?.generation_time),
+    firstElement: firstDefined(timing.firstElementMs),
+    firstSuggestion: firstDefined(timing.firstSuggestionMs),
+  },
+  finishReason: firstDefined(
+    generation?.finish_reason,
+    observation.finishReason,
+  ),
+import type { AiCallRecord } from './records'
+
+export type AiCallLogTarget = { __aiCalls?: AiCallRecord[] }
+
+export const appendAiCall = (
+  target: AiCallLogTarget,
+  record: AiCallRecord,
+): void => {
+  const log = target.__aiCalls ?? []
+  log.push(record)
+  target.__aiCalls = log
+}
+
+export const enrichAiCall = (
+  target: AiCallLogTarget,
+  record: AiCallRecord,
+): void => {
+  const log = target.__aiCalls ?? []
+  const index = log.findIndex(
+    (entry) =>
+      entry.generationId !== null && entry.generationId === record.generationId,
+  )
+  if (index === -1) log.push(record)
+  else log[index] = record
+  target.__aiCalls = log
+}
+export type FakeRequest = {
+  readonly url: string
+  readonly method: string
+  readonly headers: Headers
+  readonly body: unknown
+}
+
+export type FakeHandler = (
+  request: FakeRequest,
+  signal: AbortSignal | undefined,
+) => Response | Promise<Response>
+
+export type FakeOpenRouter = {
+  readonly fetch: typeof fetch
+  readonly requests: readonly FakeRequest[]
+  readonly chatRequests: () => readonly FakeRequest[]
+}
+
+export type Usage = {
+  readonly prompt_tokens: number
+  readonly completion_tokens: number
+  readonly total_tokens: number
+  readonly cost?: number
+  readonly completion_tokens_details?: { readonly reasoning_tokens: number }
+  readonly prompt_tokens_details?: { readonly cached_tokens: number }
+}
+
+export const usage = (overrides: Partial<Usage> = {}): Usage => ({
+  prompt_tokens: 120,
+  completion_tokens: 40,
+  total_tokens: 160,
+  cost: 0.0002,
+  completion_tokens_details: { reasoning_tokens: 4 },
+  prompt_tokens_details: { cached_tokens: 0 },
+  ...overrides,
+})
+
+const JSON_HEADERS = { 'content-type': 'application/json' }
+
+export const jsonResponse = (status: number, body: unknown): Response =>
+  new Response(JSON.stringify(body), { status, headers: JSON_HEADERS })
+
+export const errorResponse = (status: number, message: string): Response =>
+  jsonResponse(status, { error: { code: status, message } })
+
+type CompletionOptions = {
+  readonly id?: string
+  readonly model?: string
+  readonly provider?: string
+  readonly usage?: Usage
+  readonly finishReason?: string
+}
+
+export const chatCompletion = (
+  content: string,
+  {
+    id = 'gen-test-1',
+    model = 'vendor/model-served',
+    provider = 'Acme',
+    usage: usageOverride = usage(),
+    finishReason = 'stop',
+  }: CompletionOptions = {},
+): Response =>
+  jsonResponse(200, {
+    id,
+    model,
+    provider,
+    choices: [
+      {
+        message: { role: 'assistant', content },
+        finish_reason: finishReason,
+      },
+    ],
+    usage: usageOverride,
+  })
+
+type StreamOptions = CompletionOptions & {
+  readonly chunkSize?: number
+  readonly delayMs?: number
+}
+bakeoff-report.test.ts
+bakeoff-report.ts
+bakeoff.ts
+OPENROUTER_API_KEY=
+# Optional: OpenRouter model ID for every request. Chosen at Gate A (ADR 0010).
+OPENROUTER_MODEL=openai/gpt-6.1-terra
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.DS_Store
+.claude/worktrees/
+.claude/settings.local.json
+skills

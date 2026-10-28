@@ -1,0 +1,1252 @@
+=== src/editor/suggestion-decorations.ts
+     1	import type { EditorState, Range } from '@codemirror/state'
+     2	import {
+     3	  Decoration,
+     4	  type DecorationSet,
+     5	  EditorView,
+     6	  WidgetType,
+     7	} from '@codemirror/view'
+     8	import { describeError } from '../suggestions/error-message'
+     9	import type {
+    10	  ReadySuggestion,
+    11	  Suggestion,
+    12	  SuggestionId,
+    13	} from '../suggestions/types'
+    14	import { bubbleField, targetPreviewRange } from './ask-bubble'
+    15	import { el } from './dom'
+    16	import { rejectSuggestionById } from './suggestion-commands'
+    17	import { activeOf, suggestionsField, suggestionsOf } from './suggestion-field'
+    18	import { suggestionActionsFacet } from './suggestion-runtime'
+    19	
+    20	const idAttributes = (id: SuggestionId) => ({ 'data-suggestion-id': id })
+    21	
+    22	class InsertedWidget extends WidgetType {
+    23	  constructor(
+    24	    readonly id: SuggestionId,
+    25	    readonly text: string,
+    26	    readonly separated: boolean,
+    27	  ) {
+    28	    super()
+    29	  }
+    30	
+    31	  eq(other: InsertedWidget): boolean {
+    32	    return (
+    33	      other.id === this.id &&
+    34	      other.text === this.text &&
+    35	      other.separated === this.separated
+    36	    )
+    37	  }
+    38	
+    39	  toDOM(): HTMLElement {
+    40	    return el(
+    41	      'ins',
+    42	      {
+    43	        class: `cm-ai-inserted${this.separated ? ' cm-ai-inserted-separated' : ''}`,
+    44	        attrs: idAttributes(this.id),
+    45	      },
+    46	      [this.text],
+    47	    )
+    48	  }
+    49	
+    50	  ignoreEvent(): boolean {
+    51	    return false
+    52	  }
+    53	}
+    54	
+    55	class ReplacementWidget extends WidgetType {
+    56	  constructor(
+    57	    readonly id: SuggestionId,
+    58	    readonly text: string,
+    59	  ) {
+    60	    super()
+    61	  }
+    62	
+    63	  eq(other: ReplacementWidget): boolean {
+    64	    return other.id === this.id && other.text === this.text
+    65	  }
+    66	
+    67	  toDOM(): HTMLElement {
+    68	    return el(
+    69	      'div',
+    70	      {
+    71	        class: 'cm-ai-replacement',
+    72	        attrs: idAttributes(this.id),
+    73	      },
+    74	      [el('ins', {}, [this.text])],
+    75	    )
+    76	  }
+    77	
+    78	  ignoreEvent(): boolean {
+    79	    return false
+    80	  }
+    81	}
+    82	
+    83	class ErrorCardWidget extends WidgetType {
+    84	  constructor(
+    85	    readonly id: SuggestionId,
+    86	    readonly message: string,
+    87	  ) {
+    88	    super()
+    89	  }
+    90	
+    91	  eq(other: ErrorCardWidget): boolean {
+    92	    return other.id === this.id && other.message === this.message
+    93	  }
+    94	
+    95	  toDOM(view: EditorView): HTMLElement {
+    96	    const button = (label: string, onClick: () => void) =>
+    97	      el(
+    98	        'button',
+    99	        {
+   100	          class: 'cm-ai-button',
+   101	          attrs: { type: 'button' },
+   102	          on: {
+   103	            mousedown: (event) => event.preventDefault(),
+   104	            click: () => {
+   105	              onClick()
+   106	              view.focus()
+   107	            },
+   108	          },
+   109	        },
+   110	        [label],
+   111	      )
+   112	    return el(
+   113	      'div',
+   114	      {
+   115	        class: 'cm-ai-error',
+   116	        attrs: { role: 'alert', ...idAttributes(this.id) },
+   117	      },
+   118	      [
+   119	        el('span', { class: 'cm-ai-error-message' }, [this.message]),
+   120	        el('span', { class: 'cm-ai-error-actions' }, [
+   121	          button('Retry', () =>
+   122	            view.state.facet(suggestionActionsFacet)?.retry(view, this.id),
+   123	          ),
+   124	          button('Dismiss', () => rejectSuggestionById(view, this.id)),
+   125	        ]),
+   126	      ],
+   127	    )
+   128	  }
+   129	
+   130	  ignoreEvent(): boolean {
+   131	    return true
+   132	  }
+   133	}
+   134	
+   135	const pendingMark = (id: SuggestionId) =>
+   136	  Decoration.mark({
+   137	    class: 'cm-ai-pending',
+   138	    attributes: idAttributes(id),
+   139	  })
+   140	
+   141	const failedMark = (id: SuggestionId) =>
+   142	  Decoration.mark({
+   143	    class: 'cm-ai-failed',
+   144	    attributes: idAttributes(id),
+   145	  })
+   146	
+   147	const suggestionMark = (id: SuggestionId, active: boolean) =>
+   148	  Decoration.mark({
+   149	    class: active ? 'cm-ai-suggestion cm-ai-active' : 'cm-ai-suggestion',
+   150	    attributes: idAttributes(id),
+   151	  })
+   152	
+   153	const deletedMark = (id: SuggestionId) =>
+   154	  Decoration.mark({
+   155	    tagName: 'del',
+   156	    class: 'cm-ai-deleted',
+   157	    attributes: idAttributes(id),
+   158	  })
+   159	
+   160	const readyRanges = (
+   161	  suggestion: ReadySuggestion,
+   162	  active: boolean,
+   163	): readonly Range<Decoration>[] => {
+   164	  const { id, from, to, diff } = suggestion
+   165	  const hunks = diff.hunks.flatMap((hunk, index): Range<Decoration>[] => {
+   166	    if (hunk.type === 'deleted') {
+   167	      return hunk.from === hunk.to
+   168	        ? []
+   169	        : [deletedMark(id).range(from + hunk.from, from + hunk.to)]
+   170	    }
+   171	    if (hunk.type !== 'inserted') return []
+   172	    if (diff.mode === 'block') {
+   173	      return [
+   174	        Decoration.widget({
+   175	          widget: new ReplacementWidget(id, hunk.text),
+   176	          block: true,
+   177	          side: 1,
+   178	        }).range(to),
+   179	      ]
+   180	    }
+   181	    const separated = diff.hunks[index - 1]?.type === 'deleted'
+   182	    return [
+   183	      Decoration.widget({
+   184	        widget: new InsertedWidget(id, hunk.text, separated),
+   185	        side: 1,
+   186	      }).range(from + hunk.at),
+   187	    ]
+   188	  })
+   189	  return [suggestionMark(id, active).range(from, to), ...hunks]
+   190	}
+   191	
+   192	const suggestionRanges = (
+   193	  suggestion: Suggestion,
+   194	  active: boolean,
+   195	): readonly Range<Decoration>[] => {
+   196	  switch (suggestion.status) {
+   197	    case 'pending':
+   198	      return [pendingMark(suggestion.id).range(suggestion.from, suggestion.to)]
+   199	    case 'error':
+   200	      return [
+   201	        failedMark(suggestion.id).range(suggestion.from, suggestion.to),
+   202	        Decoration.widget({
+   203	          widget: new ErrorCardWidget(
+   204	            suggestion.id,
+   205	            describeError(suggestion.error),
+   206	          ),
+   207	          block: true,
+   208	          side: 1,
+   209	        }).range(suggestion.to),
+   210	      ]
+   211	    case 'ready':
+   212	      return readyRanges(suggestion, active)
+   213	  }
+   214	}
+   215	
+   216	const targetPreview = Decoration.mark({ class: 'cm-ai-target-preview' })
+   217	
+   218	export const buildDecorations = (state: EditorState): DecorationSet => {
+   219	  const active = activeOf(state)
+   220	  const preview = targetPreviewRange(state)
+   221	  return Decoration.set(
+   222	    [
+   223	      ...suggestionsOf(state).items.flatMap((suggestion) =>
+   224	        suggestionRanges(suggestion, suggestion.id === active?.id),
+   225	      ),
+   226	      ...(preview ? [targetPreview.range(preview.from, preview.to)] : []),
+   227	    ],
+   228	    true,
+   229	  )
+   230	}
+   231	
+   232	export const suggestionDecorations = EditorView.decorations.compute(
+   233	  [suggestionsField, bubbleField, 'selection'],
+   234	  buildDecorations,
+   235	)
+=== src/editor/suggestion-cards.ts
+     1	import type { EditorState } from '@codemirror/state'
+     2	import {
+     3	  type EditorView,
+     4	  showTooltip,
+     5	  type Tooltip,
+     6	  type TooltipView,
+     7	} from '@codemirror/view'
+     8	import { findSuggestion } from '../suggestions/state'
+     9	import type { ReadySuggestion } from '../suggestions/types'
+    10	import { detectApplePlatform, formatShortcut } from '../ui/platform'
+    11	import { el } from './dom'
+    12	import { interactionField } from './interaction-state'
+    13	import {
+    14	  acceptSuggestionById,
+    15	  rejectSuggestionById,
+    16	} from './suggestion-commands'
+    17	import {
+    18	  activeOf,
+    19	  cursorOf,
+    20	  suggestionsField,
+    21	  suggestionsOf,
+    22	} from './suggestion-field'
+    23	
+    24	type CardContent = {
+    25	  readonly suggestion: ReadySuggestion
+    26	  readonly showRationale: boolean
+    27	  readonly showActions: boolean
+    28	}
+    29	
+    30	type CardKind = 'active' | 'hover'
+    31	
+    32	const contentFor = (
+    33	  kind: CardKind,
+    34	  state: EditorState,
+    35	): CardContent | undefined => {
+    36	  const hoveredId = state.field(interactionField).hoveredId
+    37	  const active = activeOf(state)
+    38	  if (kind === 'active') {
+    39	    if (!active) return undefined
+    40	    const cursorInside =
+    41	      active.from <= cursorOf(state) && cursorOf(state) <= active.to
+    42	    return {
+    43	      suggestion: active,
+    44	      showRationale: cursorInside || hoveredId === active.id,
+    45	      showActions: true,
+    46	    }
+    47	  }
+    48	  if (hoveredId === null || hoveredId === active?.id) return undefined
+    49	  const hovered = findSuggestion(suggestionsOf(state), hoveredId)
+    50	  return hovered?.status === 'ready'
+    51	    ? { suggestion: hovered, showRationale: true, showActions: false }
+    52	    : undefined
+    53	}
+    54	
+    55	const contentKey = ({
+    56	  suggestion,
+    57	  showRationale,
+    58	  showActions,
+    59	}: CardContent): string =>
+    60	  [suggestion.id, suggestion.rationale, showRationale, showActions].join(
+    61	    '\u0000',
+    62	  )
+    63	
+    64	const shortcutLabel = (key: string): string =>
+    65	  formatShortcut(key, detectApplePlatform())
+    66	
+    67	const actionButton = (
+    68	  view: EditorView,
+    69	  label: string,
+    70	  hint: string,
+    71	  run: () => void,
+    72	) =>
+    73	  el(
+    74	    'button',
+    75	    {
+    76	      class: 'cm-ai-button',
+    77	      attrs: { type: 'button' },
+    78	      on: {
+    79	        mousedown: (event) => event.preventDefault(),
+    80	        click: () => {
+    81	          run()
+    82	          view.focus()
+    83	        },
+    84	      },
+    85	    },
+    86	    [label, el('kbd', { class: 'cm-ai-kbd' }, [hint])],
+    87	  )
+    88	
+    89	const renderCard = (view: EditorView, content: CardContent): Node[] => {
+    90	  const { suggestion, showRationale, showActions } = content
+    91	  return [
+    92	    ...(showRationale
+    93	      ? [el('p', { class: 'cm-ai-rationale' }, [suggestion.rationale])]
+    94	      : []),
+    95	    ...(showActions
+    96	      ? [
+    97	          el('div', { class: 'cm-ai-card-actions' }, [
+    98	            actionButton(view, 'Accept', shortcutLabel('↵'), () =>
+    99	              acceptSuggestionById(view, suggestion.id),
+   100	            ),
+   101	            actionButton(view, 'Reject', 'Esc', () =>
+   102	              rejectSuggestionById(view, suggestion.id),
+   103	            ),
+   104	          ]),
+   105	        ]
+   106	      : []),
+   107	  ]
+   108	}
+   109	
+   110	const cardCreator =
+   111	  (kind: CardKind) =>
+   112	  (view: EditorView): TooltipView => {
+   113	    const dom = el('div', {
+   114	      class: `cm-ai-card cm-ai-card-${kind}`,
+   115	      attrs:
+   116	        kind === 'active' ? { role: 'group', 'aria-label': 'Suggestion' } : {},
+   117	    })
+   118	    let renderedKey = ''
+   119	    const sync = (state: EditorState): void => {
+   120	      const content = contentFor(kind, state)
+   121	      if (!content) return
+   122	      const key = contentKey(content)
+   123	      if (key === renderedKey) return
+   124	      renderedKey = key
+   125	      dom.replaceChildren(...renderCard(view, content))
+   126	    }
+   127	    sync(view.state)
+   128	    return { dom, update: (update) => sync(update.state) }
+   129	  }
+   130	
+   131	const createActiveCard = cardCreator('active')
+   132	const createHoverCard = cardCreator('hover')
+   133	
+   134	const tooltipFor = (
+   135	  kind: CardKind,
+   136	  state: EditorState,
+   137	  create: (view: EditorView) => TooltipView,
+   138	): Tooltip | null => {
+   139	  const content = contentFor(kind, state)
+   140	  return content ? { pos: content.suggestion.from, above: true, create } : null
+   141	}
+   142	
+   143	export const suggestionCards = showTooltip.computeN(
+   144	  [suggestionsField, interactionField, 'selection'],
+   145	  (state) => [
+   146	    tooltipFor('active', state, createActiveCard),
+   147	    tooltipFor('hover', state, createHoverCard),
+   148	  ],
+   149	)
+=== src/editor/ask-bubble.ts
+     1	import {
+     2	  type ChangeDesc,
+     3	  type EditorState,
+     4	  StateEffect,
+     5	  StateField,
+     6	} from '@codemirror/state'
+     7	import {
+     8	  type EditorView,
+     9	  showTooltip,
+    10	  type Tooltip,
+    11	  type TooltipView,
+    12	} from '@codemirror/view'
+    13	import { QUICK_ACTIONS } from '../ai/quick-actions'
+    14	import {
+    15	  freeTextInstruction,
+    16	  quickActionInstruction,
+    17	} from '../suggestions/instruction'
+    18	import { currentTarget } from './current-target'
+    19	import { el } from './dom'
+    20	import { interactionField } from './interaction-state'
+    21	import { beginEffect } from './suggestion-field'
+    22	import { suggestionActionsFacet } from './suggestion-runtime'
+    23	
+    24	type Range = { readonly from: number; readonly to: number }
+    25	
+    26	type BubbleState = {
+    27	  readonly askOpen: boolean
+    28	  readonly dismissed: Range | null
+    29	}
+    30	
+    31	export const openAskEffect = StateEffect.define<null>()
+    32	export const dismissBubbleEffect = StateEffect.define<null>()
+    33	
+    34	const sameRange = (a: Range | null, b: Range): boolean =>
+    35	  a !== null && a.from === b.from && a.to === b.to
+    36	
+    37	const mapRange = (range: Range, changes: ChangeDesc): Range => ({
+    38	  from: changes.mapPos(range.from, 1),
+    39	  to: changes.mapPos(range.to, -1),
+    40	})
+    41	
+    42	export const bubbleField = StateField.define<BubbleState>({
+    43	  create: () => ({ askOpen: false, dismissed: null }),
+    44	  update: (value, transaction) => {
+    45	    const selection = transaction.state.selection.main
+    46	    const moved =
+    47	      transaction.docChanged ||
+    48	      !transaction.startState.selection.main.eq(selection)
+    49	    const opened = transaction.effects.some((effect) =>
+    50	      effect.is(openAskEffect),
+    51	    )
+    52	    const closed = transaction.effects.some(
+    53	      (effect) => effect.is(dismissBubbleEffect) || effect.is(beginEffect),
+    54	    )
+    55	    const mapped =
+    56	      value.dismissed && transaction.docChanged
+    57	        ? mapRange(value.dismissed, transaction.changes)
+    58	        : value.dismissed
+    59	    const askOpen = closed ? false : opened ? true : value.askOpen && !moved
+    60	    const dismissed = closed
+    61	      ? { from: selection.from, to: selection.to }
+    62	      : sameRange(mapped, selection)
+    63	        ? mapped
+    64	        : null
+    65	    return { askOpen, dismissed }
+    66	  },
+    67	})
+    68	
+    69	export const bubbleVisible = (state: EditorState): boolean => {
+    70	  const { askOpen, dismissed } = state.field(bubbleField)
+    71	  const { focused, pointerDown } = state.field(interactionField)
+    72	  if (!focused) return false
+    73	  if (askOpen) return currentTarget(state) !== undefined
+    74	  const selection = state.selection.main
+    75	  return (
+    76	    !pointerDown &&
+    77	    !selection.empty &&
+    78	    !sameRange(dismissed, selection) &&
+    79	    currentTarget(state) !== undefined
+    80	  )
+    81	}
+    82	
+    83	const isAsking = (state: EditorState): boolean =>
+    84	  state.field(bubbleField).askOpen
+    85	
+    86	export const targetPreviewRange = (state: EditorState): Range | undefined => {
+    87	  if (!isAsking(state) || !state.selection.main.empty) return undefined
+    88	  return currentTarget(state)
+    89	}
+    90	
+    91	const buildBubble = (view: EditorView) => {
+    92	  const actions = () => view.state.facet(suggestionActionsFacet)
+    93	
+    94	  const input = el('input', {
+    95	    class: 'cm-ai-bubble-input',
+    96	    attrs: {
+    97	      type: 'text',
+    98	      placeholder: 'Ask AI…',
+    99	      'aria-label': 'Ask AI',
+   100	      autocomplete: 'off',
+   101	      spellcheck: 'false',
+   102	    },
+   103	    on: {
+   104	      keydown: (event) => {
+   105	        if (event.key === 'Escape') {
+   106	          event.preventDefault()
+   107	          event.stopPropagation()
+   108	          input.value = ''
+   109	          view.dispatch({ effects: dismissBubbleEffect.of(null) })
+   110	          view.focus()
+   111	        } else if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+   112	          event.preventDefault()
+   113	        }
+   114	      },
+   115	    },
+   116	  })
+   117	
+   118	  const form = el(
+   119	    'form',
+   120	    {
+   121	      class: 'cm-ai-bubble-ask',
+   122	      on: {
+   123	        submit: (event) => {
+   124	          event.preventDefault()
+   125	          const text = input.value.trim()
+   126	          if (text === '') return
+   127	          input.value = ''
+   128	          actions()?.ask(view, freeTextInstruction(text))
+   129	          view.focus()
+   130	        },
+   131	      },
+   132	    },
+   133	    [input],
+   134	  )
+   135	
+   136	  const buttons = QUICK_ACTIONS.map((action) =>
+   137	    el(
+   138	      'button',
+   139	      {
+   140	        class: 'cm-ai-chip',
+   141	        attrs: { type: 'button' },
+   142	        on: {
+   143	          mousedown: (event) => event.preventDefault(),
+   144	          click: () => {
+   145	            actions()?.ask(view, quickActionInstruction(action.id))
+   146	            view.focus()
+   147	          },
+   148	        },
+   149	      },
+   150	      [action.label],
+   151	    ),
+   152	  )
+   153	
+   154	  const dom = el(
+   155	    'div',
+   156	    {
+   157	      class: 'cm-ai-bubble',
+   158	      attrs: { role: 'group', 'aria-label': 'Ask AI' },
+   159	      on: {
+   160	        mousedown: (event) => {
+   161	          if (event.target !== input) event.preventDefault()
+   162	        },
+   163	      },
+   164	    },
+   165	    [
+   166	      el(
+   167	        'div',
+   168	        { class: 'cm-ai-bubble-actions', attrs: { role: 'toolbar' } },
+   169	        buttons,
+   170	      ),
+   171	      form,
+   172	    ],
+   173	  )
+   174	
+   175	  const focusIfAsking = (state: EditorState): void => {
+   176	    if (isAsking(state)) input.focus()
+   177	  }
+   178	
+   179	  const tooltipView: TooltipView = {
+   180	    dom,
+   181	    mount: () => focusIfAsking(view.state),
+   182	    update: (update) => {
+   183	      const reopened = update.transactions.some((transaction) =>
+   184	        transaction.effects.some((effect) => effect.is(openAskEffect)),
+   185	      )
+   186	      if (reopened) focusIfAsking(update.state)
+   187	    },
+   188	  }
+   189	  return tooltipView
+   190	}
+   191	
+   192	const bubbleTooltip = (state: EditorState): Tooltip | null => {
+   193	  if (!bubbleVisible(state)) return null
+   194	  const target = currentTarget(state)
+   195	  return target ? { pos: target.from, above: true, create: buildBubble } : null
+   196	}
+   197	
+   198	export const askBubble = [
+   199	  bubbleField,
+   200	  showTooltip.compute(
+   201	    [bubbleField, interactionField, 'selection', 'doc'],
+   202	    bubbleTooltip,
+   203	  ),
+   204	]
+=== src/editor/interaction-state.ts
+     1	import { StateEffect, StateField } from '@codemirror/state'
+     2	import { type EditorView, ViewPlugin } from '@codemirror/view'
+     3	import type { SuggestionId } from '../suggestions/types'
+     4	
+     5	export type InteractionState = {
+     6	  readonly pointerDown: boolean
+     7	  readonly focused: boolean
+     8	  readonly hoveredId: SuggestionId | null
+     9	}
+    10	
+    11	export const pointerEffect = StateEffect.define<boolean>()
+    12	export const focusEffect = StateEffect.define<boolean>()
+    13	export const hoverEffect = StateEffect.define<SuggestionId | null>()
+    14	
+    15	const applyInteraction = (
+    16	  state: InteractionState,
+    17	  effect: StateEffect<unknown>,
+    18	): InteractionState => {
+    19	  if (effect.is(pointerEffect)) return { ...state, pointerDown: effect.value }
+    20	  if (effect.is(focusEffect)) return { ...state, focused: effect.value }
+    21	  if (effect.is(hoverEffect)) return { ...state, hoveredId: effect.value }
+    22	  return state
+    23	}
+    24	
+    25	export const interactionField = StateField.define<InteractionState>({
+    26	  create: () => ({ pointerDown: false, focused: false, hoveredId: null }),
+    27	  update: (value, transaction) =>
+    28	    transaction.effects.reduce(applyInteraction, value),
+    29	})
+    30	
+    31	const suggestionIdOf = (target: EventTarget | null): SuggestionId | null =>
+    32	  target instanceof Element
+    33	    ? (target.closest<HTMLElement>('[data-suggestion-id]')?.dataset
+    34	        .suggestionId ?? null)
+    35	    : null
+    36	
+    37	const interactionPlugin = ViewPlugin.define((view: EditorView) => {
+    38	  const setHover = (id: SuggestionId | null): void => {
+    39	    if (view.state.field(interactionField).hoveredId !== id)
+    40	      view.dispatch({ effects: hoverEffect.of(id) })
+    41	  }
+    42	  const onMouseDown = (): void =>
+    43	    view.dispatch({ effects: pointerEffect.of(true) })
+    44	  const onMouseUp = (): void => {
+    45	    if (view.state.field(interactionField).pointerDown)
+    46	      view.dispatch({ effects: pointerEffect.of(false) })
+    47	  }
+    48	  const onMouseOver = (event: MouseEvent): void =>
+    49	    setHover(suggestionIdOf(event.target))
+    50	  const onMouseLeave = (): void => setHover(null)
+    51	  const setFocused = (focused: boolean): void =>
+    52	    queueMicrotask(() => {
+    53	      if (
+    54	        view.dom.isConnected &&
+    55	        view.state.field(interactionField).focused !== focused
+    56	      )
+    57	        view.dispatch({ effects: focusEffect.of(focused) })
+    58	    })
+    59	  const onFocusIn = (): void => setFocused(true)
+    60	  const onFocusOut = (event: FocusEvent): void => {
+    61	    const next = event.relatedTarget
+    62	    if (!(next instanceof Node && view.dom.contains(next))) setFocused(false)
+    63	  }
+    64	
+    65	  view.contentDOM.addEventListener('mousedown', onMouseDown)
+    66	  view.contentDOM.addEventListener('mouseover', onMouseOver)
+    67	  view.contentDOM.addEventListener('mouseleave', onMouseLeave)
+    68	  view.dom.addEventListener('focusin', onFocusIn)
+    69	  view.dom.addEventListener('focusout', onFocusOut)
+    70	  document.addEventListener('mouseup', onMouseUp)
+    71	
+    72	  return {
+    73	    destroy: () => {
+    74	      view.contentDOM.removeEventListener('mousedown', onMouseDown)
+    75	      view.contentDOM.removeEventListener('mouseover', onMouseOver)
+    76	      view.contentDOM.removeEventListener('mouseleave', onMouseLeave)
+    77	      view.dom.removeEventListener('focusin', onFocusIn)
+    78	      view.dom.removeEventListener('focusout', onFocusOut)
+    79	      document.removeEventListener('mouseup', onMouseUp)
+    80	    },
+    81	  }
+    82	})
+    83	
+    84	export const interactionState = [interactionField, interactionPlugin]
+=== src/editor/current-target.ts
+     1	import type { EditorState, Text } from '@codemirror/state'
+     2	import { type Block, extractBlocks } from '../blocks/extract-blocks'
+     3	import { resolveTarget, type Target } from '../blocks/target'
+     4	
+     5	const blockCache = new WeakMap<Text, readonly Block[]>()
+     6	
+     7	export const blocksOf = (state: EditorState): readonly Block[] => {
+     8	  const cached = blockCache.get(state.doc)
+     9	  if (cached) return cached
+    10	  const blocks = extractBlocks(state.doc.toString())
+    11	  blockCache.set(state.doc, blocks)
+    12	  return blocks
+    13	}
+    14	
+    15	export const currentTarget = (state: EditorState): Target | undefined => {
+    16	  const { from, to } = state.selection.main
+    17	  return resolveTarget(blocksOf(state), state.doc.toString(), { from, to })
+    18	}
+=== src/editor/dom.ts
+     1	type Child = Node | string
+     2	
+     3	type Props = {
+     4	  readonly class?: string
+     5	  readonly attrs?: Readonly<Record<string, string>>
+     6	  readonly on?: {
+     7	    readonly [K in keyof HTMLElementEventMap]?: (
+     8	      event: HTMLElementEventMap[K],
+     9	    ) => void
+    10	  }
+    11	}
+    12	
+    13	export const el = <K extends keyof HTMLElementTagNameMap>(
+    14	  tag: K,
+    15	  { class: className, attrs = {}, on = {} }: Props = {},
+    16	  children: readonly Child[] = [],
+    17	): HTMLElementTagNameMap[K] => {
+    18	  const node = document.createElement(tag)
+    19	  if (className) node.className = className
+    20	  for (const [name, value] of Object.entries(attrs)) {
+    21	    node.setAttribute(name, value)
+    22	  }
+    23	  for (const [name, handler] of Object.entries(on)) {
+    24	    node.addEventListener(name, handler as EventListener)
+    25	  }
+    26	  node.append(...children)
+    27	  return node
+    28	}
+=== src/diff/adaptive-diff.ts
+     1	import { type ChangeObject, diffWordsWithSpace } from 'diff'
+     2	
+     3	export const BLOCK_LEVEL_THRESHOLD = 0.4
+     4	
+     5	export type DiffHunk =
+     6	  | {
+     7	      readonly type: 'equal'
+     8	      readonly text: string
+     9	      readonly from: number
+    10	      readonly to: number
+    11	    }
+    12	  | {
+    13	      readonly type: 'deleted'
+    14	      readonly text: string
+    15	      readonly from: number
+    16	      readonly to: number
+    17	    }
+    18	  | {
+    19	      readonly type: 'inserted'
+    20	      readonly text: string
+    21	      readonly at: number
+    22	    }
+    23	
+    24	export type DiffMode = 'word' | 'block'
+    25	
+    26	export type AdaptiveDiff = {
+    27	  readonly mode: DiffMode
+    28	  readonly hunks: readonly DiffHunk[]
+    29	  readonly changedShare: number
+    30	}
+    31	
+    32	type Chunk =
+    33	  | { readonly type: 'equal'; readonly text: string }
+    34	  | {
+    35	      readonly type: 'change'
+    36	      readonly deleted: string
+    37	      readonly inserted: string
+    38	    }
+    39	
+    40	const isBlank = (text: string): boolean => text.trim() === ''
+    41	
+    42	const toChunk = (part: ChangeObject<string>): Chunk =>
+    43	  part.added
+    44	    ? { type: 'change', deleted: '', inserted: part.value }
+    45	    : part.removed
+    46	      ? { type: 'change', deleted: part.value, inserted: '' }
+    47	      : { type: 'equal', text: part.value }
+    48	
+    49	const joinChanges = (
+    50	  previous: Extract<Chunk, { type: 'change' }>,
+    51	  separator: string,
+    52	  next: Extract<Chunk, { type: 'change' }>,
+    53	): Chunk => ({
+    54	  type: 'change',
+    55	  deleted:
+    56	    previous.deleted + (previous.deleted ? separator : '') + next.deleted,
+    57	  inserted:
+    58	    previous.inserted + (previous.inserted ? separator : '') + next.inserted,
+    59	})
+    60	
+    61	const pushChunk = (
+    62	  chunks: readonly Chunk[],
+    63	  chunk: Chunk,
+    64	): readonly Chunk[] => {
+    65	  if (chunk.type === 'equal') return [...chunks, chunk]
+    66	  const last = chunks.at(-1)
+    67	  if (last?.type === 'change')
+    68	    return [...chunks.slice(0, -1), joinChanges(last, '', chunk)]
+    69	  const beforeLast = chunks.at(-2)
+    70	  if (
+    71	    last?.type === 'equal' &&
+    72	    isBlank(last.text) &&
+    73	    beforeLast?.type === 'change'
+    74	  ) {
+    75	    return [...chunks.slice(0, -2), joinChanges(beforeLast, last.text, chunk)]
+    76	  }
+    77	  return [...chunks, chunk]
+    78	}
+    79	
+    80	const toHunks = (chunks: readonly Chunk[]): readonly DiffHunk[] =>
+    81	  chunks.reduce<{ hunks: readonly DiffHunk[]; offset: number }>(
+    82	    ({ hunks, offset }, chunk) => {
+    83	      if (chunk.type === 'equal') {
+    84	        const to = offset + chunk.text.length
+    85	        return {
+    86	          hunks: [
+    87	            ...hunks,
+    88	            { type: 'equal', text: chunk.text, from: offset, to },
+    89	          ],
+    90	          offset: to,
+    91	        }
+    92	      }
+    93	      const to = offset + chunk.deleted.length
+    94	      return {
+    95	        hunks: [
+    96	          ...hunks,
+    97	          ...(chunk.deleted === ''
+    98	            ? []
+    99	            : [
+   100	                {
+   101	                  type: 'deleted' as const,
+   102	                  text: chunk.deleted,
+   103	                  from: offset,
+   104	                  to,
+   105	                },
+   106	              ]),
+   107	          ...(chunk.inserted === ''
+   108	            ? []
+   109	            : [{ type: 'inserted' as const, text: chunk.inserted, at: to }]),
+   110	        ],
+   111	        offset: to,
+   112	      }
+   113	    },
+   114	    { hunks: [], offset: 0 },
+   115	  ).hunks
+   116	
+   117	const countWords = (text: string): number =>
+   118	  text.split(/\s+/).filter((word) => word !== '').length
+   119	
+   120	const sumWords = (hunks: readonly DiffHunk[], type: DiffHunk['type']): number =>
+   121	  hunks
+   122	    .filter((hunk) => hunk.type === type)
+   123	    .reduce((total, hunk) => total + countWords(hunk.text), 0)
+   124	
+   125	export const changedShare = (hunks: readonly DiffHunk[]): number => {
+   126	  const changed = sumWords(hunks, 'deleted') + sumWords(hunks, 'inserted')
+   127	  const total = changed + 2 * sumWords(hunks, 'equal')
+   128	  return total === 0 ? 0 : changed / total
+   129	}
+   130	
+   131	const blockHunks = (
+   132	  original: string,
+   133	  replacement: string,
+   134	): readonly DiffHunk[] => [
+   135	  ...(original === ''
+   136	    ? []
+   137	    : [
+   138	        {
+   139	          type: 'deleted' as const,
+   140	          text: original,
+   141	          from: 0,
+   142	          to: original.length,
+   143	        },
+   144	      ]),
+   145	  ...(replacement === ''
+   146	    ? []
+   147	    : [{ type: 'inserted' as const, text: replacement, at: original.length }]),
+   148	]
+   149	
+   150	export const adaptiveDiff = (
+   151	  original: string,
+   152	  replacement: string,
+   153	): AdaptiveDiff => {
+   154	  const hunks = toHunks(
+   155	    diffWordsWithSpace(original, replacement)
+   156	      .map(toChunk)
+   157	      .reduce(pushChunk, []),
+   158	  )
+   159	  const share = changedShare(hunks)
+   160	  return share > BLOCK_LEVEL_THRESHOLD
+   161	    ? {
+   162	        mode: 'block',
+   163	        hunks: blockHunks(original, replacement),
+   164	        changedShare: share,
+   165	      }
+   166	    : { mode: 'word', hunks, changedShare: share }
+   167	}
+=== src/suggestions/error-message.ts
+     1	import type { ClientError } from '../ai/errors'
+     2	
+     3	export const describeError = (error: ClientError): string => {
+     4	  switch (error.type) {
+     5	    case 'out-of-credit':
+     6	      return 'OpenRouter is out of credit. Add credit to your OpenRouter account, then retry.'
+     7	    case 'rate-limited':
+     8	      return 'Too many requests. Wait a moment, then retry.'
+     9	    case 'timeout':
+    10	      return 'The model took too long to answer. Retry.'
+    11	    case 'network':
+    12	      return 'Could not reach the model. Check your connection, then retry.'
+    13	    case 'invalid-output':
+    14	      return 'The model returned an unusable answer twice. Retry, or rephrase the Instruction.'
+    15	    case 'aborted':
+    16	      return 'The request was cancelled.'
+    17	    case 'api':
+    18	      return `The model request failed (${error.status}): ${error.message}`
+    19	    case 'unknown':
+    20	      return `Something went wrong: ${error.message}`
+    21	  }
+    22	}
+=== src/suggestions/instruction.ts
+     1	import { getQuickAction, type QuickActionId } from '../ai/quick-actions'
+     2	import type { Instruction, TargetSource } from './types'
+     3	
+     4	export const quickActionInstruction = (id: QuickActionId): Instruction => {
+     5	  const action = getQuickAction(id)
+     6	  return {
+     7	    type: 'quick-action',
+     8	    id: action.id,
+     9	    label: action.label,
+    10	    text: action.instruction,
+    11	  }
+    12	}
+    13	
+    14	export const freeTextInstruction = (text: string): Instruction => ({
+    15	  type: 'free-text',
+    16	  text: text.trim(),
+    17	})
+    18	
+    19	export const instructionLabel = (instruction: Instruction): string =>
+    20	  instruction.type === 'quick-action' ? instruction.label : instruction.text
+    21	
+    22	type TaskLabelInput = {
+    23	  readonly source: TargetSource
+    24	  readonly blocks: readonly { readonly id: string }[]
+    25	  readonly instruction: Instruction
+    26	}
+    27	
+    28	const blockRange = (blocks: readonly { readonly id: string }[]): string => {
+    29	  const first = blocks[0]?.id
+    30	  const last = blocks.at(-1)?.id
+    31	  return first === undefined
+    32	    ? 'document'
+    33	    : first === last
+    34	      ? first
+    35	      : `${first}–${last}`
+    36	}
+    37	
+    38	export const taskLabel = ({
+    39	  source,
+    40	  blocks,
+    41	  instruction,
+    42	}: TaskLabelInput): string => {
+    43	  const where =
+    44	    source === 'selection'
+    45	      ? `select ${blockRange(blocks)}`
+    46	      : `cursor in ${blockRange(blocks)}`
+    47	  const what =
+    48	    instruction.type === 'quick-action'
+    49	      ? instruction.label
+    50	      : `free text: ${instruction.text}`
+    51	  return `${where} → ${what}`
+    52	}
+=== src/suggestions/notice.ts
+     1	import type { NoticeKind } from './types'
+     2	
+     3	const MESSAGES: Readonly<Record<NoticeKind, string>> = {
+     4	  'text-changed': 'Suggestion discarded: the text changed',
+     5	  replaced: 'Suggestion discarded: replaced by your new request',
+     6	  'no-change': 'No change suggested',
+     7	}
+     8	
+     9	export const noticeMessage = (kind: NoticeKind): string => MESSAGES[kind]
+=== src/suggestions/replacement.ts
+     1	const leadingWhitespace = (text: string): string => /^\s*/.exec(text)?.[0] ?? ''
+     2	
+     3	const trailingWhitespace = (text: string): string =>
+     4	  text.trim() === '' ? '' : (/\s*$/.exec(text)?.[0] ?? '')
+     5	
+     6	export const matchEdgeWhitespace = (
+     7	  original: string,
+     8	  replacement: string,
+     9	): string =>
+    10	  `${leadingWhitespace(original)}${replacement.trim()}${trailingWhitespace(original)}`
+=== src/blocks/target.ts
+     1	import type { Block } from './extract-blocks'
+     2	
+     3	export type Selection = {
+     4	  readonly from: number
+     5	  readonly to: number
+     6	}
+     7	
+     8	export type Target = {
+     9	  readonly source: 'selection' | 'block'
+    10	  readonly from: number
+    11	  readonly to: number
+    12	  readonly text: string
+    13	  readonly blocks: readonly Block[]
+    14	}
+    15	
+    16	export type Neighbors = {
+    17	  readonly title?: string
+    18	  readonly section?: string
+    19	  readonly before: readonly Block[]
+    20	  readonly after: readonly Block[]
+    21	}
+    22	
+    23	const NEIGHBOR_COUNT = 2
+    24	
+    25	export const findBlockAt = (
+    26	  blocks: readonly Block[],
+    27	  position: number,
+    28	): Block | undefined =>
+    29	  blocks.find((block) => block.from <= position && position <= block.to)
+    30	
+    31	const distanceTo = (block: Block, position: number): number =>
+    32	  position < block.from ? block.from - position : position - block.to
+    33	
+    34	const nearestBlock = (
+    35	  blocks: readonly Block[],
+    36	  position: number,
+    37	): Block | undefined =>
+    38	  blocks.reduce<Block | undefined>(
+    39	    (best, block) =>
+    40	      best === undefined ||
+    41	      distanceTo(block, position) < distanceTo(best, position)
+    42	        ? block
+    43	        : best,
+    44	    undefined,
+    45	  )
+    46	
+    47	export const headingText = (block: Block): string => {
+    48	  const lines = block.text.split('\n')
+    49	  const content = lines[0]?.startsWith('#')
+    50	    ? lines[0].replace(/^#{1,6}[ \t]*/, '').replace(/[ \t]+#+[ \t]*$/, '')
+    51	    : lines.slice(0, -1).join(' ')
+    52	  return content.trim()
+    53	}
+    54	
+    55	const overlaps = (block: Block, from: number, to: number): boolean =>
+    56	  block.from < to && block.to > from
+    57	
+    58	const resolveSelectionTarget = (
+    59	  blocks: readonly Block[],
+    60	  text: string,
+    61	  { from, to }: Selection,
+    62	): Target | undefined => {
+    63	  const selected = text.slice(from, to)
+    64	  if (selected.trim() === '') return undefined
+    65	  return {
+    66	    source: 'selection',
+    67	    from,
+    68	    to,
+    69	    text: selected,
+    70	    blocks: blocks.filter((block) => overlaps(block, from, to)),
+    71	  }
+    72	}
+    73	
+    74	const resolveCursorTarget = (
+    75	  blocks: readonly Block[],
+    76	  position: number,
+    77	): Target | undefined => {
+    78	  const block = findBlockAt(blocks, position) ?? nearestBlock(blocks, position)
+    79	  return block === undefined
+    80	    ? undefined
+    81	    : {
+    82	        source: 'block',
+    83	        from: block.from,
+    84	        to: block.to,
+    85	        text: block.text,
+    86	        blocks: [block],
+    87	      }
+    88	}
+    89	
+    90	export const targetFromRange = (
+    91	  blocks: readonly Block[],
+    92	  text: string,
+    93	  { from, to }: Selection,
+    94	  source: Target['source'],
+    95	): Target => ({
+    96	  source,
+    97	  from,
+    98	  to,
+    99	  text: text.slice(from, to),
+   100	  blocks: blocks.filter((block) => overlaps(block, from, to)),
+   101	})
+   102	
+   103	export const resolveTarget = (
+   104	  blocks: readonly Block[],
+   105	  text: string,
+   106	  selection: Selection,
+   107	): Target | undefined => {
+   108	  const from = Math.max(0, Math.min(selection.from, selection.to))
+   109	  const to = Math.min(text.length, Math.max(selection.from, selection.to))
+   110	  return from === to
+   111	    ? resolveCursorTarget(blocks, from)
+   112	    : resolveSelectionTarget(blocks, text, { from, to })
+   113	}
+   114	
+   115	const anchorRange = (target: Target): Selection => ({
+   116	  from: Math.min(target.from, ...target.blocks.map((block) => block.from)),
+   117	  to: Math.max(target.to, ...target.blocks.map((block) => block.to)),
+   118	})
+   119	
+   120	export const getNeighbors = (
+   121	  blocks: readonly Block[],
+   122	  target: Target,
+   123	): Neighbors => {
+   124	  const { from, to } = anchorRange(target)
+   125	  const preceding = blocks.filter((block) => block.to <= from)
+   126	  const following = blocks.filter((block) => block.from >= to)
+   127	  const title = blocks.find(
+   128	    (block) => block.kind === 'heading' && block.level === 1,
+   129	  )
+   130	  const section = preceding.findLast((block) => block.kind === 'heading')
+   131	  return {
+   132	    ...(title && { title: headingText(title) }),
+   133	    ...(section && { section: headingText(section) }),
+   134	    before: preceding.slice(-NEIGHBOR_COUNT),
+   135	    after: following.slice(0, NEIGHBOR_COUNT),
+   136	  }
+   137	}
+=== src/ui/EditorPane.tsx
+     1	import { useEffect, useRef } from 'react'
+     2	import { createLazyModelClient } from '../ai/lazy-client'
+     3	import { createEditorView } from '../editor/create-editor-view'
+     4	import { suggestionExtensions } from '../editor/suggestions'
+     5	import type { SuggestionNotice } from '../suggestions/types'
+     6	
+     7	type EditorPaneProps = {
+     8	  readonly initialDoc: string
+     9	  readonly onChange: (doc: string) => void
+    10	  readonly onNotice: (notice: SuggestionNotice) => void
+    11	}
+    12	
+    13	export function EditorPane({
+    14	  initialDoc,
+    15	  onChange,
+    16	  onNotice,
+    17	}: EditorPaneProps) {
+    18	  const parentRef = useRef<HTMLDivElement>(null)
+    19	  const initialDocRef = useRef(initialDoc)
+    20	  const onChangeRef = useRef(onChange)
+    21	  const onNoticeRef = useRef(onNotice)
+    22	
+    23	  useEffect(() => {
+    24	    onChangeRef.current = onChange
+    25	    onNoticeRef.current = onNotice
+    26	  }, [onChange, onNotice])
+    27	
+    28	  useEffect(() => {
+    29	    const parent = parentRef.current
+    30	    if (!parent) return undefined
+    31	    const view = createEditorView({
+    32	      parent,
+    33	      doc: initialDocRef.current,
+    34	      onChange: (doc) => onChangeRef.current(doc),
+    35	      extensions: suggestionExtensions({
+    36	        client: createLazyModelClient(() =>
+    37	          import('../ai/browser-client').then((module) =>
+    38	            module.createBrowserModelClient(),
+    39	          ),
+    40	        ),
+    41	        onNotice: (notice) => onNoticeRef.current(notice),
+    42	      }),
+    43	    })
+    44	    return () => view.destroy()
+    45	  }, [])
+    46	
+    47	  return <div ref={parentRef} />
+    48	}
+=== src/ui/App.tsx
+     1	import { useCallback, useState } from 'react'
+     2	import type { SuggestionNotice } from '../suggestions/types'
+     3	import { EditorPane } from './EditorPane'
+     4	import { Hint } from './Hint'
+     5	import { MissingKeyBanner } from './MissingKeyBanner'
+     6	import { Toast } from './Toast'
+     7	
+     8	type AppProps = {
+     9	  readonly initialDoc: string
+    10	  readonly hasApiKey: boolean
+    11	  readonly onDocumentChange: (doc: string) => void
+    12	}
+    13	
+    14	export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
+    15	  const [notice, setNotice] = useState<SuggestionNotice | null>(null)
+    16	  const dismissNotice = useCallback(() => setNotice(null), [])
+    17	
+    18	  return (
+    19	    <div className="min-h-screen">
+    20	      <header className="mx-auto flex max-w-3xl flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-6 pt-8 pb-4">
+    21	        <h1 className="font-display font-semibold text-2xl text-ink-strong tracking-wide">
+    22	          Chiri
+    23	        </h1>
+    24	        <Hint />
+    25	      </header>
+    26	      <main className="mx-auto max-w-3xl px-6 pt-4 pb-40">
+    27	        <EditorPane
+    28	          initialDoc={initialDoc}
+    29	          onChange={onDocumentChange}
+    30	          onNotice={setNotice}
+    31	        />
+    32	      </main>
+    33	      <Toast notice={notice} onDismiss={dismissNotice} />
+    34	      {hasApiKey ? null : <MissingKeyBanner />}
+    35	    </div>
+    36	  )
+    37	}
+=== src/ui/Toast.tsx
+     1	import { useEffect } from 'react'
+     2	import { noticeMessage } from '../suggestions/notice'
+     3	import type { SuggestionNotice } from '../suggestions/types'
+     4	
+     5	const TOAST_DURATION_MS = 4500
+     6	
+     7	type ToastProps = {
+     8	  readonly notice: SuggestionNotice | null
+     9	  readonly onDismiss: () => void
+    10	}
+    11	
+    12	export function Toast({ notice, onDismiss }: ToastProps) {
+    13	  const serial = notice?.serial
+    14	
+    15	  useEffect(() => {
+    16	    if (serial === undefined) return undefined
+    17	    const timer = setTimeout(onDismiss, TOAST_DURATION_MS)
+    18	    return () => clearTimeout(timer)
+    19	  }, [serial, onDismiss])
+    20	
+    21	  return (
+    22	    <div
+    23	      role="status"
+    24	      aria-live="polite"
+    25	      className="pointer-events-none fixed inset-x-0 bottom-16 z-40 flex justify-center px-6"
+    26	    >
+    27	      {notice ? (
+    28	        <p
+    29	          key={notice.serial}
+    30	          className="toast-in rounded-full border border-border bg-surface px-4 py-2 text-ink text-sm shadow-lg"
+    31	        >
+    32	          {noticeMessage(notice.kind)}
+    33	        </p>
+    34	      ) : null}
+    35	    </div>
+    36	  )
+    37	}
