@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { quickActionInstruction } from '../suggestions/instruction'
 import {
   askBubble,
+  bubblePlacement,
   bubbleVisible,
   dismissBubbleEffect,
   openAskEffect,
@@ -81,6 +82,28 @@ describe('selection bubble', () => {
       }),
     )
     expect(bubbleVisible(started)).toBe(false)
+  })
+})
+
+describe('bubble placement', () => {
+  it('sits below the end of a selection extended downward', () => {
+    expect(bubblePlacement(create(2, 30))).toEqual({ pos: 30, above: false })
+  })
+
+  it('follows the cursor even when the selection ends in blank lines', () => {
+    expect(bubblePlacement(create(2, 23))).toEqual({ pos: 23, above: false })
+  })
+
+  it('sits above the start of a selection extended upward', () => {
+    expect(bubblePlacement(create(30, 2))).toEqual({ pos: 2, above: true })
+  })
+
+  it('sits above the Block when opened without a selection', () => {
+    expect(bubblePlacement(create(30))).toEqual({ pos: 23, above: true })
+  })
+
+  it('has no placement without a Target', () => {
+    expect(bubblePlacement(create(21, 23))).toBeUndefined()
   })
 })
 

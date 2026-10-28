@@ -196,10 +196,21 @@ const buildBubble = (view: EditorView) => {
   return tooltipView
 }
 
+type Placement = { readonly pos: number; readonly above: boolean }
+
+export const bubblePlacement = (state: EditorState): Placement | undefined => {
+  const target = currentTarget(state)
+  if (target === undefined) return undefined
+  const { anchor, head, empty } = state.selection.main
+  return empty
+    ? { pos: target.from, above: true }
+    : { pos: head, above: head < anchor }
+}
+
 const bubbleTooltip = (state: EditorState): Tooltip | null => {
   if (!bubbleVisible(state)) return null
-  const target = currentTarget(state)
-  return target ? { pos: target.from, above: true, create: buildBubble } : null
+  const placement = bubblePlacement(state)
+  return placement ? { ...placement, create: buildBubble } : null
 }
 
 export const askBubble = [
