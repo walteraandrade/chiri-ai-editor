@@ -1,0 +1,1200 @@
+     1	diff --git a/src/ai/client.ts b/src/ai/client.ts
+     2	index fa0d80f..eeed982 100644
+     3	--- a/src/ai/client.ts
+     4	+++ b/src/ai/client.ts
+     5	@@ -109,6 +109,7 @@ export type ReviewEvent =
+     6	       readonly dropped: number
+     7	       readonly attempts: number
+     8	       readonly incomplete: boolean
+     9	+      readonly error?: ClientError
+    10	       readonly firstSuggestionMs: number | null
+    11	     }
+    12	   | { readonly type: 'error'; readonly error: ClientError }
+    13	@@ -471,6 +472,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
+    14	       dropped: last.dropped,
+    15	       attempts: retry ? 2 : 1,
+    16	       incomplete: last.failure !== undefined,
+    17	+      ...(last.failure !== undefined && { error: last.failure }),
+    18	       firstSuggestionMs: last.firstSuggestionSinceStartMs,
+    19	     }
+    20	   }
+    21	diff --git a/src/ai/dev-log.ts b/src/ai/dev-log.ts
+    22	index 5a9949a..a916f46 100644
+    23	--- a/src/ai/dev-log.ts
+    24	+++ b/src/ai/dev-log.ts
+    25	@@ -24,3 +24,19 @@ export const enrichAiCall = (
+    26	   else log[index] = record
+    27	   target.__aiCalls = log
+    28	 }
+    29	+
+    30	+export type ReviewDropEntry = {
+    31	+  readonly blockId: string
+    32	+  readonly reason: string
+    33	+}
+    34	+
+    35	+export type ReviewDropLogTarget = { __reviewDrops?: ReviewDropEntry[] }
+    36	+
+    37	+export const appendReviewDrop = (
+    38	+  target: ReviewDropLogTarget,
+    39	+  drop: ReviewDropEntry,
+    40	+): void => {
+    41	+  const log = target.__reviewDrops ?? []
+    42	+  log.push(drop)
+    43	+  target.__reviewDrops = log
+    44	+}
+    45	diff --git a/src/ai/edits.ts b/src/ai/edits.ts
+    46	index 5f53553..c554900 100644
+    47	--- a/src/ai/edits.ts
+    48	+++ b/src/ai/edits.ts
+    49	@@ -2,6 +2,19 @@ import type { Block } from '../blocks/extract-blocks'
+    50	 import type { ReviewEdit, SuggestionOutput } from './schemas'
+    51	 
+    52	 export const MAX_REVIEW_EDITS = 6
+    53	+export const JUNK_MIN_ORIGINAL_WORDS = 15
+    54	+export const JUNK_MAX_REPLACEMENT_WORDS = 3
+    55	+
+    56	+const WORD = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu
+    57	+
+    58	+const wordCount = (text: string): number => text.match(WORD)?.length ?? 0
+    59	+
+    60	+export const isJunkReplacement = (
+    61	+  original: string,
+    62	+  replacement: string,
+    63	+): boolean =>
+    64	+  wordCount(original) > JUNK_MIN_ORIGINAL_WORDS &&
+    65	+  wordCount(replacement) < JUNK_MAX_REPLACEMENT_WORDS
+    66	 
+    67	 export type DropReason =
+    68	   | 'unknown-block'
+    69	@@ -10,6 +23,7 @@ export type DropReason =
+    70	   | 'duplicate-block'
+    71	   | 'empty'
+    72	   | 'unchanged'
+    73	+  | 'junk'
+    74	   | 'over-limit'
+    75	 
+    76	 export type ValidatedEdit = ReviewEdit & { readonly block: Block }
+    77	@@ -51,6 +65,7 @@ const dropReason = (
+    78	   const replacement = edit.replacement.trim()
+    79	   if (replacement === '') return 'empty'
+    80	   if (replacement === block.text.trim()) return 'unchanged'
+    81	+  if (isJunkReplacement(block.text, replacement)) return 'junk'
+    82	   if (state.validated >= MAX_REVIEW_EDITS) return 'over-limit'
+    83	   return undefined
+    84	 }
+    85	diff --git a/src/ai/lazy-client.ts b/src/ai/lazy-client.ts
+    86	index f7b0689..a87cdb6 100644
+    87	--- a/src/ai/lazy-client.ts
+    88	+++ b/src/ai/lazy-client.ts
+    89	@@ -5,7 +5,7 @@ const LOAD_FAILED_MESSAGE =
+    90	 
+    91	 type SuggestionClient = Pick<
+    92	   ModelClient,
+    93	-  'requestSuggestion' | 'refineSuggestion'
+    94	+  'requestSuggestion' | 'refineSuggestion' | 'reviewDocument'
+    95	 >
+    96	 
+    97	 const loadFailure = {
+    98	@@ -35,5 +35,10 @@ export const createLazyModelClient = (
+    99	       const client = await get().catch(() => undefined)
+   100	       return client ? client.refineSuggestion(request) : loadFailure
+   101	     },
+   102	+    reviewDocument: async function* (request) {
+   103	+      const client = await get().catch(() => undefined)
+   104	+      if (client) yield* client.reviewDocument(request)
+   105	+      else yield { type: 'error', error: loadFailure.error }
+   106	+    },
+   107	   }
+   108	 }
+   109	diff --git a/src/editor/review-controls.ts b/src/editor/review-controls.ts
+   110	new file mode 100644
+   111	index 0000000..d5a0d30
+   112	--- /dev/null
+   113	+++ b/src/editor/review-controls.ts
+   114	@@ -0,0 +1,26 @@
+   115	+import type { EditorView } from '@codemirror/view'
+   116	+import { reviewActionsFacet } from './review-runtime'
+   117	+import {
+   118	+  acceptAllReviewSuggestions,
+   119	+  rejectAllReviewSuggestions,
+   120	+} from './suggestion-commands'
+   121	+
+   122	+export type ReviewControls = {
+   123	+  readonly start: (focus: string) => void
+   124	+  readonly stop: () => void
+   125	+  readonly acceptAll: () => void
+   126	+  readonly rejectAll: () => void
+   127	+}
+   128	+
+   129	+export const bindReviewControls = (view: EditorView): ReviewControls => ({
+   130	+  start: (focus) => view.state.facet(reviewActionsFacet)?.start(view, focus),
+   131	+  stop: () => view.state.facet(reviewActionsFacet)?.stop(view),
+   132	+  acceptAll: () => {
+   133	+    acceptAllReviewSuggestions(view)
+   134	+    view.focus()
+   135	+  },
+   136	+  rejectAll: () => {
+   137	+    rejectAllReviewSuggestions(view)
+   138	+    view.focus()
+   139	+  },
+   140	+})
+   141	diff --git a/src/editor/review-field.ts b/src/editor/review-field.ts
+   142	new file mode 100644
+   143	index 0000000..c7203b3
+   144	--- /dev/null
+   145	+++ b/src/editor/review-field.ts
+   146	@@ -0,0 +1,84 @@
+   147	+import {
+   148	+  type ChangeDesc,
+   149	+  ChangeSet,
+   150	+  type EditorState,
+   151	+  StateEffect,
+   152	+  StateField,
+   153	+} from '@codemirror/state'
+   154	+import { openReviewCount } from '../suggestions/review'
+   155	+import { suggestionsOf } from './suggestion-field'
+   156	+
+   157	+export type ReviewRun = {
+   158	+  readonly focus: string
+   159	+  readonly changes: ChangeDesc
+   160	+  readonly added: number
+   161	+  readonly dropped: number
+   162	+}
+   163	+
+   164	+export type ReviewStatus = {
+   165	+  readonly running: boolean
+   166	+  readonly added: number
+   167	+  readonly open: number
+   168	+}
+   169	+
+   170	+export const idleReviewStatus: ReviewStatus = {
+   171	+  running: false,
+   172	+  added: 0,
+   173	+  open: 0,
+   174	+}
+   175	+
+   176	+export const startReviewEffect = StateEffect.define<{
+   177	+  readonly focus: string
+   178	+}>()
+   179	+export const reviewTallyEffect = StateEffect.define<'added' | 'dropped'>()
+   180	+export const endReviewEffect = StateEffect.define<null>()
+   181	+
+   182	+const applyRunEffect =
+   183	+  (docLength: number) =>
+   184	+  (run: ReviewRun | null, effect: StateEffect<unknown>): ReviewRun | null => {
+   185	+    if (effect.is(startReviewEffect))
+   186	+      return {
+   187	+        focus: effect.value.focus,
+   188	+        changes: ChangeSet.empty(docLength).desc,
+   189	+        added: 0,
+   190	+        dropped: 0,
+   191	+      }
+   192	+    if (effect.is(endReviewEffect)) return null
+   193	+    if (run !== null && effect.is(reviewTallyEffect))
+   194	+      return effect.value === 'added'
+   195	+        ? { ...run, added: run.added + 1 }
+   196	+        : { ...run, dropped: run.dropped + 1 }
+   197	+    return run
+   198	+  }
+   199	+
+   200	+export const reviewRunField = StateField.define<ReviewRun | null>({
+   201	+  create: () => null,
+   202	+  update: (value, transaction) => {
+   203	+    const tracked =
+   204	+      value === null || !transaction.docChanged
+   205	+        ? value
+   206	+        : {
+   207	+            ...value,
+   208	+            changes: value.changes.composeDesc(transaction.changes.desc),
+   209	+          }
+   210	+    return transaction.effects.reduce(
+   211	+      applyRunEffect(transaction.newDoc.length),
+   212	+      tracked,
+   213	+    )
+   214	+  },
+   215	+})
+   216	+
+   217	+export const reviewRunOf = (state: EditorState): ReviewRun | null =>
+   218	+  state.field(reviewRunField)
+   219	+
+   220	+export const reviewStatusOf = (state: EditorState): ReviewStatus => {
+   221	+  const run = reviewRunOf(state)
+   222	+  return {
+   223	+    running: run !== null,
+   224	+    added: run?.added ?? 0,
+   225	+    open: openReviewCount(suggestionsOf(state)),
+   226	+  }
+   227	+}
+   228	+
+   229	+export const sameReviewStatus = (a: ReviewStatus, b: ReviewStatus): boolean =>
+   230	+  a.running === b.running && a.added === b.added && a.open === b.open
+   231	diff --git a/src/editor/review-runtime.ts b/src/editor/review-runtime.ts
+   232	new file mode 100644
+   233	index 0000000..0b73608
+   234	--- /dev/null
+   235	+++ b/src/editor/review-runtime.ts
+   236	@@ -0,0 +1,205 @@
+   237	+import { Facet } from '@codemirror/state'
+   238	+import { ViewPlugin } from '@codemirror/view'
+   239	+import type { ModelClient } from '../ai/client'
+   240	+import {
+   241	+  type DropReason,
+   242	+  MAX_REVIEW_EDITS,
+   243	+  type ValidatedEdit,
+   244	+} from '../ai/edits'
+   245	+import type { ClientError } from '../ai/errors'
+   246	+import {
+   247	+  occupiedBlockIds,
+   248	+  placeReviewEdit,
+   249	+  reviewNoticeText,
+   250	+  reviewSummary,
+   251	+  reviewTaskLabel,
+   252	+} from '../suggestions/review'
+   253	+import type { SuggestionId } from '../suggestions/types'
+   254	+import { blocksOf, textOf } from './current-target'
+   255	+import {
+   256	+  endReviewEffect,
+   257	+  reviewRunField,
+   258	+  reviewRunOf,
+   259	+  reviewTallyEffect,
+   260	+  startReviewEffect,
+   261	+} from './review-field'
+   262	+import type { EditorHandle } from './suggestion-commands'
+   263	+import { beginEffect, resolveEffect, suggestionsOf } from './suggestion-field'
+   264	+
+   265	+export type ReviewNotice = {
+   266	+  readonly text: string
+   267	+  readonly retry?: () => void
+   268	+}
+   269	+
+   270	+export type ReviewDropReason = DropReason | 'text-changed'
+   271	+
+   272	+export type ReviewDrop = {
+   273	+  readonly blockId: string
+   274	+  readonly reason: ReviewDropReason
+   275	+}
+   276	+
+   277	+export type ReviewActions = {
+   278	+  readonly start: (handle: EditorHandle, focus: string) => void
+   279	+  readonly stop: (handle: EditorHandle) => void
+   280	+}
+   281	+
+   282	+export const reviewActionsFacet = Facet.define<
+   283	+  ReviewActions,
+   284	+  ReviewActions | undefined
+   285	+>({ combine: (values) => values.at(-1) })
+   286	+
+   287	+type RuntimeOptions = {
+   288	+  readonly client: Pick<ModelClient, 'reviewDocument'>
+   289	+  readonly onNotice: (notice: ReviewNotice) => void
+   290	+  readonly onDrop?: (drop: ReviewDrop) => void
+   291	+  readonly createId?: () => SuggestionId
+   292	+}
+   293	+
+   294	+export const createReviewRuntime = ({
+   295	+  client,
+   296	+  onNotice,
+   297	+  onDrop,
+   298	+  createId = (() => {
+   299	+    let counter = 0
+   300	+    return () => `r${++counter}`
+   301	+  })(),
+   302	+}: RuntimeOptions) => {
+   303	+  let current: AbortController | undefined
+   304	+
+   305	+  const recordDrop = (
+   306	+    handle: EditorHandle,
+   307	+    blockId: string,
+   308	+    reason: ReviewDropReason,
+   309	+  ): void => {
+   310	+    handle.dispatch({ effects: reviewTallyEffect.of('dropped') })
+   311	+    onDrop?.({ blockId, reason })
+   312	+  }
+   313	+
+   314	+  const place = (
+   315	+    handle: EditorHandle,
+   316	+    edit: ValidatedEdit,
+   317	+    focus: string,
+   318	+  ): void => {
+   319	+    const run = reviewRunOf(handle.state)
+   320	+    if (run === null) return
+   321	+    if (run.added >= MAX_REVIEW_EDITS) {
+   322	+      recordDrop(handle, edit.blockId, 'over-limit')
+   323	+      return
+   324	+    }
+   325	+    const id = createId()
+   326	+    const placement = placeReviewEdit({
+   327	+      state: suggestionsOf(handle.state),
+   328	+      edit,
+   329	+      changes: run.changes,
+   330	+      doc: textOf(handle.state),
+   331	+      id,
+   332	+      focus,
+   333	+    })
+   334	+    if (placement.type === 'dropped') {
+   335	+      recordDrop(handle, edit.blockId, placement.reason)
+   336	+      return
+   337	+    }
+   338	+    handle.dispatch({
+   339	+      effects: [
+   340	+        beginEffect.of(placement.draft),
+   341	+        resolveEffect.of({ id, result: placement.result }),
+   342	+        reviewTallyEffect.of('added'),
+   343	+      ],
+   344	+    })
+   345	+  }
+   346	+
+   347	+  const finish = (
+   348	+    handle: EditorHandle,
+   349	+    controller: AbortController,
+   350	+    focus: string,
+   351	+    failure: ClientError | undefined,
+   352	+  ): void => {
+   353	+    if (current === controller) current = undefined
+   354	+    const added = reviewRunOf(handle.state)?.added ?? 0
+   355	+    handle.dispatch({ effects: endReviewEffect.of(null) })
+   356	+    onNotice({
+   357	+      text: reviewNoticeText({ added, error: failure }),
+   358	+      ...(failure !== undefined && { retry: () => start(handle, focus) }),
+   359	+    })
+   360	+  }
+   361	+
+   362	+  const consume = async (
+   363	+    handle: EditorHandle,
+   364	+    controller: AbortController,
+   365	+    request: Parameters<typeof client.reviewDocument>[0],
+   366	+    focus: string,
+   367	+  ): Promise<void> => {
+   368	+    let failure: ClientError | undefined
+   369	+    try {
+   370	+      for await (const event of client.reviewDocument(request)) {
+   371	+        if (controller.signal.aborted) break
+   372	+        if (event.type === 'edit') place(handle, event.edit, focus)
+   373	+        else if (event.type === 'dropped')
+   374	+          recordDrop(handle, event.edit.blockId, event.reason)
+   375	+        else {
+   376	+          failure = event.error
+   377	+          break
+   378	+        }
+   379	+      }
+   380	+    } catch (error) {
+   381	+      failure = {
+   382	+        type: 'unknown',
+   383	+        message: error instanceof Error ? error.message : String(error),
+   384	+      }
+   385	+    }
+   386	+    if (!controller.signal.aborted) finish(handle, controller, focus, failure)
+   387	+  }
+   388	+
+   389	+  const start = (handle: EditorHandle, rawFocus: string): void => {
+   390	+    if (current !== undefined || reviewRunOf(handle.state) !== null) return
+   391	+    const focus = rawFocus.trim()
+   392	+    const blocks = blocksOf(handle.state)
+   393	+    const occupied = occupiedBlockIds(suggestionsOf(handle.state), blocks)
+   394	+    if (
+   395	+      !blocks.some((block) => block.kind !== 'code' && !occupied.has(block.id))
+   396	+    ) {
+   397	+      onNotice({ text: reviewSummary({ added: 0, stopped: false }) })
+   398	+      return
+   399	+    }
+   400	+    const controller = new AbortController()
+   401	+    current = controller
+   402	+    handle.dispatch({ effects: startReviewEffect.of({ focus }) })
+   403	+    void consume(
+   404	+      handle,
+   405	+      controller,
+   406	+      {
+   407	+        blocks,
+   408	+        focus,
+   409	+        occupied,
+   410	+        task: reviewTaskLabel(focus),
+   411	+        signal: controller.signal,
+   412	+      },
+   413	+      focus,
+   414	+    )
+   415	+  }
+   416	+
+   417	+  const stop = (handle: EditorHandle): void => {
+   418	+    const controller = current
+   419	+    if (controller === undefined) return
+   420	+    current = undefined
+   421	+    controller.abort()
+   422	+    const added = reviewRunOf(handle.state)?.added ?? 0
+   423	+    handle.dispatch({ effects: endReviewEffect.of(null) })
+   424	+    onNotice({ text: reviewSummary({ added, stopped: true }) })
+   425	+  }
+   426	+
+   427	+  const actions: ReviewActions = { start, stop }
+   428	+
+   429	+  const extension = [
+   430	+    reviewRunField,
+   431	+    reviewActionsFacet.of(actions),
+   432	+    ViewPlugin.define(() => ({
+   433	+      destroy: () => {
+   434	+        current?.abort()
+   435	+        current = undefined
+   436	+      },
+   437	+    })),
+   438	+  ]
+   439	+
+   440	+  return { actions, extension }
+   441	+}
+   442	diff --git a/src/editor/suggestion-commands.ts b/src/editor/suggestion-commands.ts
+   443	index 6ff77a4..1d8b1ed 100644
+   444	--- a/src/editor/suggestion-commands.ts
+   445	+++ b/src/editor/suggestion-commands.ts
+   446	@@ -1,10 +1,13 @@
+   447	 import { isolateHistory } from '@codemirror/commands'
+   448	 import type { EditorState, TransactionSpec } from '@codemirror/state'
+   449	+import { acceptAllPlan, openReviewCount } from '../suggestions/review'
+   450	 import { findSuggestion } from '../suggestions/state'
+   451	 import type { SuggestionId } from '../suggestions/types'
+   452	 import {
+   453	   acceptEffect,
+   454	+  acceptManyEffect,
+   455	   rejectEffect,
+   456	+  rejectReviewEffect,
+   457	   suggestionAtCursor,
+   458	   suggestionsOf,
+   459	 } from './suggestion-field'
+   460	@@ -41,6 +44,24 @@ export const rejectSuggestionById = (
+   461	   return true
+   462	 }
+   463	 
+   464	+export const acceptAllReviewSuggestions = (handle: EditorHandle): boolean => {
+   465	+  const { ids, changes } = acceptAllPlan(suggestionsOf(handle.state))
+   466	+  if (ids.length === 0) return false
+   467	+  handle.dispatch({
+   468	+    changes: [...changes],
+   469	+    effects: acceptManyEffect.of(ids),
+   470	+    annotations: isolateHistory.of('full'),
+   471	+    userEvent: 'input.accept',
+   472	+  })
+   473	+  return true
+   474	+}
+   475	+
+   476	+export const rejectAllReviewSuggestions = (handle: EditorHandle): boolean => {
+   477	+  if (openReviewCount(suggestionsOf(handle.state)) === 0) return false
+   478	+  handle.dispatch({ effects: rejectReviewEffect.of(null) })
+   479	+  return true
+   480	+}
+   481	+
+   482	 export const acceptAtCursor = (handle: EditorHandle): boolean => {
+   483	   const found = suggestionAtCursor(handle.state)
+   484	   if (found === undefined) return false
+   485	diff --git a/src/editor/suggestion-field.ts b/src/editor/suggestion-field.ts
+   486	index f275592..24e2458 100644
+   487	--- a/src/editor/suggestion-field.ts
+   488	+++ b/src/editor/suggestion-field.ts
+   489	@@ -2,7 +2,7 @@ import { type EditorState, StateEffect, StateField } from '@codemirror/state'
+   490	 import type { SuggestionResult } from '../ai/edits'
+   491	 import type { ClientError } from '../ai/errors'
+   492	 import {
+   493	-  acceptSuggestion,
+   494	+  acceptSuggestions,
+   495	   activeSuggestion,
+   496	   beginRefine,
+   497	   beginSuggestion,
+   498	@@ -11,6 +11,7 @@ import {
+   499	   failRefine,
+   500	   failSuggestion,
+   501	   mapSuggestions,
+   502	+  rejectReviewSuggestions,
+   503	   rejectSuggestion,
+   504	   resolveRefine,
+   505	   resolveSuggestion,
+   506	@@ -53,6 +54,8 @@ export const retryRefineEffect = StateEffect.define<SuggestionId>()
+   507	 export const cancelRefineEffect = StateEffect.define<SuggestionId>()
+   508	 export const rejectEffect = StateEffect.define<SuggestionId>()
+   509	 export const acceptEffect = StateEffect.define<SuggestionId>()
+   510	+export const acceptManyEffect = StateEffect.define<readonly SuggestionId[]>()
+   511	+export const rejectReviewEffect = StateEffect.define<null>()
+   512	 
+   513	 const applyEffect = (
+   514	   state: SuggestionsState,
+   515	@@ -73,18 +76,24 @@ const applyEffect = (
+   516	   if (effect.is(retryRefineEffect)) return retryRefine(state, effect.value)
+   517	   if (effect.is(cancelRefineEffect)) return cancelRefine(state, effect.value)
+   518	   if (effect.is(rejectEffect)) return rejectSuggestion(state, effect.value)
+   519	+  if (effect.is(rejectReviewEffect)) return rejectReviewSuggestions(state)
+   520	   return state
+   521	 }
+   522	 
+   523	 export const suggestionsField = StateField.define<SuggestionsState>({
+   524	   create: () => emptySuggestions,
+   525	   update: (value, transaction) => {
+   526	-    const accepted = transaction.effects.find((effect) =>
+   527	-      effect.is(acceptEffect),
+   528	+    const acceptedIds = transaction.effects.flatMap((effect) =>
+   529	+      effect.is(acceptEffect)
+   530	+        ? [effect.value]
+   531	+        : effect.is(acceptManyEffect)
+   532	+          ? effect.value
+   533	+          : [],
+   534	     )
+   535	-    const mapped = accepted
+   536	-      ? acceptSuggestion(value, accepted.value, transaction.changes)
+   537	-      : mapSuggestions(value, transaction.changes)
+   538	+    const mapped =
+   539	+      acceptedIds.length > 0
+   540	+        ? acceptSuggestions(value, acceptedIds, transaction.changes)
+   541	+        : mapSuggestions(value, transaction.changes)
+   542	     return transaction.effects.reduce(applyEffect, mapped)
+   543	   },
+   544	 })
+   545	diff --git a/src/editor/suggestions.ts b/src/editor/suggestions.ts
+   546	index d731cec..24e8e16 100644
+   547	--- a/src/editor/suggestions.ts
+   548	+++ b/src/editor/suggestions.ts
+   549	@@ -5,26 +5,52 @@ import type { SuggestionNotice } from '../suggestions/types'
+   550	 import { askBubble } from './ask-bubble'
+   551	 import { interactionState } from './interaction-state'
+   552	 import { refineInputField } from './refine-input'
+   553	+import {
+   554	+  type ReviewStatus,
+   555	+  reviewStatusOf,
+   556	+  sameReviewStatus,
+   557	+} from './review-field'
+   558	+import {
+   559	+  createReviewRuntime,
+   560	+  type ReviewDrop,
+   561	+  type ReviewNotice,
+   562	+} from './review-runtime'
+   563	 import { suggestionCards } from './suggestion-cards'
+   564	 import { suggestionDecorations } from './suggestion-decorations'
+   565	 import { suggestionsField, suggestionsOf } from './suggestion-field'
+   566	 import { suggestionKeymap } from './suggestion-keymap'
+   567	 import { createSuggestionRuntime } from './suggestion-runtime'
+   568	 
+   569	+export type ReviewObserver = {
+   570	+  readonly onStatus: (status: ReviewStatus) => void
+   571	+  readonly onNotice: (notice: ReviewNotice) => void
+   572	+  readonly onDrop?: (drop: ReviewDrop) => void
+   573	+}
+   574	+
+   575	 type SuggestionExtensionOptions = {
+   576	-  readonly client: Pick<ModelClient, 'requestSuggestion' | 'refineSuggestion'>
+   577	+  readonly client: Pick<
+   578	+    ModelClient,
+   579	+    'requestSuggestion' | 'refineSuggestion' | 'reviewDocument'
+   580	+  >
+   581	   readonly onNotice: (notice: SuggestionNotice) => void
+   582	+  readonly review: ReviewObserver
+   583	 }
+   584	 
+   585	 export const suggestionExtensions = ({
+   586	   client,
+   587	   onNotice,
+   588	+  review,
+   589	 }: SuggestionExtensionOptions): readonly Extension[] => [
+   590	   suggestionsField,
+   591	   interactionState,
+   592	   askBubble,
+   593	   refineInputField,
+   594	   createSuggestionRuntime({ client }).extension,
+   595	+  createReviewRuntime({
+   596	+    client,
+   597	+    onNotice: review.onNotice,
+   598	+    onDrop: review.onDrop,
+   599	+  }).extension,
+   600	   suggestionDecorations,
+   601	   suggestionCards,
+   602	   suggestionKeymap,
+   603	@@ -33,4 +59,9 @@ export const suggestionExtensions = ({
+   604	     const after = suggestionsOf(update.state).notice
+   605	     if (after && after.serial !== before?.serial) onNotice(after)
+   606	   }),
+   607	+  EditorView.updateListener.of((update) => {
+   608	+    const before = reviewStatusOf(update.startState)
+   609	+    const after = reviewStatusOf(update.state)
+   610	+    if (!sameReviewStatus(before, after)) review.onStatus(after)
+   611	+  }),
+   612	 ]
+   613	diff --git a/src/env.d.ts b/src/env.d.ts
+   614	index 5f4e597..c27bcd6 100644
+   615	--- a/src/env.d.ts
+   616	+++ b/src/env.d.ts
+   617	@@ -3,4 +3,5 @@ declare const __OPENROUTER_MODEL__: string
+   618	 
+   619	 interface Window {
+   620	   __aiCalls?: import('./ai/records').AiCallRecord[]
+   621	+  __reviewDrops?: import('./ai/dev-log').ReviewDropEntry[]
+   622	 }
+   623	diff --git a/src/suggestions/review.ts b/src/suggestions/review.ts
+   624	new file mode 100644
+   625	index 0000000..0652ced
+   626	--- /dev/null
+   627	+++ b/src/suggestions/review.ts
+   628	@@ -0,0 +1,168 @@
+   629	+import type { ChangeDesc } from '@codemirror/state'
+   630	+import type { SuggestionResult, ValidatedEdit } from '../ai/edits'
+   631	+import type { ClientError } from '../ai/errors'
+   632	+import type { Block } from '../blocks/extract-blocks'
+   633	+import { describeError } from './error-message'
+   634	+import type {
+   635	+  Instruction,
+   636	+  ReadySuggestion,
+   637	+  SuggestionDraft,
+   638	+  SuggestionId,
+   639	+  SuggestionsState,
+   640	+} from './types'
+   641	+
+   642	+export const DEFAULT_REVIEW_FOCUS =
+   643	+  'Review for clarity, concision, grammar and tone consistency.'
+   644	+
+   645	+export const reviewInstruction = (focus: string): Instruction => ({
+   646	+  type: 'free-text',
+   647	+  text: focus.trim() === '' ? DEFAULT_REVIEW_FOCUS : focus.trim(),
+   648	+})
+   649	+
+   650	+type Range = { readonly from: number; readonly to: number }
+   651	+
+   652	+const overlaps = (a: Range, b: Range): boolean => a.from < b.to && b.from < a.to
+   653	+
+   654	+export const occupiedBlockIds = (
+   655	+  state: SuggestionsState,
+   656	+  blocks: readonly Block[],
+   657	+): ReadonlySet<string> =>
+   658	+  new Set(
+   659	+    blocks
+   660	+      .filter((block) => state.items.some((item) => overlaps(item, block)))
+   661	+      .map((block) => block.id),
+   662	+  )
+   663	+
+   664	+const touchesInterior = (range: Range, changes: ChangeDesc): boolean => {
+   665	+  let touched = false
+   666	+  changes.iterChangedRanges((fromA, toA) => {
+   667	+    if (fromA < range.to && toA > range.from) touched = true
+   668	+  })
+   669	+  return touched
+   670	+}
+   671	+
+   672	+export const mapBlockRange = (
+   673	+  block: Range,
+   674	+  changes: ChangeDesc,
+   675	+): Range | null =>
+   676	+  touchesInterior(block, changes)
+   677	+    ? null
+   678	+    : { from: changes.mapPos(block.from, 1), to: changes.mapPos(block.to, -1) }
+   679	+
+   680	+export type PlaceReviewEditInput = {
+   681	+  readonly state: SuggestionsState
+   682	+  readonly edit: ValidatedEdit
+   683	+  readonly changes: ChangeDesc
+   684	+  readonly doc: string
+   685	+  readonly id: SuggestionId
+   686	+  readonly focus: string
+   687	+}
+   688	+
+   689	+export type ReviewPlacement =
+   690	+  | {
+   691	+      readonly type: 'placed'
+   692	+      readonly draft: SuggestionDraft
+   693	+      readonly result: SuggestionResult
+   694	+    }
+   695	+  | {
+   696	+      readonly type: 'dropped'
+   697	+      readonly reason: 'text-changed' | 'occupied'
+   698	+    }
+   699	+
+   700	+export const placeReviewEdit = ({
+   701	+  state,
+   702	+  edit,
+   703	+  changes,
+   704	+  doc,
+   705	+  id,
+   706	+  focus,
+   707	+}: PlaceReviewEditInput): ReviewPlacement => {
+   708	+  const range = mapBlockRange(edit.block, changes)
+   709	+  if (range === null || doc.slice(range.from, range.to) !== edit.block.text)
+   710	+    return { type: 'dropped', reason: 'text-changed' }
+   711	+  if (state.items.some((item) => overlaps(item, range)))
+   712	+    return { type: 'dropped', reason: 'occupied' }
+   713	+  return {
+   714	+    type: 'placed',
+   715	+    draft: {
+   716	+      id,
+   717	+      ...range,
+   718	+      source: 'block',
+   719	+      original: edit.block.text,
+   720	+      instruction: reviewInstruction(focus),
+   721	+      origin: 'review',
+   722	+    },
+   723	+    result: {
+   724	+      replacement: edit.replacement,
+   725	+      rationale: edit.rationale,
+   726	+      unchanged: false,
+   727	+    },
+   728	+  }
+   729	+}
+   730	+
+   731	+const readyReviewSuggestions = (
+   732	+  state: SuggestionsState,
+   733	+): readonly ReadySuggestion[] =>
+   734	+  state.items.filter(
+   735	+    (item): item is ReadySuggestion =>
+   736	+      item.status === 'ready' && item.origin === 'review',
+   737	+  )
+   738	+
+   739	+export const openReviewCount = (state: SuggestionsState): number =>
+   740	+  readyReviewSuggestions(state).length
+   741	+
+   742	+export type AcceptAllPlan = {
+   743	+  readonly ids: readonly SuggestionId[]
+   744	+  readonly changes: readonly {
+   745	+    readonly from: number
+   746	+    readonly to: number
+   747	+    readonly insert: string
+   748	+  }[]
+   749	+}
+   750	+
+   751	+export const acceptAllPlan = (state: SuggestionsState): AcceptAllPlan => {
+   752	+  const ordered = [...readyReviewSuggestions(state)].sort(
+   753	+    (a, b) => a.from - b.from,
+   754	+  )
+   755	+  return {
+   756	+    ids: ordered.map((item) => item.id),
+   757	+    changes: ordered.map(({ from, to, replacement }) => ({
+   758	+      from,
+   759	+      to,
+   760	+      insert: replacement,
+   761	+    })),
+   762	+  }
+   763	+}
+   764	+
+   765	+const pluralize = (count: number): string =>
+   766	+  count === 0
+   767	+    ? 'no suggestions'
+   768	+    : count === 1
+   769	+      ? '1 suggestion'
+   770	+      : `${count} suggestions`
+   771	+
+   772	+export const reviewSummary = ({
+   773	+  added,
+   774	+  stopped,
+   775	+}: {
+   776	+  readonly added: number
+   777	+  readonly stopped: boolean
+   778	+}): string => `Review${stopped ? ' stopped' : ''}: ${pluralize(added)}`
+   779	+
+   780	+export const reviewTaskLabel = (focus: string): string =>
+   781	+  focus.trim() === ''
+   782	+    ? 'review document → default criteria'
+   783	+    : `review document → focus: ${focus.trim()}`
+   784	+
+   785	+export const reviewNoticeText = ({
+   786	+  added,
+   787	+  error,
+   788	+}: {
+   789	+  readonly added: number
+   790	+  readonly error?: ClientError
+   791	+}): string =>
+   792	+  error === undefined
+   793	+    ? reviewSummary({ added, stopped: false })
+   794	+    : added === 0
+   795	+      ? describeError(error)
+   796	+      : `${reviewSummary({ added, stopped: false })}. ${describeError(error)}`
+   797	diff --git a/src/suggestions/state.ts b/src/suggestions/state.ts
+   798	index 85d9009..1976563 100644
+   799	--- a/src/suggestions/state.ts
+   800	+++ b/src/suggestions/state.ts
+   801	@@ -63,7 +63,12 @@ export const beginSuggestion = (
+   802	     ...state,
+   803	     items: [
+   804	       ...survivors,
+   805	-      { ...draft, status: 'pending', sequence: state.nextSequence },
+   806	+      {
+   807	+        ...draft,
+   808	+        origin: draft.origin ?? 'ask',
+   809	+        status: 'pending',
+   810	+        sequence: state.nextSequence,
+   811	+      },
+   812	     ],
+   813	     nextSequence: state.nextSequence + 1,
+   814	   }
+   815	@@ -222,6 +227,21 @@ export const rejectSuggestion = (
+   816	 ): SuggestionsState =>
+   817	   findSuggestion(state, id) === undefined ? state : without(state, id)
+   818	 
+   819	+export const rejectSuggestions = (
+   820	+  state: SuggestionsState,
+   821	+  ids: readonly SuggestionId[],
+   822	+): SuggestionsState => {
+   823	+  const items = state.items.filter((item) => !ids.includes(item.id))
+   824	+  return items.length === state.items.length ? state : { ...state, items }
+   825	+}
+   826	+
+   827	+export const rejectReviewSuggestions = (
+   828	+  state: SuggestionsState,
+   829	+): SuggestionsState => {
+   830	+  const items = state.items.filter((item) => item.origin !== 'review')
+   831	+  return items.length === state.items.length ? state : { ...state, items }
+   832	+}
+   833	+
+   834	 export const discardSuggestion = (
+   835	   state: SuggestionsState,
+   836	   id: SuggestionId,
+   837	@@ -260,11 +280,17 @@ export const mapSuggestions = (
+   838	     : withNotice(next, 'text-changed')
+   839	 }
+   840	 
+   841	+export const acceptSuggestions = (
+   842	+  state: SuggestionsState,
+   843	+  ids: readonly SuggestionId[],
+   844	+  changes: ChangeDesc,
+   845	+): SuggestionsState => mapSuggestions(rejectSuggestions(state, ids), changes)
+   846	+
+   847	 export const acceptSuggestion = (
+   848	   state: SuggestionsState,
+   849	   id: SuggestionId,
+   850	   changes: ChangeDesc,
+   851	-): SuggestionsState => mapSuggestions(without(state, id), changes)
+   852	+): SuggestionsState => acceptSuggestions(state, [id], changes)
+   853	 
+   854	 const isInFlight = (item: Suggestion): boolean =>
+   855	   item.status === 'pending' ||
+   856	diff --git a/src/suggestions/types.ts b/src/suggestions/types.ts
+   857	index b467a4e..3f37580 100644
+   858	--- a/src/suggestions/types.ts
+   859	+++ b/src/suggestions/types.ts
+   860	@@ -6,6 +6,8 @@ export type SuggestionId = string
+   861	 
+   862	 export type TargetSource = 'selection' | 'block'
+   863	 
+   864	+export type SuggestionOrigin = 'ask' | 'review'
+   865	+
+   866	 export type Instruction =
+   867	   | {
+   868	       readonly type: 'quick-action'
+   869	@@ -23,6 +25,7 @@ export type SuggestionBase = {
+   870	   readonly original: string
+   871	   readonly instruction: Instruction
+   872	   readonly sequence: number
+   873	+  readonly origin: SuggestionOrigin
+   874	 }
+   875	 
+   876	 export type PendingSuggestion = SuggestionBase & {
+   877	@@ -80,4 +83,5 @@ export type SuggestionDraft = {
+   878	   readonly source: TargetSource
+   879	   readonly original: string
+   880	   readonly instruction: Instruction
+   881	+  readonly origin?: SuggestionOrigin
+   882	 }
+   883	diff --git a/src/ui/App.tsx b/src/ui/App.tsx
+   884	index 9dbd58a..9fcb867 100644
+   885	--- a/src/ui/App.tsx
+   886	+++ b/src/ui/App.tsx
+   887	@@ -1,9 +1,14 @@
+   888	-import { useCallback, useState } from 'react'
+   889	+import { useCallback, useRef, useState } from 'react'
+   890	+import type { ReviewControls } from '../editor/review-controls'
+   891	+import { idleReviewStatus, type ReviewStatus } from '../editor/review-field'
+   892	+import type { ReviewNotice } from '../editor/review-runtime'
+   893	+import { noticeMessage } from '../suggestions/notice'
+   894	 import type { SuggestionNotice } from '../suggestions/types'
+   895	 import { EditorPane } from './EditorPane'
+   896	 import { Hint } from './Hint'
+   897	 import { MissingKeyBanner } from './MissingKeyBanner'
+   898	-import { Toast } from './Toast'
+   899	+import { ReviewToolbar } from './ReviewToolbar'
+   900	+import { Toast, type ToastMessage } from './Toast'
+   901	 
+   902	 type AppProps = {
+   903	   readonly initialDoc: string
+   904	@@ -12,25 +17,54 @@ type AppProps = {
+   905	 }
+   906	 
+   907	 export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
+   908	-  const [notice, setNotice] = useState<SuggestionNotice | null>(null)
+   909	-  const dismissNotice = useCallback(() => setNotice(null), [])
+   910	+  const [toast, setToast] = useState<ToastMessage | null>(null)
+   911	+  const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
+   912	+  const [controls, setControls] = useState<ReviewControls | null>(null)
+   913	+  const toastId = useRef(0)
+   914	+  const dismissToast = useCallback(() => setToast(null), [])
+   915	+
+   916	+  const showToast = useCallback(
+   917	+    (text: string, retry?: () => void) =>
+   918	+      setToast({
+   919	+        id: ++toastId.current,
+   920	+        text,
+   921	+        ...(retry && { action: { label: 'Retry', run: retry } }),
+   922	+      }),
+   923	+    [],
+   924	+  )
+   925	+  const onNotice = useCallback(
+   926	+    (notice: SuggestionNotice) => showToast(noticeMessage(notice.kind)),
+   927	+    [showToast],
+   928	+  )
+   929	+  const onReviewNotice = useCallback(
+   930	+    (notice: ReviewNotice) => showToast(notice.text, notice.retry),
+   931	+    [showToast],
+   932	+  )
+   933	 
+   934	   return (
+   935	     <div className="min-h-screen">
+   936	-      <header className="mx-auto flex max-w-3xl flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-6 pt-8 pb-4">
+   937	-        <h1 className="font-display font-semibold text-2xl text-ink-strong tracking-wide">
+   938	-          Chiri
+   939	-        </h1>
+   940	-        <Hint />
+   941	+      <header className="sticky top-0 z-30 bg-canvas">
+   942	+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 pt-6 pb-3">
+   943	+          <h1 className="font-display font-semibold text-2xl text-ink-strong tracking-wide">
+   944	+            Chiri
+   945	+          </h1>
+   946	+          <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
+   947	+            <Hint />
+   948	+            <ReviewToolbar status={review} controls={controls} />
+   949	+          </div>
+   950	+        </div>
+   951	       </header>
+   952	       <main className="mx-auto max-w-3xl px-6 pt-4 pb-40">
+   953	         <EditorPane
+   954	           initialDoc={initialDoc}
+   955	           onChange={onDocumentChange}
+   956	-          onNotice={setNotice}
+   957	+          onNotice={onNotice}
+   958	+          onReviewStatus={setReview}
+   959	+          onReviewNotice={onReviewNotice}
+   960	+          onReviewControls={setControls}
+   961	         />
+   962	       </main>
+   963	-      <Toast notice={notice} onDismiss={dismissNotice} />
+   964	+      <Toast message={toast} onDismiss={dismissToast} />
+   965	       {hasApiKey ? null : <MissingKeyBanner />}
+   966	     </div>
+   967	   )
+   968	diff --git a/src/ui/EditorPane.tsx b/src/ui/EditorPane.tsx
+   969	index e1fb2fd..032b6e1 100644
+   970	--- a/src/ui/EditorPane.tsx
+   971	+++ b/src/ui/EditorPane.tsx
+   972	@@ -1,6 +1,13 @@
+   973	 import { useEffect, useRef } from 'react'
+   974	+import { appendReviewDrop } from '../ai/dev-log'
+   975	 import { createLazyModelClient } from '../ai/lazy-client'
+   976	 import { createEditorView } from '../editor/create-editor-view'
+   977	+import {
+   978	+  bindReviewControls,
+   979	+  type ReviewControls,
+   980	+} from '../editor/review-controls'
+   981	+import type { ReviewStatus } from '../editor/review-field'
+   982	+import type { ReviewNotice } from '../editor/review-runtime'
+   983	 import { suggestionExtensions } from '../editor/suggestions'
+   984	 import type { SuggestionNotice } from '../suggestions/types'
+   985	 
+   986	@@ -8,22 +15,38 @@ type EditorPaneProps = {
+   987	   readonly initialDoc: string
+   988	   readonly onChange: (doc: string) => void
+   989	   readonly onNotice: (notice: SuggestionNotice) => void
+   990	+  readonly onReviewStatus: (status: ReviewStatus) => void
+   991	+  readonly onReviewNotice: (notice: ReviewNotice) => void
+   992	+  readonly onReviewControls: (controls: ReviewControls | null) => void
+   993	 }
+   994	 
+   995	 export function EditorPane({
+   996	   initialDoc,
+   997	   onChange,
+   998	   onNotice,
+   999	+  onReviewStatus,
+  1000	+  onReviewNotice,
+  1001	+  onReviewControls,
+  1002	 }: EditorPaneProps) {
+  1003	   const parentRef = useRef<HTMLDivElement>(null)
+  1004	   const initialDocRef = useRef(initialDoc)
+  1005	-  const onChangeRef = useRef(onChange)
+  1006	-  const onNoticeRef = useRef(onNotice)
+  1007	+  const handlersRef = useRef({
+  1008	+    onChange,
+  1009	+    onNotice,
+  1010	+    onReviewStatus,
+  1011	+    onReviewNotice,
+  1012	+    onReviewControls,
+  1013	+  })
+  1014	 
+  1015	   useEffect(() => {
+  1016	-    onChangeRef.current = onChange
+  1017	-    onNoticeRef.current = onNotice
+  1018	-  }, [onChange, onNotice])
+  1019	+    handlersRef.current = {
+  1020	+      onChange,
+  1021	+      onNotice,
+  1022	+      onReviewStatus,
+  1023	+      onReviewNotice,
+  1024	+      onReviewControls,
+  1025	+    }
+  1026	+  }, [onChange, onNotice, onReviewStatus, onReviewNotice, onReviewControls])
+  1027	 
+  1028	   useEffect(() => {
+  1029	     const parent = parentRef.current
+  1030	@@ -31,17 +54,28 @@ export function EditorPane({
+  1031	     const view = createEditorView({
+  1032	       parent,
+  1033	       doc: initialDocRef.current,
+  1034	-      onChange: (doc) => onChangeRef.current(doc),
+  1035	+      onChange: (doc) => handlersRef.current.onChange(doc),
+  1036	       extensions: suggestionExtensions({
+  1037	         client: createLazyModelClient(() =>
+  1038	           import('../ai/browser-client').then((module) =>
+  1039	             module.createBrowserModelClient(),
+  1040	           ),
+  1041	         ),
+  1042	-        onNotice: (notice) => onNoticeRef.current(notice),
+  1043	+        onNotice: (notice) => handlersRef.current.onNotice(notice),
+  1044	+        review: {
+  1045	+          onStatus: (status) => handlersRef.current.onReviewStatus(status),
+  1046	+          onNotice: (notice) => handlersRef.current.onReviewNotice(notice),
+  1047	+          ...(import.meta.env.DEV && {
+  1048	+            onDrop: (drop) => appendReviewDrop(window, drop),
+  1049	+          }),
+  1050	+        },
+  1051	       }),
+  1052	     })
+  1053	-    return () => view.destroy()
+  1054	+    handlersRef.current.onReviewControls(bindReviewControls(view))
+  1055	+    return () => {
+  1056	+      handlersRef.current.onReviewControls(null)
+  1057	+      view.destroy()
+  1058	+    }
+  1059	   }, [])
+  1060	 
+  1061	   return <div ref={parentRef} />
+  1062	diff --git a/src/ui/ReviewToolbar.tsx b/src/ui/ReviewToolbar.tsx
+  1063	new file mode 100644
+  1064	index 0000000..b1e5686
+  1065	--- /dev/null
+  1066	+++ b/src/ui/ReviewToolbar.tsx
+  1067	@@ -0,0 +1,143 @@
+  1068	+import { useEffect, useId, useRef, useState } from 'react'
+  1069	+import type { ReviewControls } from '../editor/review-controls'
+  1070	+import type { ReviewStatus } from '../editor/review-field'
+  1071	+
+  1072	+type ReviewToolbarProps = {
+  1073	+  readonly status: ReviewStatus
+  1074	+  readonly controls: ReviewControls | null
+  1075	+}
+  1076	+
+  1077	+const FOCUS_PLACEHOLDER = 'Focus (optional): tone, concision…'
+  1078	+
+  1079	+const progressLabel = (added: number): string =>
+  1080	+  added === 0
+  1081	+    ? 'Reviewing…'
+  1082	+    : `Reviewing… ${added} ${added === 1 ? 'suggestion' : 'suggestions'}`
+  1083	+
+  1084	+export function ReviewToolbar({ status, controls }: ReviewToolbarProps) {
+  1085	+  const [open, setOpen] = useState(false)
+  1086	+  const [focus, setFocus] = useState('')
+  1087	+  const rootRef = useRef<HTMLDivElement>(null)
+  1088	+  const triggerRef = useRef<HTMLButtonElement>(null)
+  1089	+  const inputRef = useRef<HTMLInputElement>(null)
+  1090	+  const popoverId = useId()
+  1091	+  const wasRunning = useRef(false)
+  1092	+
+  1093	+  useEffect(() => {
+  1094	+    if (
+  1095	+      wasRunning.current &&
+  1096	+      !status.running &&
+  1097	+      document.activeElement === document.body
+  1098	+    )
+  1099	+      triggerRef.current?.focus()
+  1100	+    wasRunning.current = status.running
+  1101	+  }, [status.running])
+  1102	+
+  1103	+  useEffect(() => {
+  1104	+    if (open) inputRef.current?.focus()
+  1105	+  }, [open])
+  1106	+
+  1107	+  useEffect(() => {
+  1108	+    if (!open) return undefined
+  1109	+    const onPointerDown = (event: PointerEvent): void => {
+  1110	+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+  1111	+    }
+  1112	+    document.addEventListener('pointerdown', onPointerDown)
+  1113	+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  1114	+  }, [open])
+  1115	+
+  1116	+  const close = (): void => {
+  1117	+    setOpen(false)
+  1118	+    triggerRef.current?.focus()
+  1119	+  }
+  1120	+
+  1121	+  const submit = (): void => {
+  1122	+    controls?.start(focus.trim())
+  1123	+    setFocus('')
+  1124	+    setOpen(false)
+  1125	+  }
+  1126	+
+  1127	+  return (
+  1128	+    <div
+  1129	+      ref={rootRef}
+  1130	+      className="relative flex flex-wrap items-center justify-end gap-2 text-sm"
+  1131	+    >
+  1132	+      {status.open > 0 ? (
+  1133	+        <>
+  1134	+          <button
+  1135	+            type="button"
+  1136	+            className="cm-ai-button"
+  1137	+            onClick={() => controls?.acceptAll()}
+  1138	+          >
+  1139	+            Accept all
+  1140	+          </button>
+  1141	+          <button
+  1142	+            type="button"
+  1143	+            className="cm-ai-button"
+  1144	+            onClick={() => controls?.rejectAll()}
+  1145	+          >
+  1146	+            Reject all
+  1147	+          </button>
+  1148	+        </>
+  1149	+      ) : null}
+  1150	+      {status.running ? (
+  1151	+        <button
+  1152	+          type="button"
+  1153	+          className="cm-ai-button"
+  1154	+          aria-busy="true"
+  1155	+          title="Stop the Review pass"
+  1156	+          onClick={() => controls?.stop()}
+  1157	+        >
+  1158	+          {progressLabel(status.added)}
+  1159	+          <span className="ml-2 text-ink-strong">Stop</span>
+  1160	+        </button>
+  1161	+      ) : (
+  1162	+        <button
+  1163	+          ref={triggerRef}
+  1164	+          type="button"
+  1165	+          className="cm-ai-button"
+  1166	+          aria-haspopup="dialog"
+  1167	+          aria-expanded={open}
+  1168	+          aria-controls={open ? popoverId : undefined}
+  1169	+          disabled={controls === null}
+  1170	+          onClick={() => setOpen((value) => !value)}
+  1171	+        >
+  1172	+          Review
+  1173	+        </button>
+  1174	+      )}
+  1175	+      {open && !status.running ? (
+  1176	+        <form
+  1177	+          id={popoverId}
+  1178	+          role="dialog"
+  1179	+          aria-label="Review the Document"
+  1180	+          className="absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 rounded-xl border border-border bg-surface p-2 shadow-lg"
+  1181	+          onSubmit={(event) => {
+  1182	+            event.preventDefault()
+  1183	+            submit()
+  1184	+          }}
+  1185	+          onKeyDown={(event) => {
+  1186	+            if (event.key !== 'Escape') return
+  1187	+            event.preventDefault()
+  1188	+            event.stopPropagation()
+  1189	+            close()
+  1190	+          }}
+  1191	+        >
+  1192	+          <input
+  1193	+            ref={inputRef}
+  1194	+            type="text"
+  1195	+            className="cm-ai-bubble-input"
+  1196	+            placeholder={FOCUS_PLACEHOLDER}
+  1197	+            aria-label="Focus (optional)"
+  1198	+            autoComplete="off"
+  1199	+            spellCheck={false}
+  1200	+            value={focus}
