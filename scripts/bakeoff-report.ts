@@ -461,7 +461,7 @@ export const renderBakeoffReport = ({
     `Run on ${date} by \`pnpm bakeoff\`, which uses the same client and prompts as the app ([ADR 0010](adr/0010-model-bakeoff.md)).`,
     '',
     `- Input: the ${documentName}; ${quick.length} Quick actions on fixed Targets plus ${review.length} Review pass without Focus.`,
-    '- Settings for every model: strict JSON schema, `provider.require_parameters: true`, reasoning effort `low`, 30 s timeout for Target requests and 60 s for the Review pass, one silent retry on invalid output, models called one after another.',
+    '- Settings for every model: strict JSON schema, `provider.require_parameters: true`, reasoning effort `low`, 30 s timeout, one silent retry on invalid output, models called one after another.',
     '- The sample Document is English, so a Rationale in another language is a slip of the model (rule 5 of [ADR 0006](adr/0006-context-and-prompt-rules.md)). "Rationale not in English" is a heuristic count, read the outputs to confirm.',
     '- Latencies are client wall time per request, including the silent retry when there was one. Cost comes from the OpenRouter `usage.cost` of each call.',
     `- **Total cost: US$${usd(total)}** of the US$${budgetUsd.toFixed(2)} Bake-off budget.`,
