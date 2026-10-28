@@ -8,9 +8,9 @@ export type InteractionState = {
   readonly hoveredId: SuggestionId | null
 }
 
-const pointerEffect = StateEffect.define<boolean>()
-const focusEffect = StateEffect.define<boolean>()
-const hoverEffect = StateEffect.define<SuggestionId | null>()
+export const pointerEffect = StateEffect.define<boolean>()
+export const focusEffect = StateEffect.define<boolean>()
+export const hoverEffect = StateEffect.define<SuggestionId | null>()
 
 const applyInteraction = (
   state: InteractionState,
