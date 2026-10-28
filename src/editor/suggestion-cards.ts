@@ -9,7 +9,7 @@ import {
 import { describeError } from '../suggestions/error-message'
 import { freeTextInstruction } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
-import type { ReadySuggestion } from '../suggestions/types'
+import type { ReadySuggestion, SuggestionId } from '../suggestions/types'
 import { detectApplePlatform, formatShortcut } from '../ui/platform'
 import { el } from './dom'
 import { interactionField } from './interaction-state'
@@ -207,16 +207,26 @@ const refineButton = (
         { refocus: refineOpen, expanded: refineOpen },
       )
 
-const refineError = (view: EditorView, { refine, id }: ReadySuggestion) =>
+const refineError = (
+  view: EditorView,
+  { refine, id }: ReadySuggestion,
+  withRetry: boolean,
+) =>
   refine.status === 'failed'
     ? [
         el('div', { class: 'cm-ai-card-error', attrs: { role: 'alert' } }, [
           el('span', { class: 'cm-ai-error-message' }, [
             describeError(refine.error),
           ]),
-          actionButton(view, 'Retry', undefined, () =>
-            view.state.facet(suggestionActionsFacet)?.retryRefine(view, id),
-          ),
+          ...(withRetry
+            ? [
+                actionButton(view, 'Retry', undefined, () =>
+                  view.state
+                    .facet(suggestionActionsFacet)
+                    ?.retryRefine(view, id),
+                ),
+              ]
+            : []),
         ]),
       ]
     : []
@@ -243,9 +253,9 @@ const renderCard = (
             refineButton(view, content),
           ]),
           ...(refineOpen ? [form] : []),
-          ...refineError(view, suggestion),
         ]
       : []),
+    ...refineError(view, suggestion, showActions),
   ]
 }
 
@@ -269,7 +279,15 @@ const cardCreator =
       },
     })
     let renderedKey = ''
+    let formOwner: SuggestionId | null = null
+    const syncFormOwner = (state: EditorState): void => {
+      const next = refineInputOpenFor(state)
+      if (next === formOwner) return
+      formOwner = next
+      refineForm.input.value = ''
+    }
     const sync = (state: EditorState): void => {
+      syncFormOwner(state)
       const content = contentFor(kind, state)
       if (!content) return
       const key = contentKey(content)

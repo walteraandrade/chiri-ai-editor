@@ -12,7 +12,11 @@ import {
   type EditorHandle,
   rejectAtCursor,
 } from './suggestion-commands'
-import { activeAtCursor } from './suggestion-field'
+import {
+  activeAtCursor,
+  cancelRefineEffect,
+  suggestionAtCursor,
+} from './suggestion-field'
 
 const openAsk = (handle: EditorHandle): boolean => {
   if (currentTarget(handle.state) === undefined) return false
@@ -20,19 +24,25 @@ const openAsk = (handle: EditorHandle): boolean => {
   return true
 }
 
-const openRefine = (handle: EditorHandle): boolean => {
+export const openAskOrRefine = (handle: EditorHandle): boolean => {
   const active = activeAtCursor(handle.state)
-  if (active === undefined || !handle.state.selection.main.empty) return false
+  if (active === undefined || !handle.state.selection.main.empty)
+    return openAsk(handle)
+  if (active.refine.status === 'working') return false
   handle.dispatch({ effects: openRefineEffect.of(active.id) })
   return true
 }
 
-export const openAskOrRefine = (handle: EditorHandle): boolean =>
-  openRefine(handle) || openAsk(handle)
-
 const closeRefineInput = (handle: EditorHandle): boolean => {
   if (refineInputOpenFor(handle.state) === null) return false
   handle.dispatch({ effects: closeRefineEffect.of(null) })
+  return true
+}
+
+const cancelRefineAtCursor = (handle: EditorHandle): boolean => {
+  const found = suggestionAtCursor(handle.state)
+  if (found?.status !== 'ready' || found.refine.status === 'idle') return false
+  handle.dispatch({ effects: cancelRefineEffect.of(found.id) })
   return true
 }
 
@@ -43,7 +53,10 @@ const dismissBubble = (handle: EditorHandle): boolean => {
 }
 
 export const escapeAtCursor = (handle: EditorHandle): boolean =>
-  dismissBubble(handle) || closeRefineInput(handle) || rejectAtCursor(handle)
+  dismissBubble(handle) ||
+  closeRefineInput(handle) ||
+  cancelRefineAtCursor(handle) ||
+  rejectAtCursor(handle)
 
 export const suggestionKeymap = Prec.highest(
   keymap.of([

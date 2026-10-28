@@ -6,6 +6,7 @@ import {
   activeSuggestion,
   beginRefine,
   beginSuggestion,
+  cancelRefine,
   emptySuggestions,
   failRefine,
   failSuggestion,
@@ -49,6 +50,7 @@ export const failRefineEffect = StateEffect.define<{
   readonly error: ClientError
 }>()
 export const retryRefineEffect = StateEffect.define<SuggestionId>()
+export const cancelRefineEffect = StateEffect.define<SuggestionId>()
 export const rejectEffect = StateEffect.define<SuggestionId>()
 export const acceptEffect = StateEffect.define<SuggestionId>()
 
@@ -69,6 +71,7 @@ const applyEffect = (
   if (effect.is(failRefineEffect))
     return failRefine(state, effect.value.id, effect.value.error)
   if (effect.is(retryRefineEffect)) return retryRefine(state, effect.value)
+  if (effect.is(cancelRefineEffect)) return cancelRefine(state, effect.value)
   if (effect.is(rejectEffect)) return rejectSuggestion(state, effect.value)
   return state
 }

@@ -181,6 +181,16 @@ export const retryRefine = (
     : state
 }
 
+export const cancelRefine = (
+  state: SuggestionsState,
+  id: SuggestionId,
+): SuggestionsState => {
+  const found = findReady(state, id)
+  return found === undefined || found.refine.status === 'idle'
+    ? state
+    : replaceItem(state, { ...found, refine: { status: 'idle' } })
+}
+
 export const instructionHistory = (
   suggestion: ReadySuggestion,
 ): readonly string[] => suggestion.history.map((step) => step.instruction.text)

@@ -12,7 +12,7 @@ Issue [#4](https://github.com/walteraandrade/chiri-ai-editor/issues/4). Checked 
 | The model gets the original, the Neighbors, every previous Instruction and the latest Replacement | Pass | The body of the third Refine (read from the wrapped `fetch`): `<original>` is the untouched paragraph, `<context-before>` and `<context-after>` hold the Neighbors, "Previous instructions, oldest first" lists the Shorter Quick action text, "make it shorter" and "now more formal", `<latest-replacement>` is the output of the second Refine, then "New instruction: drop the adjectives". Task labels read `refine p3 → now more formal` |
 | While refining, the Replacement stays visible and shows that it is working | Pass | [4-3](img/4-3.png) and [4-10](img/4-10.png): the Replacement keeps showing, a slow shimmer runs over the inserted text, and the toolbar button reads "Refining…" (disabled, `aria-busy`). Word-level diffs shimmer on each inserted word. Under `prefers-reduced-motion` the CSS falls back to a static tint (not exercised in the browser) |
 | Accept after Refine applies the latest Replacement, `Ctrl+Z` restores the original | Pass | After two Refines and a third, `Ctrl+Enter`: the paragraph is the latest Replacement, no Suggestion left, [4-9](img/4-9.png). `Ctrl+Z` gave back the exact original Document string |
-| Accept and Reject still work during a Refine and abort it | Pass | Reject (`Esc`) during a Refine: Suggestion gone, no notice, Document unchanged, request aborted (`aborted` in the record). Accept (`Ctrl+Enter`) during a Refine: the current Replacement is applied, [4-12](img/4-12.png), request aborted, `Ctrl+Z` restores the original |
+| Accept and Reject still work during a Refine and abort it | Pass | Cancel (`Esc`) during a Refine: the first `Esc` cancels the Refine and aborts the request (`aborted` in the record), the Suggestion keeps its Replacement; the second `Esc` Rejects it, no notice, Document unchanged. The same two-step `Esc` dismisses the error of a failed Refine (see the review re-check below). Accept (`Ctrl+Enter`) during a Refine: the current Replacement is applied, [4-12](img/4-12.png), request aborted, `Ctrl+Z` restores the original |
 | Typing inside the Suggestion during a Refine Discards it with the notice and aborts the request | Pass | [4-10](img/4-10.png) then [4-11](img/4-11.png): one key inside the range, toast "Suggestion discarded: the text changed", the in-flight request's `AbortSignal` was aborted, the record says `aborted` |
 | A failed Refine shows Retry without losing the current Replacement | Pass | Network failure: [4-6](img/4-6.png). The error sits inside the toolbar card, the struck original, the Replacement and the Rationale are unchanged, Accept / Reject / Refine are still there. Retry failing again with a 402 body gives the own message, [4-7](img/4-7.png). Retry again with the real model: the Suggestion updates in place, [4-8](img/4-8.png), and the request body lists the earlier Instructions without the two failed attempts |
 | "No change suggested" when a Refine returns the current Replacement | Pass | A stubbed answer equal to the Replacement: toast "No change suggested", Replacement and Rationale kept, the Suggestion is idle again, [4-13](img/4-13.png) |
@@ -37,6 +37,8 @@ Issue [#4](https://github.com/walteraandrade/chiri-ai-editor/issues/4). Checked 
 | [4-12](img/4-12.png) | Accept during a Refine: the current Replacement applied |
 | [4-13](img/4-13.png) | "No change suggested" after a Refine that repeats the Replacement |
 | [4-14](img/4-14.png) | Input with text kept after a card re-render |
+| [4-15](img/4-15.png) | Review re-check: a failed Refine on a non-Active Suggestion (dotted underline) with its error in the hover card |
+| [4-16](img/4-16.png) | Review re-check: Refine in flight on a deletion-only diff, shimmer on the struck words |
 
 ## How the checks were driven
 
@@ -70,3 +72,13 @@ Summary:
 - 14 records: 8 real model calls (5 Quick actions to open Suggestions, 3 Refines), 2 forced failures, 3 aborted requests and 1 stub.
 - Cost of the 8 real calls: US$0.007102 (4337 tokens in, 553 out, no reasoning, no cache). Median client latency 2036 ms, median OpenRouter latency 1634 ms. The three real Refines took 2487, 1994 and 2035 ms (client), about 100 input tokens more than a Quick action because of the history and the latest Replacement. Every real call finished with `stop`, none needed the silent retry.
 - Every call is in the log: nothing was lost to a reload. The `cursor in p1 → Shorter` call came from a miss of my search string that put the cursor in the title, and it was kept because it opened the Suggestion for the "no change" check.
+
+## Review re-check
+
+Re-run after the review of PR #11, in a real browser with `window.fetch` wrapped from `eval` so that no request reached OpenRouter (0 real model calls, 0 cost; a canned 200 body opened each Suggestion, a hanging `fetch` held a Refine in flight, a rejected `fetch` failed it).
+
+- `Esc` during a Refine: the first press cancels it (request aborted, Suggestion and Replacement kept), the second Rejects. `Ctrl+K` during a Refine opens nothing.
+- `Esc` with a failed Refine: the first press dismisses the error and the dotted marker, the second Rejects.
+- Refine input text: typed "leaked text" in Suggestion A, moved the cursor into Suggestion B, `Ctrl+K`: the input opened empty.
+- Failed Refine on a non-Active Suggestion: dotted underline on its range and the error line in its hover card, [4-15](img/4-15.png).
+- Deletion-only diff while refining: the struck words shimmer, [4-16](img/4-16.png).

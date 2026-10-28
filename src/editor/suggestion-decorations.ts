@@ -161,16 +161,24 @@ const failedMark = (id: SuggestionId) =>
     attributes: idAttributes(id),
   })
 
-const suggestionMark = (id: SuggestionId, active: boolean) =>
+const suggestionMark = (
+  id: SuggestionId,
+  active: boolean,
+  refineFailed: boolean,
+) =>
   Decoration.mark({
-    class: active ? 'cm-ai-suggestion cm-ai-active' : 'cm-ai-suggestion',
+    class: classNames(
+      'cm-ai-suggestion',
+      active && 'cm-ai-active',
+      refineFailed && 'cm-ai-refine-failed',
+    ),
     attributes: idAttributes(id),
   })
 
-const deletedMark = (id: SuggestionId) =>
+const deletedMark = (id: SuggestionId, refining: boolean) =>
   Decoration.mark({
     tagName: 'del',
-    class: 'cm-ai-deleted',
+    class: classNames('cm-ai-deleted', refining && 'cm-ai-refining'),
     attributes: idAttributes(id),
   })
 
@@ -184,7 +192,7 @@ const readyRanges = (
     if (hunk.type === 'deleted') {
       return hunk.from === hunk.to
         ? []
-        : [deletedMark(id).range(from + hunk.from, from + hunk.to)]
+        : [deletedMark(id, refining).range(from + hunk.from, from + hunk.to)]
     }
     if (hunk.type !== 'inserted') return []
     if (diff.mode === 'block') {
@@ -204,7 +212,13 @@ const readyRanges = (
       }).range(from + hunk.at),
     ]
   })
-  return [suggestionMark(id, active).range(from, to), ...hunks]
+  return [
+    suggestionMark(id, active, suggestion.refine.status === 'failed').range(
+      from,
+      to,
+    ),
+    ...hunks,
+  ]
 }
 
 const suggestionRanges = (

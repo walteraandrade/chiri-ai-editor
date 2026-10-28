@@ -7,6 +7,7 @@ import {
   activeSuggestion,
   beginRefine,
   beginSuggestion,
+  cancelRefine,
   discardSuggestion,
   emptySuggestions,
   failRefine,
@@ -684,6 +685,48 @@ describe('refine', () => {
       const state = working()
       expect(retryRefine(state, 'a')).toBe(state)
       expect(retryRefine(state, 'missing')).toBe(state)
+    })
+  })
+
+  describe('cancelRefine', () => {
+    it('puts a working Refine back to idle and keeps what the Suggestion shows', () => {
+      const before = readyOf(opened())
+      const state = cancelRefine(working(), 'a')
+      expect(readyOf(state)).toEqual(before)
+      expect(state.notice).toBeNull()
+      expect(inFlightSuggestionIds(state)).toEqual([])
+    })
+
+    it('dismisses the error of a failed Refine and keeps the Replacement', () => {
+      const before = readyOf(opened())
+      const state = cancelRefine(failRefine(working(), 'a', error), 'a')
+      expect(readyOf(state)).toEqual(before)
+      expect(state.notice).toBeNull()
+    })
+
+    it('keeps the history of earlier Refines', () => {
+      const refined = resolveRefine(working(), 'a', result('Hi world'))
+      const state = cancelRefine(beginRefine(refined, 'a', SHORTEST), 'a')
+      expect(readyOf(state).history).toHaveLength(2)
+      expect(readyOf(state).replacement).toBe('Hi world')
+    })
+
+    it('ignores a late result for the cancelled Refine and allows a new one', () => {
+      const cancelled = cancelRefine(working(), 'a')
+      expect(resolveRefine(cancelled, 'a', result('late'))).toBe(cancelled)
+      expect(failRefine(cancelled, 'a', error)).toBe(cancelled)
+      expect(readyOf(beginRefine(cancelled, 'a', SHORTEST)).refine).toEqual({
+        status: 'working',
+        instruction: SHORTEST,
+      })
+    })
+
+    it('ignores idle, pending and unknown Suggestions', () => {
+      const idle = opened()
+      expect(cancelRefine(idle, 'a')).toBe(idle)
+      expect(cancelRefine(idle, 'missing')).toBe(idle)
+      const pending = begun(draft('a', 0, 10))
+      expect(cancelRefine(pending, 'a')).toBe(pending)
     })
   })
 

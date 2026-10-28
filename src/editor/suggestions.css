@@ -7,6 +7,12 @@
   background: var(--color-active-suggestion);
 }
 
+.cm-ai-refine-failed {
+  text-decoration: underline dotted var(--color-danger);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 .cm-ai-deleted {
   color: var(--color-deleted);
   background: var(--color-deleted-bg);

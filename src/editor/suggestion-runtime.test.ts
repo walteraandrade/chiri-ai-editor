@@ -11,6 +11,7 @@ import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion } from '../suggestions/types'
 import { acceptSuggestionById, type EditorHandle } from './suggestion-commands'
 import {
+  cancelRefineEffect,
   rejectEffect,
   suggestionsField,
   suggestionsOf,
@@ -487,6 +488,25 @@ describe('refine', () => {
       call.resolve(ok('Late answer.'))
       await settle()
       expect(suggestionsOf(handle.state).items).toEqual([])
+      expect(suggestionsOf(handle.state).notice).toBeNull()
+    })
+
+    it('aborts the Refine when it is cancelled and keeps the Suggestion', async () => {
+      const { runtime, handle, refines } = await openReady()
+      runtime.actions.refine(handle, 'a', SHORTER_FREE)
+      const call = only(refines)
+
+      handle.dispatch({ effects: cancelRefineEffect.of('a') })
+      runtime.reconcile(handle.state)
+      expect(call.request.signal?.aborted).toBe(true)
+
+      call.resolve(ok('Late answer.'))
+      await settle()
+      expect(readyOf(handle)).toMatchObject({
+        replacement: 'First paragraph, clearer.',
+        refine: { status: 'idle' },
+      })
+      expect(readyOf(handle).history).toHaveLength(1)
       expect(suggestionsOf(handle.state).notice).toBeNull()
     })
 

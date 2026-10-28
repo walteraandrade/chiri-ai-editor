@@ -9,6 +9,7 @@ import type { EditorHandle } from './suggestion-commands'
 import {
   beginEffect,
   beginRefineEffect,
+  failRefineEffect,
   resolveEffect,
   suggestionsField,
   suggestionsOf,
@@ -38,6 +39,27 @@ const createHandle = (anchor: number, head = anchor): EditorHandle => {
   }
   handle.dispatch({ effects: focusEffect.of(true) })
   return handle
+}
+
+const startRefine = (handle: EditorHandle): void =>
+  handle.dispatch({
+    effects: beginRefineEffect.of({
+      id: 'a',
+      instruction: { type: 'free-text', text: 'tighter' },
+    }),
+  })
+
+const failRefine = (handle: EditorHandle): void =>
+  handle.dispatch({
+    effects: failRefineEffect.of({
+      id: 'a',
+      error: { type: 'network', message: 'offline' },
+    }),
+  })
+
+const refineStatus = (handle: EditorHandle) => {
+  const found = findSuggestion(suggestionsOf(handle.state), 'a')
+  return found?.status === 'ready' ? found.refine.status : found?.status
 }
 
 const selectInside = (handle: EditorHandle): void =>
@@ -146,17 +168,12 @@ describe('openAskOrRefine', () => {
     expect(askOpen(handle)).toBe(true)
   })
 
-  it('does nothing else while the Suggestion is refining', () => {
+  it('is not handled while the Suggestion is refining, and does not fall back to Ask', () => {
     const handle = createHandle(5)
     openReadySuggestion(handle)
-    handle.dispatch({
-      effects: beginRefineEffect.of({
-        id: 'a',
-        instruction: { type: 'free-text', text: 'tighter' },
-      }),
-    })
+    startRefine(handle)
 
-    expect(openAskOrRefine(handle)).toBe(true)
+    expect(openAskOrRefine(handle)).toBe(false)
 
     expect(handle.state.field(refineInputField)).toBeNull()
     expect(askOpen(handle)).toBe(false)
@@ -185,6 +202,62 @@ describe('escapeAtCursor with the Refine input', () => {
     escapeAtCursor(handle)
     escapeAtCursor(handle)
 
+    expect(suggestionsOf(handle.state).items).toEqual([])
+  })
+})
+
+describe('escapeAtCursor with a Refine', () => {
+  it('cancels a running Refine first and keeps the Replacement', () => {
+    const handle = createHandle(5)
+    openReadySuggestion(handle)
+    startRefine(handle)
+
+    expect(escapeAtCursor(handle)).toBe(true)
+
+    expect(refineStatus(handle)).toBe('idle')
+    expect(suggestionsOf(handle.state).items).toHaveLength(1)
+  })
+
+  it('rejects the Suggestion on the press after the cancel', () => {
+    const handle = createHandle(5)
+    openReadySuggestion(handle)
+    startRefine(handle)
+
+    escapeAtCursor(handle)
+    escapeAtCursor(handle)
+
+    expect(suggestionsOf(handle.state).items).toEqual([])
+  })
+
+  it('dismisses the error of a failed Refine first and keeps the Replacement', () => {
+    const handle = createHandle(5)
+    openReadySuggestion(handle)
+    startRefine(handle)
+    failRefine(handle)
+
+    expect(escapeAtCursor(handle)).toBe(true)
+
+    expect(refineStatus(handle)).toBe('idle')
+    expect(suggestionsOf(handle.state).items).toHaveLength(1)
+    expect(escapeAtCursor(handle)).toBe(true)
+    expect(suggestionsOf(handle.state).items).toEqual([])
+  })
+
+  it('closes the input, then dismisses the error, then rejects', () => {
+    const handle = createHandle(5)
+    openReadySuggestion(handle)
+    startRefine(handle)
+    failRefine(handle)
+    handle.dispatch({ effects: openRefineEffect.of('a') })
+
+    escapeAtCursor(handle)
+    expect(handle.state.field(refineInputField)).toBeNull()
+    expect(refineStatus(handle)).toBe('failed')
+
+    escapeAtCursor(handle)
+    expect(refineStatus(handle)).toBe('idle')
+
+    escapeAtCursor(handle)
     expect(suggestionsOf(handle.state).items).toEqual([])
   })
 })
