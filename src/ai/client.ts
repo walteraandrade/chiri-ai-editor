@@ -56,6 +56,7 @@ export type ModelClientConfig = {
   readonly reasoning?: ReasoningSetting
   readonly maxRetries?: number
   readonly timeoutsMs?: RequestKindLimits
+  readonly minRetryMs?: number
   readonly maxOutputTokens?: RequestKindLimits
   readonly onRecord?: (record: AiCallRecord) => void
   readonly onRecordEnriched?: (record: AiCallRecord) => void
@@ -68,6 +69,8 @@ export const DEFAULT_TIMEOUTS_MS: RequestKindLimits = {
   target: 30_000,
   review: 30_000,
 }
+
+export const MIN_RETRY_MS = 1000
 
 export const DEFAULT_MAX_OUTPUT_TOKENS: RequestKindLimits = {
   target: 4096,
@@ -161,6 +164,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     reasoning = 'low',
     maxRetries = DEFAULT_MAX_RETRIES,
     timeoutsMs = DEFAULT_TIMEOUTS_MS,
+    minRetryMs = MIN_RETRY_MS,
     maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
     clock = () => performance.now(),
   } = config
@@ -343,7 +347,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
       deadlineMs,
     )
     if (first.ok || !isRetryableOutputError(first.error)) return first
-    return clock() >= deadlineMs
+    return deadlineMs - clock() < minRetryMs
       ? { ok: false, error: timeoutError('target') }
       : runTargetAttempt(parts, original, task, 2, signal, deadlineMs)
   }
@@ -450,7 +454,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
       first.failure !== undefined &&
       first.validated === 0 &&
       isRetryableOutputError(first.failure)
-    if (retry && clock() >= deadlineMs) {
+    if (retry && deadlineMs - clock() < minRetryMs) {
       yield { type: 'error', error: timeoutError('review') }
       return
     }

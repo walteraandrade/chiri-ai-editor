@@ -273,6 +273,7 @@ describe('shared deadline', () => {
   const withClock = (
     chat: (advance: (ms: number) => void) => readonly FakeHandler[],
     timeoutMs = 400,
+    minRetryMs = 50,
   ) => {
     let now = 0
     const advance = (ms: number) => {
@@ -281,6 +282,7 @@ describe('shared deadline', () => {
     return setup(chat(advance), {
       clock: () => now,
       timeoutsMs: { target: timeoutMs, review: timeoutMs },
+      minRetryMs,
     })
   }
 
@@ -303,6 +305,17 @@ describe('shared deadline', () => {
       slowInvalid(advance, 400),
       () => chatCompletion(suggestionJson('Short.')),
     ])
+    const result = await client.requestSuggestion(targetRequest())
+    expect(result).toMatchObject({ ok: false, error: { type: 'timeout' } })
+    expect(fake.chatRequests()).toHaveLength(1)
+  })
+
+  it('does not retry when less than the minimum retry time is left', async () => {
+    const { fake, client } = withClock(
+      (advance) => [slowInvalid(advance, 300)],
+      400,
+      1000,
+    )
     const result = await client.requestSuggestion(targetRequest())
     expect(result).toMatchObject({ ok: false, error: { type: 'timeout' } })
     expect(fake.chatRequests()).toHaveLength(1)
