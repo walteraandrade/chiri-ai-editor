@@ -24,3 +24,19 @@ export const enrichAiCall = (
   else log[index] = record
   target.__aiCalls = log
 }
+
+export type ReviewDropEntry = {
+  readonly blockId: string
+  readonly reason: string
+}
+
+export type ReviewDropLogTarget = { __reviewDrops?: ReviewDropEntry[] }
+
+export const appendReviewDrop = (
+  target: ReviewDropLogTarget,
+  drop: ReviewDropEntry,
+): void => {
+  const log = target.__reviewDrops ?? []
+  log.push(drop)
+  target.__reviewDrops = log
+}

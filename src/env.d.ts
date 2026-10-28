@@ -3,4 +3,5 @@ declare const __OPENROUTER_MODEL__: string
 
 interface Window {
   __aiCalls?: import('./ai/records').AiCallRecord[]
+  __reviewDrops?: import('./ai/dev-log').ReviewDropEntry[]
 }
