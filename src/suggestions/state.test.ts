@@ -1,18 +1,25 @@
 import { ChangeSet } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
 import type { ClientError } from '../ai/errors'
+import { adaptiveDiff } from '../diff/adaptive-diff'
 import {
   acceptSuggestion,
   activeSuggestion,
+  beginRefine,
   beginSuggestion,
+  cancelRefine,
   discardSuggestion,
   emptySuggestions,
+  failRefine,
   failSuggestion,
   findSuggestion,
+  inFlightSuggestionIds,
+  instructionHistory,
   mapSuggestions,
-  pendingSuggestionIds,
   rejectSuggestion,
+  resolveRefine,
   resolveSuggestion,
+  retryRefine,
   retrySuggestion,
   suggestionAt,
 } from './state'
@@ -151,7 +158,14 @@ describe('resolveSuggestion', () => {
     expect(found.rationale).toBe('Cut a word.')
     expect(found.original).toBe('Hello brave world')
     expect(found.instruction).toEqual(SHORTER)
-    expect(found.history).toEqual([])
+    expect(found.history).toEqual([
+      {
+        instruction: SHORTER,
+        replacement: 'Hello world',
+        rationale: 'Cut a word.',
+      },
+    ])
+    expect(found.refine).toEqual({ status: 'idle' })
     expect(found.diff.mode).toBe('word')
     expect(found.sequence).toBe(0)
   })
@@ -218,7 +232,7 @@ describe('failSuggestion and retrySuggestion', () => {
       to: 9,
       instruction: SHORTER,
     })
-    expect(pendingSuggestionIds(retried)).toEqual(['a'])
+    expect(inFlightSuggestionIds(retried)).toEqual(['a'])
   })
 
   it('retry ignores Suggestions that are not in error', () => {
@@ -337,7 +351,7 @@ describe('mapSuggestions', () => {
     const next = mapSuggestions(state, change(30, 31, 'q'))
     expect(next.items).toEqual([])
     expect(next.notice?.kind).toBe('text-changed')
-    expect(pendingSuggestionIds(next)).toEqual([])
+    expect(inFlightSuggestionIds(next)).toEqual([])
   })
 
   it('discards an error Suggestion when its text is edited', () => {
@@ -446,5 +460,359 @@ describe('suggestionAt', () => {
     expect(suggestionAt(state, 5)?.id).toBe('a')
     expect(suggestionAt(state, 20)?.id).toBe('b')
     expect(suggestionAt(state, 15)).toBeUndefined()
+  })
+})
+
+describe('refine', () => {
+  const ORIGINAL = 'Hello brave new world'
+  const FORMAL: Instruction = { type: 'free-text', text: 'Now more formal.' }
+  const SHORTEST: Instruction = { type: 'free-text', text: 'Make it tiny.' }
+  const error: ClientError = { type: 'network', message: 'offline' }
+
+  const opened = (): SuggestionsState =>
+    ready(
+      begun(draft('a', 10, 31, { original: ORIGINAL, source: 'block' })),
+      'a',
+      'Hello new world',
+    )
+
+  const readyOf = (state: SuggestionsState, id = 'a'): ReadySuggestion => {
+    const found = mustFind(state, id)
+    if (found.status !== 'ready') throw new Error(`${id} is not ready`)
+    return found
+  }
+
+  const working = (instruction: Instruction = FORMAL): SuggestionsState =>
+    beginRefine(opened(), 'a', instruction)
+
+  describe('beginRefine', () => {
+    it('marks a ready Suggestion as working and keeps what it shows', () => {
+      const before = readyOf(opened())
+      const after = readyOf(beginRefine(opened(), 'a', FORMAL))
+      expect(after.refine).toEqual({ status: 'working', instruction: FORMAL })
+      expect(after).toEqual({ ...before, refine: after.refine })
+      expect(inFlightSuggestionIds(beginRefine(opened(), 'a', FORMAL))).toEqual(
+        ['a'],
+      )
+    })
+
+    it('can start again after a failure, with a new Instruction', () => {
+      const failed = failRefine(working(), 'a', error)
+      const again = readyOf(beginRefine(failed, 'a', SHORTEST))
+      expect(again.refine).toEqual({ status: 'working', instruction: SHORTEST })
+    })
+
+    it('ignores a Suggestion that is already refining', () => {
+      const state = working()
+      expect(beginRefine(state, 'a', SHORTEST)).toBe(state)
+    })
+
+    it('ignores unknown, pending and error Suggestions', () => {
+      const pending = begun(draft('a', 0, 10))
+      expect(beginRefine(pending, 'a', FORMAL)).toBe(pending)
+      expect(beginRefine(pending, 'x', FORMAL)).toBe(pending)
+      const failed = failSuggestion(pending, 'a', error)
+      expect(beginRefine(failed, 'a', FORMAL)).toBe(failed)
+    })
+  })
+
+  describe('resolveRefine', () => {
+    it('replaces the Replacement and the Rationale in place', () => {
+      const before = readyOf(working())
+      const state = resolveRefine(
+        working(),
+        'a',
+        result('Greetings, world', 'More formal.'),
+      )
+      const after = readyOf(state)
+      expect(after).toMatchObject({
+        id: 'a',
+        from: before.from,
+        to: before.to,
+        sequence: before.sequence,
+        status: 'ready',
+        original: ORIGINAL,
+        instruction: SHORTER,
+        replacement: 'Greetings, world',
+        rationale: 'More formal.',
+        refine: { status: 'idle' },
+      })
+      expect(state.items).toHaveLength(1)
+      expect(state.notice).toBeNull()
+    })
+
+    it('always diffs against the original text', () => {
+      const after = readyOf(
+        resolveRefine(working(), 'a', result('Greetings, world')),
+      )
+      expect(after.diff).toEqual(adaptiveDiff(ORIGINAL, 'Greetings, world'))
+      expect(after.diff).not.toEqual(
+        adaptiveDiff('Hello new world', after.replacement),
+      )
+    })
+
+    it('recomputes the diff mode from the original and the new Replacement', () => {
+      const word = readyOf(opened())
+      expect(word.diff.mode).toBe('word')
+      const block = readyOf(
+        resolveRefine(
+          working(),
+          'a',
+          result('Salutations to everyone present'),
+        ),
+      )
+      expect(block.diff.mode).toBe('block')
+    })
+
+    it('appends a step to the history, oldest first', () => {
+      const first = resolveRefine(working(), 'a', result('Hi world', 'Short.'))
+      const second = resolveRefine(
+        beginRefine(first, 'a', SHORTEST),
+        'a',
+        result('Hi', 'Tiny.'),
+      )
+      expect(readyOf(second).history).toEqual([
+        {
+          instruction: SHORTER,
+          replacement: 'Hello new world',
+          rationale: 'Because.',
+        },
+        { instruction: FORMAL, replacement: 'Hi world', rationale: 'Short.' },
+        { instruction: SHORTEST, replacement: 'Hi', rationale: 'Tiny.' },
+      ])
+      expect(readyOf(second).original).toBe(ORIGINAL)
+      expect(readyOf(second).replacement).toBe('Hi')
+    })
+
+    it('keeps the edge whitespace of the original', () => {
+      const state = resolveRefine(
+        beginRefine(
+          resolveSuggestion(
+            begun(draft('a', 0, 14, { original: '  Hello brave\n' })),
+            'a',
+            result('Hello'),
+          ),
+          'a',
+          FORMAL,
+        ),
+        'a',
+        result('Greetings'),
+      )
+      expect(readyOf(state).replacement).toBe('  Greetings\n')
+    })
+
+    it('keeps the current Replacement and shows "no change" when the result equals it', () => {
+      const before = readyOf(working())
+      const state = resolveRefine(working(), 'a', result('Hello new world'))
+      expect(readyOf(state)).toEqual({ ...before, refine: { status: 'idle' } })
+      expect(state.notice?.kind).toBe('no-change')
+    })
+
+    it('treats surrounding whitespace as no difference from the latest Replacement', () => {
+      const state = resolveRefine(
+        working(),
+        'a',
+        result('  Hello new world \n'),
+      )
+      expect(readyOf(state).history).toHaveLength(1)
+      expect(state.notice?.kind).toBe('no-change')
+    })
+
+    it('keeps the current Replacement and shows "no change" when the result is the original', () => {
+      const before = readyOf(working())
+      const state = resolveRefine(working(), 'a', {
+        replacement: ORIGINAL,
+        rationale: 'Back to the start.',
+        unchanged: true,
+      })
+      expect(readyOf(state)).toEqual({ ...before, refine: { status: 'idle' } })
+      expect(state.notice?.kind).toBe('no-change')
+    })
+
+    it('ignores a result for a Suggestion that is gone or not refining', () => {
+      const idle = opened()
+      expect(resolveRefine(idle, 'a', result('x'))).toBe(idle)
+      expect(resolveRefine(idle, 'missing', result('x'))).toBe(idle)
+      const failed = failRefine(working(), 'a', error)
+      expect(resolveRefine(failed, 'a', result('x'))).toBe(failed)
+    })
+  })
+
+  describe('failRefine and retryRefine', () => {
+    it('records the error and keeps the current Replacement, Rationale and history', () => {
+      const before = readyOf(working())
+      const failed = readyOf(failRefine(working(), 'a', error))
+      expect(failed.refine).toEqual({
+        status: 'failed',
+        instruction: FORMAL,
+        error,
+      })
+      expect(failed).toEqual({ ...before, refine: failed.refine })
+      expect(failed.status).toBe('ready')
+      expect(inFlightSuggestionIds(failRefine(working(), 'a', error))).toEqual(
+        [],
+      )
+    })
+
+    it('ignores a failure for a Suggestion that is gone or not refining', () => {
+      const idle = opened()
+      expect(failRefine(idle, 'a', error)).toBe(idle)
+      expect(failRefine(idle, 'missing', error)).toBe(idle)
+    })
+
+    it('retry runs the same Instruction again and clears the error', () => {
+      const retried = readyOf(
+        retryRefine(failRefine(working(), 'a', error), 'a'),
+      )
+      expect(retried.refine).toEqual({ status: 'working', instruction: FORMAL })
+    })
+
+    it('retry then success appends the step', () => {
+      const state = resolveRefine(
+        retryRefine(failRefine(working(), 'a', error), 'a'),
+        'a',
+        result('Greetings'),
+      )
+      expect(readyOf(state).history.map((step) => step.instruction)).toEqual([
+        SHORTER,
+        FORMAL,
+      ])
+    })
+
+    it('retry ignores Suggestions that did not fail a Refine', () => {
+      const idle = opened()
+      expect(retryRefine(idle, 'a')).toBe(idle)
+      const state = working()
+      expect(retryRefine(state, 'a')).toBe(state)
+      expect(retryRefine(state, 'missing')).toBe(state)
+    })
+  })
+
+  describe('cancelRefine', () => {
+    it('puts a working Refine back to idle and keeps what the Suggestion shows', () => {
+      const before = readyOf(opened())
+      const state = cancelRefine(working(), 'a')
+      expect(readyOf(state)).toEqual(before)
+      expect(state.notice).toBeNull()
+      expect(inFlightSuggestionIds(state)).toEqual([])
+    })
+
+    it('dismisses the error of a failed Refine and keeps the Replacement', () => {
+      const before = readyOf(opened())
+      const state = cancelRefine(failRefine(working(), 'a', error), 'a')
+      expect(readyOf(state)).toEqual(before)
+      expect(state.notice).toBeNull()
+    })
+
+    it('keeps the history of earlier Refines', () => {
+      const refined = resolveRefine(working(), 'a', result('Hi world'))
+      const state = cancelRefine(beginRefine(refined, 'a', SHORTEST), 'a')
+      expect(readyOf(state).history).toHaveLength(2)
+      expect(readyOf(state).replacement).toBe('Hi world')
+    })
+
+    it('ignores a late result for the cancelled Refine and allows a new one', () => {
+      const cancelled = cancelRefine(working(), 'a')
+      expect(resolveRefine(cancelled, 'a', result('late'))).toBe(cancelled)
+      expect(failRefine(cancelled, 'a', error)).toBe(cancelled)
+      expect(readyOf(beginRefine(cancelled, 'a', SHORTEST)).refine).toEqual({
+        status: 'working',
+        instruction: SHORTEST,
+      })
+    })
+
+    it('ignores idle, pending and unknown Suggestions', () => {
+      const idle = opened()
+      expect(cancelRefine(idle, 'a')).toBe(idle)
+      expect(cancelRefine(idle, 'missing')).toBe(idle)
+      const pending = begun(draft('a', 0, 10))
+      expect(cancelRefine(pending, 'a')).toBe(pending)
+    })
+  })
+
+  describe('while refining', () => {
+    it('Accept removes the Suggestion and nothing is in flight', () => {
+      const doc = 'x'.repeat(100)
+      const own = ChangeSet.of({ from: 10, to: 31, insert: 'new' }, doc.length)
+      const state = acceptSuggestion(working(), 'a', own)
+      expect(state.items).toEqual([])
+      expect(state.notice).toBeNull()
+      expect(inFlightSuggestionIds(state)).toEqual([])
+    })
+
+    it('Reject removes the Suggestion without a notice', () => {
+      const state = rejectSuggestion(working(), 'a')
+      expect(state.items).toEqual([])
+      expect(state.notice).toBeNull()
+      expect(inFlightSuggestionIds(state)).toEqual([])
+    })
+
+    it('Discard removes the Suggestion with a notice', () => {
+      const state = discardSuggestion(working(), 'a', 'replaced')
+      expect(state.items).toEqual([])
+      expect(state.notice?.kind).toBe('replaced')
+    })
+
+    it('a late result after Reject changes nothing', () => {
+      const gone = rejectSuggestion(working(), 'a')
+      expect(resolveRefine(gone, 'a', result('late'))).toBe(gone)
+      expect(failRefine(gone, 'a', error)).toBe(gone)
+    })
+
+    it('a newer request over the range replaces the refining Suggestion', () => {
+      const next = beginSuggestion(working(), draft('b', 15, 25))
+      expect(idsOf(next)).toEqual(['b'])
+      expect(next.notice?.kind).toBe('replaced')
+      expect(inFlightSuggestionIds(next)).toEqual(['b'])
+    })
+
+    it('shifts the range for an edit outside and keeps refining', () => {
+      const doc = 'x'.repeat(100)
+      const next = mapSuggestions(
+        working(),
+        ChangeSet.of({ from: 0, insert: 'abc' }, doc.length),
+      )
+      expect(readyOf(next)).toMatchObject({
+        from: 13,
+        to: 34,
+        refine: { status: 'working', instruction: FORMAL },
+      })
+      expect(next.notice).toBeNull()
+    })
+
+    it('an edit inside Discards the Suggestion and stops the refine', () => {
+      const doc = 'x'.repeat(100)
+      const next = mapSuggestions(
+        working(),
+        ChangeSet.of({ from: 20, insert: 'q' }, doc.length),
+      )
+      expect(next.items).toEqual([])
+      expect(next.notice?.kind).toBe('text-changed')
+      expect(inFlightSuggestionIds(next)).toEqual([])
+    })
+  })
+})
+
+describe('instructionHistory', () => {
+  it('lists the first Instruction and every Refine, oldest first', () => {
+    const FORMAL: Instruction = { type: 'free-text', text: 'Now more formal.' }
+    const state = resolveRefine(
+      beginRefine(ready(begun(draft('a', 0, 10)), 'a', 'one'), 'a', FORMAL),
+      'a',
+      result('two'),
+    )
+    const found = mustFind(state, 'a')
+    if (found.status !== 'ready') throw new Error('not ready')
+    expect(instructionHistory(found)).toEqual([
+      'Make it shorter.',
+      'Now more formal.',
+    ])
+  })
+})
+
+describe('inFlightSuggestionIds', () => {
+  it('lists pending Suggestions', () => {
+    const state = begun(draft('a', 0, 10), draft('b', 20, 30))
+    expect(inFlightSuggestionIds(ready(state, 'a'))).toEqual(['b'])
   })
 })

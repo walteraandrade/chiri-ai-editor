@@ -7,6 +7,12 @@
   background: var(--color-active-suggestion);
 }
 
+.cm-ai-refine-failed {
+  text-decoration: underline dotted var(--color-danger);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 .cm-ai-deleted {
   color: var(--color-deleted);
   background: var(--color-deleted-bg);
@@ -51,7 +57,8 @@
   border-radius: 3px;
 }
 
-.cm-ai-pending {
+.cm-ai-pending,
+.cm-ai-refining {
   border-radius: 3px;
   background-image: linear-gradient(
     90deg,
@@ -75,7 +82,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cm-ai-pending {
+  .cm-ai-pending,
+  .cm-ai-refining {
     animation: none;
     background-image: none;
     background-color: var(--color-shimmer);
@@ -206,6 +214,52 @@
 .cm-ai-button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
+}
+
+.cm-ai-button:disabled {
+  color: var(--color-ink-muted);
+  cursor: default;
+}
+
+.cm-ai-button:disabled:hover {
+  background-color: transparent;
+}
+
+.cm-ai-button[aria-busy="true"] {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 38%,
+    var(--color-shimmer) 50%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+  animation: cm-ai-shimmer 1.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-ai-button[aria-busy="true"] {
+    animation: none;
+    background-image: none;
+    background-color: var(--color-shimmer);
+  }
+}
+
+.cm-ai-refine {
+  display: flex;
+}
+
+.cm-ai-card-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 8px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .cm-ai-kbd {

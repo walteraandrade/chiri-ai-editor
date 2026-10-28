@@ -3,7 +3,15 @@ import type { ModelClient } from './client'
 const LOAD_FAILED_MESSAGE =
   'part of the app failed to load. Reload the page, then retry.'
 
-type SuggestionClient = Pick<ModelClient, 'requestSuggestion'>
+type SuggestionClient = Pick<
+  ModelClient,
+  'requestSuggestion' | 'refineSuggestion'
+>
+
+const loadFailure = {
+  ok: false,
+  error: { type: 'unknown', message: LOAD_FAILED_MESSAGE },
+} as const
 
 export const createLazyModelClient = (
   load: () => Promise<SuggestionClient>,
@@ -21,12 +29,11 @@ export const createLazyModelClient = (
   return {
     requestSuggestion: async (request) => {
       const client = await get().catch(() => undefined)
-      return client
-        ? client.requestSuggestion(request)
-        : {
-            ok: false,
-            error: { type: 'unknown', message: LOAD_FAILED_MESSAGE },
-          }
+      return client ? client.requestSuggestion(request) : loadFailure
+    },
+    refineSuggestion: async (request) => {
+      const client = await get().catch(() => undefined)
+      return client ? client.refineSuggestion(request) : loadFailure
     },
   }
 }

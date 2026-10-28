@@ -4,6 +4,7 @@ import type { ModelClient } from '../ai/client'
 import type { SuggestionNotice } from '../suggestions/types'
 import { askBubble } from './ask-bubble'
 import { interactionState } from './interaction-state'
+import { refineInputField } from './refine-input'
 import { suggestionCards } from './suggestion-cards'
 import { suggestionDecorations } from './suggestion-decorations'
 import { suggestionsField, suggestionsOf } from './suggestion-field'
@@ -11,7 +12,7 @@ import { suggestionKeymap } from './suggestion-keymap'
 import { createSuggestionRuntime } from './suggestion-runtime'
 
 type SuggestionExtensionOptions = {
-  readonly client: Pick<ModelClient, 'requestSuggestion'>
+  readonly client: Pick<ModelClient, 'requestSuggestion' | 'refineSuggestion'>
   readonly onNotice: (notice: SuggestionNotice) => void
 }
 
@@ -22,6 +23,7 @@ export const suggestionExtensions = ({
   suggestionsField,
   interactionState,
   askBubble,
+  refineInputField,
   createSuggestionRuntime({ client }).extension,
   suggestionDecorations,
   suggestionCards,
