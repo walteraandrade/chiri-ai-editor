@@ -53,6 +53,8 @@ const fromDirectError = (error: unknown): ClientError | undefined => {
     return { type: 'timeout', message: error.message }
   if (error instanceof Error && error.name === 'AbortError')
     return { type: 'aborted', message: error.message }
+  if (error instanceof TypeError && /fetch/i.test(error.message))
+    return { type: 'network', message: error.message }
   return undefined
 }
 

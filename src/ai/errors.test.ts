@@ -58,6 +58,10 @@ describe('classifyError', () => {
     )
   })
 
+  it('maps a browser fetch failure to network', () => {
+    expect(classifyError(new TypeError('Failed to fetch')).type).toBe('network')
+  })
+
   it('maps a timeout to timeout', () => {
     const error = new DOMException('The operation timed out.', 'TimeoutError')
     expect(classifyError(error).type).toBe('timeout')
