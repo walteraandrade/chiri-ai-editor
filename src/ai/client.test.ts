@@ -269,6 +269,101 @@ describe('requestSuggestion', () => {
   }, 10_000)
 })
 
+describe('shared deadline', () => {
+  const withClock = (
+    chat: (advance: (ms: number) => void) => readonly FakeHandler[],
+    timeoutMs = 400,
+  ) => {
+    let now = 0
+    const advance = (ms: number) => {
+      now += ms
+    }
+    return setup(chat(advance), {
+      clock: () => now,
+      timeoutsMs: { target: timeoutMs, review: timeoutMs },
+    })
+  }
+
+  const slowInvalid =
+    (advance: (ms: number) => void, ms: number): FakeHandler =>
+    () => {
+      advance(ms)
+      return chatCompletion('not json at all')
+    }
+
+  const slowInvalidStream =
+    (advance: (ms: number) => void, ms: number): FakeHandler =>
+    () => {
+      advance(ms)
+      return chatStream('not json at all')
+    }
+
+  it('does not retry a Target request once the deadline has passed', async () => {
+    const { fake, client } = withClock((advance) => [
+      slowInvalid(advance, 400),
+      () => chatCompletion(suggestionJson('Short.')),
+    ])
+    const result = await client.requestSuggestion(targetRequest())
+    expect(result).toMatchObject({ ok: false, error: { type: 'timeout' } })
+    expect(fake.chatRequests()).toHaveLength(1)
+  })
+
+  it('gives the retry only the time that is left', async () => {
+    const { fake, client } = withClock((advance) => [
+      slowInvalid(advance, 300),
+      hangUntilAborted,
+    ])
+    const started = performance.now()
+    const result = await client.requestSuggestion(targetRequest())
+    const elapsed = performance.now() - started
+    expect(result).toMatchObject({ ok: false, error: { type: 'timeout' } })
+    expect(fake.chatRequests()).toHaveLength(2)
+    expect(elapsed).toBeLessThan(300)
+  })
+
+  it('shares the deadline across Refine and its retry', async () => {
+    const { fake, client } = withClock((advance) => [
+      slowInvalid(advance, 400),
+      () => chatCompletion(suggestionJson('Short.')),
+    ])
+    const result = await client.refineSuggestion({
+      ...targetRequest('Warmer.'),
+      history: [],
+      latestReplacement: 'Short.',
+    })
+    expect(result).toMatchObject({ ok: false, error: { type: 'timeout' } })
+    expect(fake.chatRequests()).toHaveLength(1)
+  })
+
+  it('does not retry a Review pass once the deadline has passed', async () => {
+    const { fake, client } = withClock((advance) => [
+      slowInvalidStream(advance, 400),
+      () =>
+        chatStream(reviewContent([{ blockId: 'p3', replacement: 'Short.' }])),
+    ])
+    const events = await collect(client.reviewDocument({ blocks }))
+    expect(events).toEqual([
+      { type: 'error', error: expect.objectContaining({ type: 'timeout' }) },
+    ])
+    expect(fake.chatRequests()).toHaveLength(1)
+  })
+
+  it('gives the Review retry only the time that is left', async () => {
+    const { fake, client } = withClock((advance) => [
+      slowInvalidStream(advance, 300),
+      hangUntilAborted,
+    ])
+    const started = performance.now()
+    const events = await collect(client.reviewDocument({ blocks }))
+    const elapsed = performance.now() - started
+    expect(events).toEqual([
+      { type: 'error', error: expect.objectContaining({ type: 'timeout' }) },
+    ])
+    expect(fake.chatRequests()).toHaveLength(2)
+    expect(elapsed).toBeLessThan(300)
+  })
+})
+
 describe('refineSuggestion', () => {
   it('sends the history and the latest Replacement', async () => {
     const { fake, client } = setup([

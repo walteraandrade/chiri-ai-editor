@@ -266,16 +266,25 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     )
   }
 
+  const startDeadline = (kind: keyof RequestKindLimits): number =>
+    clock() + timeoutsMs[kind]
+
+  const timeoutError = (kind: keyof RequestKindLimits): ClientError => ({
+    type: 'timeout',
+    message: `The request took longer than ${timeoutsMs[kind]} ms`,
+  })
+
   const callSettings = (
     attempt: Attempt,
     task: string,
     kind: keyof RequestKindLimits,
     abortSignal: AbortSignal | undefined,
+    deadlineMs: number,
   ) => ({
     model: buildModel(),
     maxRetries,
     maxOutputTokens: maxOutputTokens[kind],
-    timeout: { totalMs: timeoutsMs[kind] },
+    timeout: { totalMs: Math.max(1, Math.round(deadlineMs - clock())) },
     abortSignal,
     runtimeContext: { requestId: attempt.requestId },
     telemetry: {
@@ -290,11 +299,12 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     task: string,
     number: number,
     signal: AbortSignal | undefined,
+    deadlineMs: number,
   ): Promise<Result<SuggestionResult>> => {
     const attempt = startAttempt()
     try {
       const result = await generateText({
-        ...callSettings(attempt, task, 'target', signal),
+        ...callSettings(attempt, task, 'target', signal, deadlineMs),
         instructions: parts.instructions,
         prompt: parts.prompt,
         output: Output.object({ schema: suggestionSchema }),
@@ -323,10 +333,19 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     task: string,
     signal: AbortSignal | undefined,
   ): Promise<Result<SuggestionResult>> => {
-    const first = await runTargetAttempt(parts, original, task, 1, signal)
-    return first.ok || !isRetryableOutputError(first.error)
-      ? first
-      : runTargetAttempt(parts, original, task, 2, signal)
+    const deadlineMs = startDeadline('target')
+    const first = await runTargetAttempt(
+      parts,
+      original,
+      task,
+      1,
+      signal,
+      deadlineMs,
+    )
+    if (first.ok || !isRetryableOutputError(first.error)) return first
+    return clock() >= deadlineMs
+      ? { ok: false, error: timeoutError('target') }
+      : runTargetAttempt(parts, original, task, 2, signal, deadlineMs)
   }
 
   async function* reviewAttempt(
@@ -334,6 +353,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     task: string,
     number: number,
     overallStartMs: number,
+    deadlineMs: number,
   ): AsyncGenerator<ReviewEvent, AttemptSummary> {
     const attempt = startAttempt()
     const parts = buildReviewPrompt(request)
@@ -358,6 +378,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
           task,
           'review',
           combineSignals(request.signal, controller.signal),
+          deadlineMs,
         ),
         instructions: parts.instructions,
         prompt: parts.prompt,
@@ -417,13 +438,24 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
   ): AsyncGenerator<ReviewEvent, void> {
     const task = request.task ?? 'Review pass'
     const overallStartMs = clock()
-    const first = yield* reviewAttempt(request, task, 1, overallStartMs)
+    const deadlineMs = startDeadline('review')
+    const first = yield* reviewAttempt(
+      request,
+      task,
+      1,
+      overallStartMs,
+      deadlineMs,
+    )
     const retry =
       first.failure !== undefined &&
       first.validated === 0 &&
       isRetryableOutputError(first.failure)
+    if (retry && clock() >= deadlineMs) {
+      yield { type: 'error', error: timeoutError('review') }
+      return
+    }
     const last = retry
-      ? yield* reviewAttempt(request, task, 2, overallStartMs)
+      ? yield* reviewAttempt(request, task, 2, overallStartMs, deadlineMs)
       : first
     if (last.failure !== undefined && last.validated === 0) {
       yield { type: 'error', error: last.failure }
