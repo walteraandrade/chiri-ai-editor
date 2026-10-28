@@ -34,6 +34,7 @@ Run on 2026-10-28 by `pnpm bakeoff`, which uses the same client and prompts as t
 
 Written by hand after the run. The tables above and below are generated.
 
+- **Timeout.** The runs used 60 s for the Review pass. After the run it was set back to 30 s, as [ADR 0007](adr/0007-suggestion-lifecycle.md) says; every model except `qwen/qwen3.8-flash` finished its Review pass in under 8 s.
 - **Validity.** All 9 models returned schema-valid output on the first try in every request: 0 retries and 0 edits dropped by the app checks, in all three runs. The strict JSON schema with `require_parameters: true` held for every candidate.
 - **Latency.** Six models have a median Target request under ~3 s in all three runs (see the table below). `google/gemini-3.8-flash` (3.8 to 5.4 s), `google/gemini-4-argon` (5.0 to 10.3 s) and `qwen/qwen3.8-flash` (11 to 15 s) are over the ADR 0008 line, so picking one of them reopens the Draft preview.
 - **Review pass.** The first Suggestion arrives after 30 to 85 % of the total time in this run: `openai/gpt-6.1-terra` is the earliest (1.6 s of 5.5 s), `deepseek/deepseek-v4.1-flash` the latest (4.2 s of 5.1 s). `qwen/qwen3.8-flash` finished the Review pass once in three runs (26.9 s) and timed out at 60 s the other two times.
