@@ -83,6 +83,9 @@ export const createSuggestionRuntime = ({
         original: target.text,
         instruction,
       }),
+      ...(target.source === 'selection' && {
+        selection: { anchor: target.to },
+      }),
     })
     void run(handle, id, {
       target,

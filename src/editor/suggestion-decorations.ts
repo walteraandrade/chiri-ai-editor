@@ -135,7 +135,7 @@ class ErrorCardWidget extends WidgetType {
 const pendingMark = (id: SuggestionId) =>
   Decoration.mark({
     class: 'cm-ai-pending',
-    attributes: { ...idAttributes(id), 'aria-busy': 'true' },
+    attributes: idAttributes(id),
   })
 
 const failedMark = (id: SuggestionId) =>
