@@ -6,7 +6,7 @@ import {
   MAX_REVIEW_EDITS,
   type ValidatedEdit,
 } from '../ai/edits'
-import { type ClientError, classifyError } from '../ai/errors'
+import type { ClientError } from '../ai/errors'
 import {
   occupiedBlockIds,
   placeReviewEdit,
@@ -142,7 +142,10 @@ export const createReviewRuntime = ({
         }
       }
     } catch (error) {
-      failure = classifyError(error)
+      failure = {
+        type: 'unknown',
+        message: error instanceof Error ? error.message : String(error),
+      }
     }
     if (!controller.signal.aborted) finish(handle, controller, focus, failure)
   }

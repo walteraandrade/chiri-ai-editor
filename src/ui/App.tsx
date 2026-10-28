@@ -43,13 +43,15 @@ export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
 
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 pt-8 pb-4">
-        <h1 className="font-display font-semibold text-2xl text-ink-strong tracking-wide">
-          Chiri
-        </h1>
-        <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
-          <Hint />
-          <ReviewToolbar status={review} controls={controls} />
+      <header className="sticky top-0 z-30 bg-canvas">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 pt-6 pb-3">
+          <h1 className="font-display font-semibold text-2xl text-ink-strong tracking-wide">
+            Chiri
+          </h1>
+          <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
+            <Hint />
+            <ReviewToolbar status={review} controls={controls} />
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-6 pt-4 pb-40">
