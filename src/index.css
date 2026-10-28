@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/league-spartan";
+@import "./editor/suggestions.css";
 
 @theme static {
   --color-canvas: #0e1014;
@@ -15,6 +16,19 @@
   --color-banner-bg: #2a2110;
   --color-banner-border: #6b5316;
   --color-banner-ink: #f0d8a0;
+  --color-surface: #181b24;
+  --color-surface-hover: rgb(255 255 255 / 0.07);
+  --color-border: rgb(255 255 255 / 0.11);
+  --color-deleted: #d98e8e;
+  --color-deleted-bg: rgb(229 107 107 / 0.1);
+  --color-inserted: #94cfa2;
+  --color-inserted-bg: rgb(111 191 130 / 0.13);
+  --color-shimmer: rgb(122 162 247 / 0.3);
+  --color-target-preview: rgb(122 162 247 / 0.1);
+  --color-active-suggestion: rgb(122 162 247 / 0.08);
+  --color-danger: #f2aaaa;
+  --color-danger-bg: #261619;
+  --color-danger-border: #6b2a30;
 
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "League Spartan Variable", var(--font-sans);

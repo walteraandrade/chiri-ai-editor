@@ -20,11 +20,28 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-28 | #2 | Dry runs of `pnpm bakeoff` (4 calls on DeepSeek) and 3 raw probes of the generation endpoint | `deepseek/deepseek-v4.1-flash` | – | ~0.0016 | – | – | – | not kept |
 | 2026-10-28 | #2 | Browser check through the Vite proxy: Fix grammar on the `recieve` paragraph (the one recorded call; two earlier calls of the same check left no record) | `deepseek/deepseek-v4.1-flash` → Relace | 372 / 82 / 16 / 256 | 0.000051 | 1293 / 854 / 1030 | stop | 1/1 | [2-model-client.md](verification/2-model-client.md) |
 | 2026-10-28 | #2 | Calls without a record: 3 timed-out Qwen requests and 2 browser-check calls (estimated from the key's `usage` counter) | `qwen/qwen3.8-flash`, `deepseek/deepseek-v4.1-flash` | – | ~0.0069 | – | – | – | not kept |
+| 2026-10-28 | #3 | select p4 → Clearer | `openai/gpt-6.1-terra` → OpenAI | 513 / 76 / 0 / 0 | 0.000893 | 2386 / 1821 / 2034 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | cursor in p5 → More formal | `openai/gpt-6.1-terra` → OpenAI | 530 / 69 / 0 / 0 | 0.000875 | 2098 / 1585 / 1757 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | cursor in p5 → More formal | `openai/gpt-6.1-terra` → OpenAI | 530 / 68 / 0 / 0 | 0.000870 | 1891 / 1411 / 1558 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | select p3 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 516 / 83 / 0 / 0 | 0.000931 | 2809 / 1984 / 2299 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | select p8 → Clearer | `openai/gpt-6.1-terra` → OpenAI | 428 / 68 / 0 / 0 | 0.000768 | 2242 / 1850 / 2004 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | cursor in p5 → free text: Drop the slang but keep a friendly tone | `openai/gpt-6.1-terra` → OpenAI | 522 / 54 / 0 / 0 | 0.000792 | 1831 / 1538 / 1556 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | cursor in p9 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 437 / 32 / 0 / 0 | 0.000597 | 1537 / 1278 / 1278 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | cursor in p4 → Fix grammar | `openai/gpt-6.1-terra` → OpenAI | 500 / 71 / 0 / 0 | 0.000855 | 1935 / 1482 / 1674 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | select p9 → Clearer | `openai/gpt-6.1-terra` → OpenAI | 458 / 31 / 0 / 0 | 0.000613 | 1814 / 1548 / 1548 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | cursor in p12 → Fix grammar | `openai/gpt-6.1-terra` → OpenAI | 413 / 58 / 0 / 0 | 0.000703 | 2340 / 1602 / 1605 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | select p12 → free text: Correct the spelling mistake only | `openai/gpt-6.1-terra` → OpenAI | 432 / 41 / 0 / 0 | 0.000637 | 1815 / 1436 / 1436 | stop | 1/1 | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | Forced failures (2 network aborts, 3 out-of-credit stubs) and 1 request aborted by typing inside its Target | `openai/gpt-6.1-terra` | – | 0 for the stubs, not reported for the aborted request | 2 to 178 (client) | – | 5 stubs, 1 aborted | [3-selection-suggestions.md](verification/3-selection-suggestions.md) |
+| 2026-10-28 | #3 | Calls without a record: Shorter on p3 and Fix grammar on p12 before the first reload, free text on p12 lost on a reload (estimated from the key's usage counter) | `openai/gpt-6.1-terra` | – | ~0.0022 | – | – | – | not kept |
 
-**Running total:** US$0.234 of 5.00
+**Running total:** US$0.245 of 5.00
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
 - Latency for the Bake-off rows is the median Target request / the Review pass, client wall time. A dash means the request failed (Qwen's Review pass timed out at 60 s).
 - Cost per call is the `usage.cost` OpenRouter returns. Calls that time out return no usage, so their cost is estimated from the rise of the key's `usage` counter (US$8.743 to US$8.973 across the slice, minus the recorded rows). That counter is the lifetime usage of the key, not this project's.
 - OpenRouter publishes `/generation` data (provider, `latency`, `generation_time`) about a minute after the call, so the client records a call right away and enriches it later.
+
+Notes on slice 3:
+- Slice cost is about US$0.011: 11 recorded calls US$0.0085, three calls without a record about US$0.0022, and the aborted request, whose usage OpenRouter did not report. The key's usage counter rose by about US$0.0104 over the slice, which agrees with the sum within the error of its starting point. The slice budget was US$0.10.
+- The forced-failure checks never reached OpenRouter, so they cost nothing.

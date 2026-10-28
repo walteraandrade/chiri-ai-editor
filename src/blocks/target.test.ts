@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import { extractBlocks } from './extract-blocks'
-import { findBlockAt, getNeighbors, headingText, resolveTarget } from './target'
+import {
+  findBlockAt,
+  getNeighbors,
+  headingText,
+  resolveTarget,
+  targetFromRange,
+} from './target'
 
 const DOC = [
   '# Title',
@@ -247,5 +253,101 @@ describe('getNeighbors', () => {
     expect(neighbors.section).toBe('Why we are changing')
     expect(neighbors.before.map((block) => block.id)).toEqual(['p3', 'p4'])
     expect(neighbors.after.map((block) => block.id)).toEqual(['p6', 'p7'])
+  })
+})
+
+describe('resolveTarget with line breaks at the edges of a selection', () => {
+  const block = byText('A two.')
+
+  it('drops the line break a triple-click leaves at the end', () => {
+    const target = resolveTarget(blocks, DOC, {
+      from: block.from,
+      to: block.to + 1,
+    })
+    expect(target).toMatchObject({
+      source: 'selection',
+      from: block.from,
+      to: block.to,
+      text: 'A two.',
+    })
+    expect(target?.blocks.map((candidate) => candidate.text)).toEqual([
+      'A two.',
+    ])
+  })
+
+  it('drops line breaks at the start and several at the end', () => {
+    const target = resolveTarget(blocks, DOC, {
+      from: block.from - 2,
+      to: block.to + 2,
+    })
+    expect(target).toMatchObject({
+      from: block.from,
+      to: block.to,
+      text: 'A two.',
+    })
+    expect(target?.blocks).toHaveLength(1)
+  })
+
+  it('keeps line breaks inside the selection and spaces at the edges', () => {
+    const first = byText('A one.')
+    const target = resolveTarget(blocks, DOC, {
+      from: first.from,
+      to: block.to + 1,
+    })
+    expect(target?.text).toBe('A one.\n\nA two.')
+    expect(resolveTarget(blocks, ' x \n', { from: 0, to: 4 })).toMatchObject({
+      text: ' x ',
+      from: 0,
+      to: 3,
+    })
+  })
+
+  it('has no Target for a selection of only line breaks', () => {
+    expect(resolveTarget(blocks, DOC, { from: 7, to: 9 })).toBeUndefined()
+  })
+})
+
+describe('targetFromRange', () => {
+  it('rebuilds a selection Target from its range', () => {
+    const block = byText('A two.')
+    const rebuilt = targetFromRange(
+      blocks,
+      DOC,
+      { from: block.from + 2, to: block.to },
+      'selection',
+    )
+    const original = resolveTarget(blocks, DOC, {
+      from: block.from + 2,
+      to: block.to,
+    })
+    expect(rebuilt).toEqual(original)
+  })
+
+  it('rebuilds a Block Target from the Block range', () => {
+    const block = byText('A two.')
+    const rebuilt = targetFromRange(
+      blocks,
+      DOC,
+      { from: block.from, to: block.to },
+      'block',
+    )
+    expect(rebuilt).toEqual(
+      resolveTarget(blocks, DOC, { from: block.from + 1, to: block.from + 1 }),
+    )
+  })
+
+  it('lists every Block the range overlaps', () => {
+    const first = byText('A one.')
+    const second = byText('A two.')
+    const rebuilt = targetFromRange(
+      blocks,
+      DOC,
+      { from: first.from, to: second.to },
+      'selection',
+    )
+    expect(rebuilt.blocks.map((block) => block.text)).toEqual([
+      'A one.',
+      'A two.',
+    ])
   })
 })

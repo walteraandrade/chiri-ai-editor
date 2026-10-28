@@ -55,18 +55,23 @@ export const headingText = (block: Block): string => {
 const overlaps = (block: Block, from: number, to: number): boolean =>
   block.from < to && block.to > from
 
+const LEADING_BREAKS = /^[\r\n]*/
+const TRAILING_BREAKS = /[\r\n]*$/
+
 const resolveSelectionTarget = (
   blocks: readonly Block[],
   text: string,
-  { from, to }: Selection,
+  selection: Selection,
 ): Target | undefined => {
-  const selected = text.slice(from, to)
+  const selected = text.slice(selection.from, selection.to)
   if (selected.trim() === '') return undefined
+  const from = selection.from + (LEADING_BREAKS.exec(selected)?.[0].length ?? 0)
+  const to = selection.to - (TRAILING_BREAKS.exec(selected)?.[0].length ?? 0)
   return {
     source: 'selection',
     from,
     to,
-    text: selected,
+    text: text.slice(from, to),
     blocks: blocks.filter((block) => overlaps(block, from, to)),
   }
 }
@@ -86,6 +91,19 @@ const resolveCursorTarget = (
         blocks: [block],
       }
 }
+
+export const targetFromRange = (
+  blocks: readonly Block[],
+  text: string,
+  { from, to }: Selection,
+  source: Target['source'],
+): Target => ({
+  source,
+  from,
+  to,
+  text: text.slice(from, to),
+  blocks: blocks.filter((block) => overlaps(block, from, to)),
+})
 
 export const resolveTarget = (
   blocks: readonly Block[],
