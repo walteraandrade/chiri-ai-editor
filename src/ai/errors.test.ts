@@ -58,13 +58,13 @@ describe('classifyError', () => {
     )
   })
 
-  it('maps a broken response under a 2xx status to network, not to a 200 api error', () => {
+  it('maps a broken response under a 2xx status to unknown, not to a 200 api error', () => {
     for (const status of [200, 201, 204]) {
       const error = classifyError(apiError(status))
-      expect(error.type).toBe('network')
-      expect(error.message).toBe('The response stream broke')
+      expect(error.type).toBe('unknown')
+      expect(error.message).toBe('the answer stream broke off. Retry.')
     }
-    expect(classifyError(apiError(200, { code: 200 })).type).toBe('network')
+    expect(classifyError(apiError(200, { code: 200 })).type).toBe('unknown')
   })
 
   it('still reads a failure code from the payload under HTTP 200', () => {

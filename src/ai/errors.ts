@@ -44,7 +44,7 @@ const fromApiCallError = (error: APICallError): ClientError => {
       : error.statusCode
   if (status === undefined) return { type: 'network', message: error.message }
   return isSuccessStatus(status)
-    ? { type: 'network', message: 'The response stream broke' }
+    ? { type: 'unknown', message: 'the answer stream broke off. Retry.' }
     : fromStatus(status, error.message)
 }
 
