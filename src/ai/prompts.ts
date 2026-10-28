@@ -142,9 +142,10 @@ export const buildReviewPrompt = ({
         'The Document is split into numbered Blocks. Return a list of edits. Each edit has the blockId of the Block to replace, the complete new text of that Block (with its Markdown syntax) as the replacement, and a rationale.',
       ],
       [
-        `Return at most ${MAX_REVIEW_EDITS} edits, most important first, with one edit per Block. Only edit Blocks that really need it. Never edit code blocks. If nothing needs changing, return an empty list. ${SAME_LANGUAGE}`,
+        `Return at most ${MAX_REVIEW_EDITS} edits, most important first, with one edit per Block. Only edit Blocks that really need it. Never edit code blocks. If nothing needs changing, return an empty list.`,
       ],
       blocks.map((block) => tag('block', block.text, blockAttributes(block))),
+      [SAME_LANGUAGE],
     ]),
   }
 }

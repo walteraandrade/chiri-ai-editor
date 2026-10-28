@@ -4,6 +4,7 @@ import {
   type BakeoffInput,
   costsRow,
   fence,
+  likelyNotEnglish,
   type ModelRun,
   median,
   type RequestResult,
@@ -193,6 +194,28 @@ describe('median', () => {
 
   it('returns null for an empty list', () => {
     expect(median([])).toBeNull()
+  })
+})
+
+describe('likelyNotEnglish', () => {
+  it('accepts English rationales', () => {
+    for (const text of [
+      'Fixes the spelling of "receive".',
+      'Corrected spelling errors.',
+      'Replaces casual phrasing with a professional tone, while keeping the “same” meaning.',
+    ])
+      expect(likelyNotEnglish(text)).toBe(false)
+  })
+
+  it('flags French, Spanish, German, Norwegian and Russian rationales', () => {
+    for (const text of [
+      'Corrige la faute de frappe « recieve ».',
+      'Corregido el error ortográfico de recieve.',
+      'Der Satz ist übermäßig lang.',
+      'Straffer formulert setning som fjerner fyll og gjentakelser.',
+      'Эти правки сокращают абзац.',
+    ])
+      expect(likelyNotEnglish(text)).toBe(true)
   })
 })
 

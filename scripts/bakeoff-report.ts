@@ -77,6 +77,8 @@ export type ModelSummary = {
     readonly cached: number
   }
   readonly finishReasons: Readonly<Record<string, number>>
+  readonly rationales: number
+  readonly foreignRationales: number
   readonly requests: number
   readonly succeeded: number
   readonly firstTryValid: number
@@ -84,6 +86,29 @@ export type ModelSummary = {
   readonly failures: number
   readonly skipped: number
   readonly slow: boolean
+}
+
+const FOREIGN_MARKERS: ReadonlySet<string> = new Set(
+  [
+    'le la les de des du et en un une pour dans qui est sont que ce cette sur sans ou',
+    'el los las del y una para con se por como es su sus',
+    'der das und ist nicht ein eine zu mit von wird werden für auf dem den',
+    'og som det på er av med för och att het een van voor zijn',
+    'os uma um não em',
+  ].flatMap((line) => line.split(' ')),
+)
+
+export const likelyNotEnglish = (text: string): boolean => {
+  const hasForeignLetter = [...text].some(
+    (char) => char.charCodeAt(0) > 127 && /\p{L}/u.test(char),
+  )
+  const words = text.toLowerCase().match(/[\p{L}]+/gu) ?? []
+  const hasForeignQuotes = /[«»„]/.test(text)
+  return (
+    hasForeignLetter ||
+    hasForeignQuotes ||
+    words.some((word) => FOREIGN_MARKERS.has(word))
+  )
 }
 
 export const median = (values: readonly number[]): number | null => {
@@ -128,6 +153,15 @@ const firstRecordOf = (
   records
     .filter((record) => record.task === task)
     .sort((a, b) => a.attempt - b.attempt)[0]
+
+const rationalesOf = (run: ModelRun): readonly string[] =>
+  run.results.flatMap((result) =>
+    result.outcome.type === 'suggestion'
+      ? [result.outcome.payload.rationale]
+      : result.outcome.type === 'review'
+        ? result.outcome.payload.edits.map((edit) => edit.rationale)
+        : [],
+  )
 
 export const summarizeModel = (
   run: ModelRun,
@@ -176,6 +210,8 @@ export const summarizeModel = (
         record.finishReason === null ? [] : [record.finishReason],
       ),
     ),
+    rationales: rationalesOf(run).length,
+    foreignRationales: rationalesOf(run).filter(likelyNotEnglish).length,
     requests: run.results.length,
     succeeded: run.results.filter(isSuccess).length,
     firstTryValid: attempted.filter(
@@ -215,6 +251,7 @@ const summaryTable = (
     'Valid first try',
     'Retries',
     'Failures',
+    'Rationale not in English',
   ]
   const rows = summaries.map((summary) => [
     code(summary.model),
@@ -233,6 +270,7 @@ const summaryTable = (
     summary.skipped > 0
       ? `${summary.failures} (+${summary.skipped} skipped)`
       : String(summary.failures),
+    `${summary.foreignRationales}/${summary.rationales}`,
   ])
   return [
     `| ${headers.join(' | ')} |`,
@@ -283,7 +321,7 @@ const quickSection = (spec: RequestSpec, runs: readonly ModelRun[]): string => {
       '',
       fence(replacement),
       '',
-      `Rationale: ${rationale}`,
+      `Rationale${likelyNotEnglish(rationale) ? ' (not in English)' : ''}: ${rationale}`,
     ].join('\n')
   })
   return [
@@ -362,7 +400,7 @@ const reviewSection = (
       ...(payload.edits.length === 0
         ? ['No edits.', '']
         : payload.edits.flatMap((edit) => [
-            `**${edit.blockId}**: ${edit.rationale}`,
+            `**${edit.blockId}**${likelyNotEnglish(edit.rationale) ? ' (rationale not in English)' : ''}: ${edit.rationale}`,
             '',
             fence(edit.replacement),
             '',
@@ -424,6 +462,7 @@ export const renderBakeoffReport = ({
     '',
     `- Input: the ${documentName}; ${quick.length} Quick actions on fixed Targets plus ${review.length} Review pass without Focus.`,
     '- Settings for every model: strict JSON schema, `provider.require_parameters: true`, reasoning effort `low`, 30 s timeout for Target requests and 60 s for the Review pass, one silent retry on invalid output, models called one after another.',
+    '- The sample Document is English, so a Rationale in another language is a slip of the model (rule 5 of [ADR 0006](adr/0006-context-and-prompt-rules.md)). "Rationale not in English" is a heuristic count, read the outputs to confirm.',
     '- Latencies are client wall time per request, including the silent retry when there was one. Cost comes from the OpenRouter `usage.cost` of each call.',
     `- **Total cost: US$${usd(total)}** of the US$${budgetUsd.toFixed(2)} Bake-off budget.`,
     '',

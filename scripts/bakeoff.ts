@@ -64,6 +64,7 @@ type Args = {
   readonly requestIds: readonly string[] | undefined
   readonly out: string
   readonly json: string | undefined
+  readonly waitForStats: boolean
 }
 
 const parseArgs = (argv: readonly string[]): Args => {
@@ -78,6 +79,7 @@ const parseArgs = (argv: readonly string[]): Args => {
     requestIds: requestIds ?? (dryRun ? ['shorter'] : undefined),
     out: flag('out') ?? DEFAULT_OUT,
     json: flag('json'),
+    waitForStats: !argv.includes('--no-stats'),
   }
 }
 
@@ -243,7 +245,9 @@ const main = async (): Promise<void> => {
       apiKey,
       model,
       onRecord: (record) => appendAiCall(log, record),
-      onRecordEnriched: (record) => enrichAiCall(log, record),
+      ...(args.waitForStats
+        ? { onRecordEnriched: (record) => enrichAiCall(log, record) }
+        : {}),
     })
     clients.push(client)
     const modelResults: RequestResult[] = []
@@ -288,9 +292,10 @@ const main = async (): Promise<void> => {
     }
   }
 
-  console.log(
-    '\nWaiting for the OpenRouter generation stats, which lag about a minute...',
-  )
+  if (args.waitForStats)
+    console.log(
+      '\nWaiting for the OpenRouter generation stats, which lag about a minute...',
+    )
   await Promise.all(clients.map((client) => client.flush()))
   const runs: ModelRun[] = args.models.map((model) => ({
     model,

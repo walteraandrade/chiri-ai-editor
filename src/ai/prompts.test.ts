@@ -278,7 +278,7 @@ describe('buildReviewPrompt', () => {
 
   it('asks for the Document language', () => {
     expect(buildReviewPrompt({ blocks }).prompt).toMatch(
-      /same language as the Document text/,
+      /<\/block>\n\nWrite the replacement and the rationale in the same language as the Document text\.$/,
     )
   })
 
