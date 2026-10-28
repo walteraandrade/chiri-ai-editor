@@ -14,6 +14,7 @@ import {
 } from './suggestion-commands'
 import {
   beginEffect,
+  failEffect,
   resolveEffect,
   suggestionsField,
   suggestionsOf,
@@ -159,6 +160,42 @@ describe('Accept', () => {
     open(outside, 'a', FIRST.from, FIRST.to)
     expect(acceptAtCursor(outside)).toBe(false)
     expect(outside.state.doc.toString()).toBe(DOC)
+  })
+})
+
+describe('Accept key inside a Suggestion that is not ready', () => {
+  it('is handled without touching the Document or the Suggestion while pending', () => {
+    const handle = createHandle(DOC, 10)
+    handle.dispatch({
+      effects: beginEffect.of(draft('a', FIRST.from, FIRST.to)),
+    })
+
+    expect(acceptAtCursor(handle)).toBe(true)
+
+    expect(handle.state.doc.toString()).toBe(DOC)
+    expect(findSuggestion(suggestionsOf(handle.state), 'a')?.status).toBe(
+      'pending',
+    )
+  })
+
+  it('is handled without touching the Document or the Suggestion on error', () => {
+    const handle = createHandle(DOC, 10)
+    handle.dispatch({
+      effects: beginEffect.of(draft('a', FIRST.from, FIRST.to)),
+    })
+    handle.dispatch({
+      effects: failEffect.of({
+        id: 'a',
+        error: { type: 'network', message: 'offline' },
+      }),
+    })
+
+    expect(acceptAtCursor(handle)).toBe(true)
+
+    expect(handle.state.doc.toString()).toBe(DOC)
+    expect(findSuggestion(suggestionsOf(handle.state), 'a')?.status).toBe(
+      'error',
+    )
   })
 })
 

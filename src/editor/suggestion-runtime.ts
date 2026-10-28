@@ -5,7 +5,7 @@ import { getNeighbors, targetFromRange } from '../blocks/target'
 import { taskLabel } from '../suggestions/instruction'
 import { findSuggestion, pendingSuggestionIds } from '../suggestions/state'
 import type { Instruction, SuggestionId } from '../suggestions/types'
-import { blocksOf, currentTarget } from './current-target'
+import { blocksOf, currentTarget, textOf } from './current-target'
 import type { EditorHandle } from './suggestion-commands'
 import {
   beginEffect,
@@ -40,7 +40,7 @@ export const createSuggestionRuntime = ({
 }: RuntimeOptions) => {
   const controllers = new Map<SuggestionId, AbortController>()
 
-  const abortStale = (state: EditorState): void => {
+  const reconcile = (state: EditorState): void => {
     const pending = new Set(pendingSuggestionIds(suggestionsOf(state)))
     for (const [id, controller] of controllers) {
       if (pending.has(id)) continue
@@ -104,12 +104,7 @@ export const createSuggestionRuntime = ({
     const found = findSuggestion(suggestionsOf(state), id)
     if (found?.status !== 'error') return
     const blocks = blocksOf(state)
-    const target = targetFromRange(
-      blocks,
-      state.doc.toString(),
-      found,
-      found.source,
-    )
+    const target = targetFromRange(blocks, textOf(state), found, found.source)
     handle.dispatch({ effects: retryEffect.of(id) })
     void run(handle, id, {
       target,
@@ -124,7 +119,6 @@ export const createSuggestionRuntime = ({
   }
 
   const actions: SuggestionActions = { ask, retry }
-  const reconcile = abortStale
 
   const extension = [
     suggestionActionsFacet.of(actions),

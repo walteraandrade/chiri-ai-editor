@@ -256,6 +256,57 @@ describe('getNeighbors', () => {
   })
 })
 
+describe('resolveTarget with line breaks at the edges of a selection', () => {
+  const block = byText('A two.')
+
+  it('drops the line break a triple-click leaves at the end', () => {
+    const target = resolveTarget(blocks, DOC, {
+      from: block.from,
+      to: block.to + 1,
+    })
+    expect(target).toMatchObject({
+      source: 'selection',
+      from: block.from,
+      to: block.to,
+      text: 'A two.',
+    })
+    expect(target?.blocks.map((candidate) => candidate.text)).toEqual([
+      'A two.',
+    ])
+  })
+
+  it('drops line breaks at the start and several at the end', () => {
+    const target = resolveTarget(blocks, DOC, {
+      from: block.from - 2,
+      to: block.to + 2,
+    })
+    expect(target).toMatchObject({
+      from: block.from,
+      to: block.to,
+      text: 'A two.',
+    })
+    expect(target?.blocks).toHaveLength(1)
+  })
+
+  it('keeps line breaks inside the selection and spaces at the edges', () => {
+    const first = byText('A one.')
+    const target = resolveTarget(blocks, DOC, {
+      from: first.from,
+      to: block.to + 1,
+    })
+    expect(target?.text).toBe('A one.\n\nA two.')
+    expect(resolveTarget(blocks, ' x \n', { from: 0, to: 4 })).toMatchObject({
+      text: ' x ',
+      from: 0,
+      to: 3,
+    })
+  })
+
+  it('has no Target for a selection of only line breaks', () => {
+    expect(resolveTarget(blocks, DOC, { from: 7, to: 9 })).toBeUndefined()
+  })
+})
+
 describe('targetFromRange', () => {
   it('rebuilds a selection Target from its range', () => {
     const block = byText('A two.')

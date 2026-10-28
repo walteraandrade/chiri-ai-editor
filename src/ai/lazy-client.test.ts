@@ -47,7 +47,7 @@ describe('createLazyModelClient', () => {
     expect(load).toHaveBeenCalledTimes(1)
   })
 
-  it('turns a failed load into a network error and tries again next time', async () => {
+  it('turns a failed load into an unknown error that says to reload, and tries again next time', async () => {
     const load = vi
       .fn()
       .mockRejectedValueOnce(
@@ -57,7 +57,8 @@ describe('createLazyModelClient', () => {
     const client = createLazyModelClient(load)
 
     const failed = await client.requestSuggestion(request)
-    expect(failed).toMatchObject({ ok: false, error: { type: 'network' } })
+    expect(failed).toMatchObject({ ok: false, error: { type: 'unknown' } })
+    expect(!failed.ok && failed.error.message).toMatch(/reload the page/i)
 
     expect(await client.requestSuggestion(request)).toBe(answer)
     expect(load).toHaveBeenCalledTimes(2)

@@ -43,9 +43,9 @@ export const rejectSuggestionById = (
 
 export const acceptAtCursor = (handle: EditorHandle): boolean => {
   const found = suggestionAtCursor(handle.state)
-  return found?.status === 'ready'
-    ? acceptSuggestionById(handle, found.id)
-    : false
+  if (found === undefined) return false
+  if (found.status === 'ready') acceptSuggestionById(handle, found.id)
+  return true
 }
 
 export const rejectAtCursor = (handle: EditorHandle): boolean => {
