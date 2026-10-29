@@ -113,6 +113,15 @@ const readyReviewSuggestions = (
 export const openReviewCount = (state: SuggestionsState): number =>
   readyReviewSuggestions(state).length
 
+export const firstReviewSuggestion = (
+  state: SuggestionsState,
+): ReadySuggestion | undefined =>
+  readyReviewSuggestions(state).reduce<ReadySuggestion | undefined>(
+    (first, item) =>
+      first === undefined || item.from < first.from ? item : first,
+    undefined,
+  )
+
 export type AcceptAllPlan = {
   readonly ids: readonly SuggestionId[]
   readonly changes: readonly {

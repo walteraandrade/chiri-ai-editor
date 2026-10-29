@@ -13,8 +13,10 @@ import {
   rejectAllReviewSuggestions,
   rejectAtCursor,
   rejectSuggestionById,
+  revealFirstReviewSuggestion,
 } from './suggestion-commands'
 import {
+  activeOf,
   beginEffect,
   beginRefineEffect,
   failEffect,
@@ -413,5 +415,30 @@ describe('Accept all and Reject all', () => {
     const handle = createHandle()
     open(handle, 'ask', FIRST.from, FIRST.to)
     expect(rejectAllReviewSuggestions(handle)).toBe(false)
+  })
+})
+
+describe('revealFirstReviewSuggestion', () => {
+  const THIRD = { from: 47, to: 57 }
+
+  it('puts the cursor at the start of the review Suggestion closest to the top, which makes it Active', () => {
+    const handle = createHandle(DOC, DOC.length)
+    open(handle, 'ask', FIRST.from, FIRST.to)
+    open(handle, 'r2', THIRD.from, THIRD.to, 'review')
+    open(handle, 'r1', SECOND.from, SECOND.to, 'review')
+
+    expect(revealFirstReviewSuggestion(handle)).toBe(true)
+    expect(handle.state.selection.main.head).toBe(SECOND.from)
+    expect(handle.state.selection.main.empty).toBe(true)
+    expect(activeOf(handle.state)?.id).toBe('r1')
+    expect(handle.state.doc.toString()).toBe(DOC)
+  })
+
+  it('leaves the cursor alone without an open review Suggestion', () => {
+    const handle = createHandle(DOC, DOC.length)
+    open(handle, 'ask', FIRST.from, FIRST.to)
+
+    expect(revealFirstReviewSuggestion(handle)).toBe(false)
+    expect(handle.state.selection.main.head).toBe(DOC.length)
   })
 })
