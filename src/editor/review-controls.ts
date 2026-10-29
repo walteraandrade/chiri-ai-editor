@@ -3,6 +3,7 @@ import { reviewActionsFacet } from './review-runtime'
 import {
   acceptAllReviewSuggestions,
   rejectAllReviewSuggestions,
+  revealFirstReviewSuggestion,
 } from './suggestion-commands'
 
 export type ReviewControls = {
@@ -10,6 +11,7 @@ export type ReviewControls = {
   readonly stop: () => void
   readonly acceptAll: () => void
   readonly rejectAll: () => void
+  readonly revealFirst: () => boolean
 }
 
 export const bindReviewControls = (view: EditorView): ReviewControls => ({
@@ -22,5 +24,11 @@ export const bindReviewControls = (view: EditorView): ReviewControls => ({
   rejectAll: () => {
     rejectAllReviewSuggestions(view)
     view.focus()
+  },
+  revealFirst: () => {
+    const working = view.dom.contains(view.dom.ownerDocument.activeElement)
+    if (working || !revealFirstReviewSuggestion(view)) return false
+    view.focus()
+    return true
   },
 })

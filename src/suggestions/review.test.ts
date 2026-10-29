@@ -5,6 +5,7 @@ import { type Block, extractBlocks } from '../blocks/extract-blocks'
 import {
   acceptAllPlan,
   DEFAULT_REVIEW_FOCUS,
+  firstReviewSuggestion,
   mapBlockRange,
   occupiedBlockIds,
   openReviewCount,
@@ -393,6 +394,18 @@ describe('Accept all and Reject all scope', () => {
         { from: THIRD.from, to: THIRD.to, insert: 'Three.' },
       ],
     })
+  })
+
+  it('finds the open review Suggestion closest to the top, whatever order it arrived in', () => {
+    expect(firstReviewSuggestion(reviewState())?.id).toBe('r1')
+  })
+
+  it('finds no first review Suggestion when none is open', () => {
+    expect(firstReviewSuggestion(emptySuggestions)).toBeUndefined()
+    const pending = stateOf(
+      draft('r', SECOND.from, SECOND.to, { origin: 'review' }),
+    )
+    expect(firstReviewSuggestion(pending)).toBeUndefined()
   })
 
   it('plans changes that apply together to the original Document', () => {

@@ -1,7 +1,12 @@
 import { isolateHistory } from '@codemirror/commands'
 import type { EditorState, TransactionSpec } from '@codemirror/state'
-import { acceptAllPlan, openReviewCount } from '../suggestions/review'
-import { findSuggestion } from '../suggestions/state'
+import { EditorView } from '@codemirror/view'
+import {
+  acceptAllPlan,
+  firstReviewSuggestion,
+  openReviewCount,
+} from '../suggestions/review'
+import { findSuggestion, suggestionAt } from '../suggestions/state'
 import type { SuggestionId } from '../suggestions/types'
 import {
   acceptEffect,
@@ -52,6 +57,21 @@ export const acceptAllReviewSuggestions = (handle: EditorHandle): boolean => {
     effects: acceptManyEffect.of(ids),
     annotations: isolateHistory.of('full'),
     userEvent: 'input.accept',
+  })
+  return true
+}
+
+export const revealFirstReviewSuggestion = (handle: EditorHandle): boolean => {
+  const suggestions = suggestionsOf(handle.state)
+  const first = firstReviewSuggestion(suggestions)
+  if (first === undefined) return false
+  const anchor =
+    suggestionAt(suggestions, first.from)?.id === first.id
+      ? first.from
+      : Math.min(first.from + 1, first.to)
+  handle.dispatch({
+    selection: { anchor },
+    effects: EditorView.scrollIntoView(anchor, { y: 'center' }),
   })
   return true
 }
