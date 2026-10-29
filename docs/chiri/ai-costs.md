@@ -55,8 +55,15 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-28 | PR #16 | maintainer check, pasted Document: review document → focus: Shorten the Description | `openai/gpt-6.1-terra` → OpenAI | 1907 / 198 / 0 / 0 | 0.003373 | 4052 / 1041 / 3240 (first Suggestion 4006) | stop | 1/1 | [16-margin-cards.md](verification/16-margin-cards.md) |
 | 2026-10-28 | PR #16 | maintainer check, pasted Document: review document → focus: Tone | `openai/gpt-6.1-terra` → OpenAI | 1850 / 120 / 0 / 0 | 0.002912 | 2908 / 1393 / 2518 (first 2847) | stop | 1/1 | [16-margin-cards.md](verification/16-margin-cards.md) |
 | 2026-10-28 | PR #16 | maintainer check, pasted Document: review document → focus: concision | `openai/gpt-6.1-terra` → OpenAI | 1837 / 792 / 0 / 0 | 0.006256 | 10447 / 926 / 9574 (first 5060) | stop | 1/1 | [16-margin-cards.md](verification/16-margin-cards.md) |
+| 2026-10-29 | #18 | cursor in p5 → More formal | `openai/gpt-6.1-terra` → OpenAI | 530 / 68 / 0 / 0 | 0.000870 | 3304 / 1888 / 2270 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
+| 2026-10-29 | #18 | refine p5 → make it shorter | `openai/gpt-6.1-terra` → OpenAI | 609 / 60 / 0 / 0 | 0.000909 | 2467 / 2171 / 2189 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
+| 2026-10-29 | #18 | refine p5 → use a warmer tone | `openai/gpt-6.1-terra` → OpenAI | 609 / 62 / 0 / 0 | 0.000919 | 1999 / 1677 / 1696 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
+| 2026-10-29 | #18 | refine p5 → say we now deploy on weekdays (from 1/3) | `openai/gpt-6.1-terra` → OpenAI | 612 / 72 / 0 / 0 | 0.000972 | 2475 / 1673 / 1949 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
+| 2026-10-29 | #18 | cursor in p4 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 511 / 57 / 0 / 0 | 0.000796 | 2662 / 2201 / 2229 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
+| 2026-10-29 | #18 | refine p4 → keep the ten percent rollout detail (no change) | `openai/gpt-6.1-terra` → OpenAI | 585 / 60 / 0 / 0 | 0.000885 | 2236 / 1946 / 1971 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
+| 2026-10-29 | #18 | refine p4 → turn it into a single sentence | `openai/gpt-6.1-terra` → OpenAI | 585 / 56 / 0 / 0 | 0.000865 | 2360 / 1604 / 1635 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
 
-**Running total:** US$0.305 of 5.00 (the key's usage counter read US$9.048 after PR #16, against US$8.743 before slice 2; the rows add up to 0.278, 0.267 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report and the use noted under PR #16)
+**Running total:** US$0.311 of 5.00 (the key's usage counter read US$9.054 after issue #18, against US$8.743 before slice 2; the rows add up to 0.284, 0.273 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report and the use noted under PR #16)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -83,3 +90,7 @@ Notes on slice 6:
 Notes on PR #16:
 - No model calls in the implementer's checks: Suggestions were injected through the suggestion effects in dev mode. The 4 rows are the maintainer's own check on a pasted Document, read from `window.__aiCalls`; `window.__reviewDrops` was empty.
 - The counter rose US$0.036 since slice 6 and these rows explain US$0.013. The rest is use of the key outside these rows, so it stays in the upper bound only.
+
+Notes on issue #18:
+- Slice cost is about US$0.0062: 7 real calls, all recorded (2 Quick actions to open Suggestions, 5 Refines). The forced network failure never reached OpenRouter.
+- The key's usage counter rose about US$0.006 since PR #16, which matches the rows.

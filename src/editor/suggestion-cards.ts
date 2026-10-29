@@ -7,10 +7,17 @@ import {
   type ViewUpdate,
 } from '@codemirror/view'
 import { describeError } from '../suggestions/error-message'
-import { freeTextInstruction } from '../suggestions/instruction'
+import {
+  freeTextInstruction,
+  instructionLabel,
+} from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion, SuggestionId } from '../suggestions/types'
-import { detectApplePlatform, formatShortcut } from '../ui/platform'
+import {
+  detectApplePlatform,
+  formatCtrlShortcut,
+  formatShortcut,
+} from '../ui/platform'
 import {
   type CardPlacement,
   cardPlacementOf,
@@ -18,7 +25,7 @@ import {
   marginAnchorAt,
   placementField,
 } from './card-placement'
-import { el } from './dom'
+import { el, syncChildren } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
 import {
@@ -33,16 +40,25 @@ import {
 import {
   activeOf,
   cursorOf,
+  showVersionEffect,
   suggestionsField,
   suggestionsOf,
 } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
+
+type VersionView = {
+  readonly index: number
+  readonly count: number
+  readonly instruction: string
+  readonly locked: boolean
+}
 
 type CardContent = {
   readonly suggestion: ReadySuggestion
   readonly showRationale: boolean
   readonly showActions: boolean
   readonly refineOpen: boolean
+  readonly version: VersionView | null
 }
 
 type CardKind = 'active' | 'hover'
@@ -74,6 +90,22 @@ const placements: Readonly<Record<CardPlacement, PlacementSpec>> = {
   },
 }
 
+const versionOf = ({
+  history,
+  shown,
+  refine,
+}: ReadySuggestion): VersionView | null => {
+  const step = history[shown]
+  return history.length < 2 || step === undefined
+    ? null
+    : {
+        index: shown,
+        count: history.length,
+        instruction: instructionLabel(step.instruction),
+        locked: refine.status === 'working',
+      }
+}
+
 export const contentFor = (
   kind: CardKind,
   state: EditorState,
@@ -92,6 +124,7 @@ export const contentFor = (
         hoveredId === active.id,
       showActions: true,
       refineOpen: refineInputOpenFor(state) === active.id,
+      version: versionOf(active),
     }
   }
   if (hoveredId === null || hoveredId === active?.id) return undefined
@@ -102,6 +135,7 @@ export const contentFor = (
         showRationale: true,
         showActions: false,
         refineOpen: false,
+        version: null,
       }
     : undefined
 }
@@ -111,11 +145,19 @@ const refineKey = ({ refine }: ReadySuggestion): string =>
     ? `failed:${describeError(refine.error)}`
     : refine.status
 
+const versionKey = (version: VersionView | null): string =>
+  version === null
+    ? ''
+    : [version.index, version.count, version.instruction, version.locked].join(
+        '/',
+      )
+
 const contentKey = ({
   suggestion,
   showRationale,
   showActions,
   refineOpen,
+  version,
 }: CardContent): string =>
   [
     suggestion.id,
@@ -124,6 +166,7 @@ const contentKey = ({
     showActions,
     refineOpen,
     refineKey(suggestion),
+    versionKey(version),
   ].join('\u0000')
 
 const shortcutLabel = (key: string): string =>
@@ -223,6 +266,88 @@ const createRefineForm = (view: EditorView): RefineForm => {
   return { form, input }
 }
 
+const VERSION_KEY_OFFSETS: Readonly<Record<string, number>> = { h: -1, l: 1 }
+
+export const versionKeyOffset = (
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'ctrlKey' | 'altKey' | 'metaKey' | 'shiftKey'
+  >,
+): number | undefined =>
+  event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
+    ? VERSION_KEY_OFFSETS[event.key.toLowerCase()]
+    : undefined
+
+const stepActiveVersion = (view: EditorView, offset: number): boolean => {
+  const content = contentFor('active', view.state)
+  if (!content?.version) return false
+  view.dispatch({
+    effects: showVersionEffect.of({
+      id: content.suggestion.id,
+      index: content.version.index + offset,
+    }),
+  })
+  return true
+}
+
+type VersionNav = {
+  readonly render: (version: VersionView) => HTMLElement
+}
+
+const createVersionNav = (view: EditorView): VersionNav => {
+  const stepButton = (
+    label: string,
+    glyph: string,
+    key: string,
+    offset: number,
+  ) =>
+    el(
+      'button',
+      {
+        class: 'cm-ai-button cm-ai-version-step',
+        attrs: {
+          type: 'button',
+          'aria-label': label,
+          'aria-keyshortcuts': `Control+${key}`,
+          title: `${label} (${formatCtrlShortcut(key, detectApplePlatform())})`,
+        },
+        on: { click: () => stepActiveVersion(view, offset) },
+      },
+      [glyph],
+    )
+  const previous = stepButton('Previous version', '‹', 'H', -1)
+  const next = stepButton('Next version', '›', 'L', 1)
+  const count = el('span', {
+    class: 'cm-ai-version-count',
+    attrs: { 'aria-live': 'polite' },
+  })
+  const instruction = el('span', { class: 'cm-ai-version-instruction' })
+  const dom = el(
+    'div',
+    {
+      class: 'cm-ai-version',
+      attrs: { role: 'group', 'aria-label': 'Versions' },
+    },
+    [previous, count, next, instruction],
+  )
+  return {
+    render: (version) => {
+      const focused = dom.ownerDocument.activeElement
+      previous.disabled = version.locked || version.index === 0
+      next.disabled = version.locked || version.index === version.count - 1
+      count.textContent = `${version.index + 1} / ${version.count}`
+      instruction.textContent = version.instruction
+      instruction.title = version.instruction
+      const stuck = [previous, next].find(
+        (button) => button === focused && button.disabled,
+      )
+      const other = stuck === previous ? next : previous
+      if (stuck !== undefined && !other.disabled) other.focus()
+      return dom
+    },
+  }
+}
+
 const refineButton = (
   view: EditorView,
   { suggestion, refineOpen }: CardContent,
@@ -273,9 +398,12 @@ const renderCard = (
   view: EditorView,
   content: CardContent,
   { form }: RefineForm,
+  versionNav: VersionNav,
 ): Node[] => {
-  const { suggestion, showRationale, showActions, refineOpen } = content
+  const { suggestion, showRationale, showActions, refineOpen, version } =
+    content
   return [
+    ...(version === null ? [] : [versionNav.render(version)]),
     ...(showRationale
       ? [el('p', { class: 'cm-ai-rationale' }, [suggestion.rationale])]
       : []),
@@ -306,6 +434,7 @@ const cardCreator =
   (kind: CardKind, placement: CardPlacement) =>
   (view: EditorView): TooltipView => {
     const refineForm = createRefineForm(view)
+    const versionNav = createVersionNav(view)
     const dom = el('div', {
       class: `cm-ai-card cm-ai-card-${kind} cm-ai-card-${placement}`,
       attrs: {
@@ -317,6 +446,14 @@ const cardCreator =
           if (event.target !== refineForm.input) event.preventDefault()
         },
         keydown: (event) => {
+          const offset = versionKeyOffset(event)
+          if (
+            kind === 'active' &&
+            offset !== undefined &&
+            event.target !== refineForm.input &&
+            stepActiveVersion(view, offset)
+          )
+            return event.preventDefault()
           if (event.key !== 'Escape') return cycleTab(dom, event)
           event.preventDefault()
           view.focus()
@@ -338,10 +475,7 @@ const cardCreator =
       const key = contentKey(content)
       if (key === renderedKey) return
       renderedKey = key
-      const hadFocus =
-        refineForm.input.ownerDocument.activeElement === refineForm.input
-      dom.replaceChildren(...renderCard(view, content, refineForm))
-      if (hadFocus && refineForm.form.isConnected) refineForm.input.focus()
+      syncChildren(dom, renderCard(view, content, refineForm, versionNav))
     }
     sync(view.state)
     return {

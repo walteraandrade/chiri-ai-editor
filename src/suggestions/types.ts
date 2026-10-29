@@ -53,6 +53,7 @@ export type ReadySuggestion = SuggestionBase & {
   readonly rationale: string
   readonly diff: AdaptiveDiff
   readonly history: readonly RefineStep[]
+  readonly shown: number
   readonly refine: RefineState
 }
 

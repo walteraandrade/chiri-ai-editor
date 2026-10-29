@@ -2,7 +2,7 @@
 
 ## What it is
 
-A browser Markdown editor with an AI co-author. Select text, or put the cursor in a paragraph, and ask for a change with a Quick action (Shorter, Clearer, More formal, Fix grammar), free text, or `⌘K`. The AI answers inline as a tracked change: the old text struck through, the new text beside it, and a one-line Rationale on a card in the margin (on hover when the window is narrow). Small edits show a word-level diff; rewrites show the whole block. You can Accept, Reject, or Refine a Suggestion ("make it shorter", then "now more formal"). A Review pass reads the whole Document, optionally with a Focus ("tone only"), and streams up to six Suggestions, with Accept all and Reject all. Nothing touches the Document until you Accept, and Accept is a normal edit, so `⌘Z` undoes it.
+A browser Markdown editor with an AI co-author. Select text, or put the cursor in a paragraph, and ask for a change with a Quick action (Shorter, Clearer, More formal, Fix grammar), free text, or `⌘K`. The AI answers inline as a tracked change: the old text struck through, the new text beside it, and a one-line Rationale on a card in the margin (on hover when the window is narrow). Small edits show a word-level diff; rewrites show the whole block. You can Accept, Reject, or Refine a Suggestion ("make it shorter", then "now more formal"), and step back to an earlier version with the arrows on its card. A Review pass reads the whole Document, optionally with a Focus ("tone only"), and streams up to six Suggestions, with Accept all and Reject all. Nothing touches the Document until you Accept, and Accept is a normal edit, so `⌘Z` undoes it.
 
 ![Two Suggestions, a word-level change and a block-level rewrite, with the Active Suggestion's card in the right margin: its Rationale, Accept, Reject and Refine](docs/chiri/verification/img/margin-cards-1.png)
 
@@ -42,6 +42,7 @@ Keys (`Ctrl` instead of `⌘` outside macOS):
 |---|---|
 | `⌘K` | Ask about the selection, or the paragraph under the cursor. Inside a Suggestion: Refine it. |
 | `⌘Enter` | Accept the Suggestion under the cursor. |
+| `Ctrl+H` / `Ctrl+L` | Inside a Suggestion with more than one version, or on its card's buttons: show the previous / next one (`Ctrl` on macOS too). |
 | `Tab` | With the bubble or the Active Suggestion's card open: move into it. `Tab` and `Shift+Tab` then cycle its buttons. |
 | `Esc` | Close the bubble or the Refine box; cancel a request or a Refine in flight; on a card button, go back to the text; otherwise Reject the Suggestion under the cursor. |
 | `⌘Z` | Undo an Accept, or an Accept all in one step. Reject cannot be undone. |
@@ -50,16 +51,15 @@ Keys (`Ctrl` instead of `⌘` outside macOS):
 
 Details and context in [docs/BACKLOG.md](docs/BACKLOG.md).
 
-1. **Version arrows for Refine** (‹ 1/3 ›). Every Refine step is already kept; only the UI is missing.
-2. **Undoable Reject.** One stray `Esc` loses a Suggestion for good.
-3. **A sturdier Review prompt.** In the Bake-off, moving one sentence made two models return junk Replacements. A guard drops the one shape seen so far, and the prompt still needs a Bake-off re-run after any change.
-4. **A size limit for the Review pass.** It sends the whole Document, so cost and latency grow with it and nothing stops a very long one.
+1. **Undoable Reject.** One stray `Esc` loses a Suggestion for good.
+2. **A sturdier Review prompt.** In the Bake-off, moving one sentence made two models return junk Replacements. A guard drops the one shape seen so far, and the prompt still needs a Bake-off re-run after any change.
+3. **A size limit for the Review pass.** It sends the whole Document, so cost and latency grow with it and nothing stops a very long one.
 
 ## Links
 
 - [Architecture decisions](docs/chiri/adr/) (10 ADRs), [glossary](GLOSSARY.md), [plan](docs/PLAN.md)
 - [Bake-off](docs/chiri/bakeoff.md): all 9 models side by side
-- [AI cost log](docs/chiri/ai-costs.md): US$0.305 of 5.00 spent
-- [Verification records](docs/chiri/verification/): one per slice, plus PR #14 and PR #16, with screenshots and the AI call tables
+- [AI cost log](docs/chiri/ai-costs.md): US$0.311 of 5.00 spent
+- [Verification records](docs/chiri/verification/): one per slice, plus PR #14, PR #16 and issue #18, with screenshots and the AI call tables
 - [The challenge](docs/chiri/CHALLENGE.md)
 - [`ai-sessions/`](ai-sessions/): the raw Claude Code `.jsonl` files, as saved. Only OpenRouter keys are masked (`sk-or-***MASKED***`); nothing else is edited. The planning session is in the `grilling` folder. The orchestrator session is in the `chiri-implementation-orchestration` folder, and its implementer and reviewer subagents are under `<session id>/subagents/`. The sessions after the submission are in `app-review-diagnostico` (backlog wording, margin cards), `grilling` (selection fix and palette, then the docs check that ran this export) and `chiri-implementation-orchestration` (a project overview). The session that ran the export continues after it, so its last turns (opening and merging the PR with the export) are not in it.

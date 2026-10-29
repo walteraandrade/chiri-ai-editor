@@ -7,6 +7,7 @@ import type {
   Instruction,
   NoticeKind,
   ReadySuggestion,
+  RefineStep,
   Suggestion,
   SuggestionDraft,
   SuggestionId,
@@ -97,9 +98,28 @@ export const resolveSuggestion = (
         rationale: result.rationale,
       },
     ],
+    shown: 0,
     refine: { status: 'idle' },
   }
   return replaceItem(state, ready)
+}
+
+const showingStep = (
+  suggestion: ReadySuggestion,
+  history: readonly RefineStep[],
+  shown: number,
+): ReadySuggestion => {
+  const step = history[shown]
+  return step === undefined
+    ? suggestion
+    : {
+        ...suggestion,
+        history,
+        shown,
+        replacement: step.replacement,
+        rationale: step.rationale,
+        diff: adaptiveDiff(suggestion.original, step.replacement),
+      }
 }
 
 const findReady = (
@@ -138,21 +158,35 @@ export const resolveRefine = (
       'no-change',
     )
   }
+  const history = [
+    ...found.history.slice(0, found.shown + 1),
+    {
+      instruction: found.refine.instruction,
+      replacement,
+      rationale: result.rationale,
+    },
+  ]
   return replaceItem(state, {
-    ...found,
-    replacement,
-    rationale: result.rationale,
-    diff: adaptiveDiff(found.original, replacement),
-    history: [
-      ...found.history,
-      {
-        instruction: found.refine.instruction,
-        replacement,
-        rationale: result.rationale,
-      },
-    ],
+    ...showingStep(found, history, history.length - 1),
     refine: { status: 'idle' },
   })
+}
+
+export const showVersion = (
+  state: SuggestionsState,
+  id: SuggestionId,
+  index: number,
+): SuggestionsState => {
+  const found = findReady(state, id)
+  return found === undefined ||
+    found.refine.status === 'working' ||
+    index === found.shown ||
+    found.history[index] === undefined
+    ? state
+    : replaceItem(state, {
+        ...showingStep(found, found.history, index),
+        refine: { status: 'idle' },
+      })
 }
 
 export const failRefine = (
@@ -198,7 +232,10 @@ export const cancelRefine = (
 
 export const instructionHistory = (
   suggestion: ReadySuggestion,
-): readonly string[] => suggestion.history.map((step) => step.instruction.text)
+): readonly string[] =>
+  suggestion.history
+    .slice(0, suggestion.shown + 1)
+    .map((step) => step.instruction.text)
 
 export const failSuggestion = (
   state: SuggestionsState,

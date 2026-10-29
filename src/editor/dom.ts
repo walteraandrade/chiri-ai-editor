@@ -26,3 +26,17 @@ export const el = <K extends keyof HTMLElementTagNameMap>(
   node.append(...children)
   return node
 }
+
+export const syncChildren = (
+  parent: Element,
+  children: readonly Node[],
+): void => {
+  const keep = new Set(children)
+  for (const child of [...parent.childNodes]) {
+    if (!keep.has(child)) child.remove()
+  }
+  children.forEach((child, index) => {
+    const current = parent.childNodes[index] ?? null
+    if (current !== child) parent.insertBefore(child, current)
+  })
+}
