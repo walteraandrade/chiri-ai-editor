@@ -6,7 +6,7 @@ import {
   firstReviewSuggestion,
   openReviewCount,
 } from '../suggestions/review'
-import { findSuggestion } from '../suggestions/state'
+import { findSuggestion, suggestionAt } from '../suggestions/state'
 import type { SuggestionId } from '../suggestions/types'
 import {
   acceptEffect,
@@ -62,11 +62,16 @@ export const acceptAllReviewSuggestions = (handle: EditorHandle): boolean => {
 }
 
 export const revealFirstReviewSuggestion = (handle: EditorHandle): boolean => {
-  const first = firstReviewSuggestion(suggestionsOf(handle.state))
+  const suggestions = suggestionsOf(handle.state)
+  const first = firstReviewSuggestion(suggestions)
   if (first === undefined) return false
+  const anchor =
+    suggestionAt(suggestions, first.from)?.id === first.id
+      ? first.from
+      : Math.min(first.from + 1, first.to)
   handle.dispatch({
-    selection: { anchor: first.from },
-    effects: EditorView.scrollIntoView(first.from, { y: 'center' }),
+    selection: { anchor },
+    effects: EditorView.scrollIntoView(anchor, { y: 'center' }),
   })
   return true
 }

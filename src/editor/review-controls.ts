@@ -26,7 +26,8 @@ export const bindReviewControls = (view: EditorView): ReviewControls => ({
     view.focus()
   },
   revealFirst: () => {
-    if (!revealFirstReviewSuggestion(view)) return false
+    const working = view.dom.contains(view.dom.ownerDocument.activeElement)
+    if (working || !revealFirstReviewSuggestion(view)) return false
     view.focus()
     return true
   },

@@ -434,6 +434,16 @@ describe('revealFirstReviewSuggestion', () => {
     expect(handle.state.doc.toString()).toBe(DOC)
   })
 
+  it('still makes it Active when a newer Suggestion ends right where it starts', () => {
+    const handle = createHandle(DOC, DOC.length)
+    open(handle, 'r1', SECOND.from, SECOND.to, 'review')
+    open(handle, 'ask', 10, SECOND.from)
+
+    expect(revealFirstReviewSuggestion(handle)).toBe(true)
+    expect(activeOf(handle.state)?.id).toBe('r1')
+    expect(handle.state.selection.main.head).toBe(SECOND.from + 1)
+  })
+
   it('leaves the cursor alone without an open review Suggestion', () => {
     const handle = createHandle(DOC, DOC.length)
     open(handle, 'ask', FIRST.from, FIRST.to)

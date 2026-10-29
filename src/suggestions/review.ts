@@ -113,14 +113,12 @@ const readyReviewSuggestions = (
 export const openReviewCount = (state: SuggestionsState): number =>
   readyReviewSuggestions(state).length
 
+const inDocumentOrder = (state: SuggestionsState): readonly ReadySuggestion[] =>
+  [...readyReviewSuggestions(state)].sort((a, b) => a.from - b.from)
+
 export const firstReviewSuggestion = (
   state: SuggestionsState,
-): ReadySuggestion | undefined =>
-  readyReviewSuggestions(state).reduce<ReadySuggestion | undefined>(
-    (first, item) =>
-      first === undefined || item.from < first.from ? item : first,
-    undefined,
-  )
+): ReadySuggestion | undefined => inDocumentOrder(state)[0]
 
 export type AcceptAllPlan = {
   readonly ids: readonly SuggestionId[]
@@ -132,9 +130,7 @@ export type AcceptAllPlan = {
 }
 
 export const acceptAllPlan = (state: SuggestionsState): AcceptAllPlan => {
-  const ordered = [...readyReviewSuggestions(state)].sort(
-    (a, b) => a.from - b.from,
-  )
+  const ordered = inDocumentOrder(state)
   return {
     ids: ordered.map((item) => item.id),
     changes: ordered.map(({ from, to, replacement }) => ({

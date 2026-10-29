@@ -24,13 +24,11 @@ export function ReviewToolbar({ status, controls }: ReviewToolbarProps) {
   const wasRunning = useRef(false)
 
   useEffect(() => {
-    if (
-      wasRunning.current &&
-      !status.running &&
-      document.activeElement === document.body &&
-      !controls?.revealFirst()
-    )
-      triggerRef.current?.focus()
+    if (wasRunning.current && !status.running) {
+      const revealed = controls?.revealFirst() ?? false
+      if (!revealed && document.activeElement === document.body)
+        triggerRef.current?.focus()
+    }
     wasRunning.current = status.running
   }, [status.running, controls])
 
