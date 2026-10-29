@@ -308,6 +308,16 @@ describe('stepVersionAtCursor', () => {
     expect(shownOf(handle)).toBe(1)
   })
 
+  it('keeps a failed Refine and its error when the key hits the first version', () => {
+    const handle = refined()
+    stepVersionAtCursor(-1)(handle)
+    startRefine(handle)
+    failRefine(handle)
+    expect(stepVersionAtCursor(-1)(handle)).toBe(true)
+    expect(shownOf(handle)).toBe(0)
+    expect(refineStatus(handle)).toBe('failed')
+  })
+
   it('passes the key on with a single version or outside every Suggestion', () => {
     const single = createHandle(3)
     openReadySuggestion(single)

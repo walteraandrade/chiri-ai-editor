@@ -25,7 +25,7 @@ Extra checks:
 
 ## Maintainer check: version shortcuts
 
-The maintainer tried the build and found no way to switch versions from the keyboard besides Tab. The issue had decided "no dedicated shortcut in v1"; the maintainer chose `Ctrl+H` / `Ctrl+L`, active only with the cursor inside a Suggestion with 2 or more versions. Checked on the maintainer's `pnpm dev`, with a 2-step Suggestion injected through the suggestion effects (no model call):
+The maintainer tried the build and found no way to switch versions from the keyboard besides Tab. The issue had decided "no dedicated shortcut in v1"; the maintainer chose `Ctrl+H` / `Ctrl+L`, active with the cursor inside a Suggestion with 2 or more versions or the focus on its Card's buttons. Checked on the maintainer's `pnpm dev`, with a 2-step Suggestion injected through the suggestion effects (no model call):
 
 | Check | Result |
 |---|---|
@@ -33,8 +33,9 @@ The maintainer tried the build and found no way to switch versions from the keyb
 | `Ctrl+H` / `Ctrl+L` inside | `2 / 2` → `1 / 2` (Rationale "First.") → `2 / 2`; at `1 / 2` another `Ctrl+H` changes nothing and the Document is untouched ([18-9](img/18-9.png)) |
 | `Ctrl+H` outside a Suggestion | Text and caret unchanged, the arrows keep their version. Whether the browser's History opens there was not checked: headless Chrome has no browser UI |
 | Hint | The arrows' tooltip reads "Previous version (Ctrl+H)" (`⌃H` on macOS), with `aria-keyshortcuts="Control+H"` |
+| Focus on the Card (review fix) | `Tab` → "Previous version"; `Ctrl+H` → `1 / 2`, focus moves to "Next version" since Previous is now disabled; `Ctrl+L` → `2 / 2`. In the Refine input `Ctrl+H` changes nothing, so text keys keep their meaning there |
 
-`src/editor/suggestion-keymap.test.ts` covers the command: it steps both ways, keeps the key at either end and while refining (so the browser does not act on it), and passes it on with a single version or outside every Suggestion. `src/ui/platform.test.ts` covers the `⌃` / `Ctrl+` hint.
+`src/editor/suggestion-keymap.test.ts` covers the command: it steps both ways, keeps the key at either end and while refining (so the browser does not act on it), keeps a failed Refine's error at the first version, and passes it on with a single version or outside every Suggestion. `src/editor/suggestion-cards.test.ts` covers `versionKeyOffset` (Ctrl+H / Ctrl+L, Caps Lock, other keys and modifiers ignored). `src/ui/platform.test.ts` covers the `⌃` / `Ctrl+` hint.
 
 ## Request body of the Refine from `1/3`
 

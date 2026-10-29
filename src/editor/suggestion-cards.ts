@@ -266,13 +266,35 @@ const createRefineForm = (view: EditorView): RefineForm => {
   return { form, input }
 }
 
+const VERSION_KEY_OFFSETS: Readonly<Record<string, number>> = { h: -1, l: 1 }
+
+export const versionKeyOffset = (
+  event: Pick<
+    KeyboardEvent,
+    'key' | 'ctrlKey' | 'altKey' | 'metaKey' | 'shiftKey'
+  >,
+): number | undefined =>
+  event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
+    ? VERSION_KEY_OFFSETS[event.key.toLowerCase()]
+    : undefined
+
+const stepActiveVersion = (view: EditorView, offset: number): boolean => {
+  const content = contentFor('active', view.state)
+  if (!content?.version) return false
+  view.dispatch({
+    effects: showVersionEffect.of({
+      id: content.suggestion.id,
+      index: content.version.index + offset,
+    }),
+  })
+  return true
+}
+
 type VersionNav = {
-  readonly render: (id: SuggestionId, version: VersionView) => HTMLElement
+  readonly render: (version: VersionView) => HTMLElement
 }
 
 const createVersionNav = (view: EditorView): VersionNav => {
-  let target: { readonly id: SuggestionId; readonly index: number } | null =
-    null
   const stepButton = (
     label: string,
     glyph: string,
@@ -289,17 +311,7 @@ const createVersionNav = (view: EditorView): VersionNav => {
           'aria-keyshortcuts': `Control+${key}`,
           title: `${label} (${formatCtrlShortcut(key, detectApplePlatform())})`,
         },
-        on: {
-          click: () => {
-            if (target === null) return
-            view.dispatch({
-              effects: showVersionEffect.of({
-                id: target.id,
-                index: target.index + offset,
-              }),
-            })
-          },
-        },
+        on: { click: () => stepActiveVersion(view, offset) },
       },
       [glyph],
     )
@@ -319,8 +331,7 @@ const createVersionNav = (view: EditorView): VersionNav => {
     [previous, count, next, instruction],
   )
   return {
-    render: (id, version) => {
-      target = { id, index: version.index }
+    render: (version) => {
       const focused = dom.ownerDocument.activeElement
       previous.disabled = version.locked || version.index === 0
       next.disabled = version.locked || version.index === version.count - 1
@@ -392,7 +403,7 @@ const renderCard = (
   const { suggestion, showRationale, showActions, refineOpen, version } =
     content
   return [
-    ...(version === null ? [] : [versionNav.render(suggestion.id, version)]),
+    ...(version === null ? [] : [versionNav.render(version)]),
     ...(showRationale
       ? [el('p', { class: 'cm-ai-rationale' }, [suggestion.rationale])]
       : []),
@@ -435,6 +446,14 @@ const cardCreator =
           if (event.target !== refineForm.input) event.preventDefault()
         },
         keydown: (event) => {
+          const offset = versionKeyOffset(event)
+          if (
+            kind === 'active' &&
+            offset !== undefined &&
+            event.target !== refineForm.input &&
+            stepActiveVersion(view, offset)
+          )
+            return event.preventDefault()
           if (event.key !== 'Escape') return cycleTab(dom, event)
           event.preventDefault()
           view.focus()

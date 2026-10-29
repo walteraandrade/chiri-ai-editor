@@ -8,7 +8,11 @@ import {
 import { placementEffect, placementField } from './card-placement'
 import { hoverEffect, interactionField } from './interaction-state'
 import { refineInputField } from './refine-input'
-import { contentFor, suggestionCards } from './suggestion-cards'
+import {
+  contentFor,
+  suggestionCards,
+  versionKeyOffset,
+} from './suggestion-cards'
 import {
   beginEffect,
   beginRefineEffect,
@@ -168,5 +172,39 @@ describe('version arrows', () => {
       suggestion: { id: 'b' },
       version: null,
     })
+  })
+})
+
+describe('versionKeyOffset', () => {
+  const key = (value: string, modifiers: Partial<KeyboardEvent> = {}) => ({
+    key: value,
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    ...modifiers,
+  })
+
+  it('maps Ctrl+H to the previous version and Ctrl+L to the next', () => {
+    expect(versionKeyOffset(key('h', { ctrlKey: true }))).toBe(-1)
+    expect(versionKeyOffset(key('l', { ctrlKey: true }))).toBe(1)
+  })
+
+  it('reads the key the same with Caps Lock on', () => {
+    expect(versionKeyOffset(key('H', { ctrlKey: true }))).toBe(-1)
+  })
+
+  it('ignores other keys and other modifiers', () => {
+    expect(versionKeyOffset(key('h'))).toBeUndefined()
+    expect(versionKeyOffset(key('k', { ctrlKey: true }))).toBeUndefined()
+    expect(
+      versionKeyOffset(key('h', { ctrlKey: true, shiftKey: true })),
+    ).toBeUndefined()
+    expect(
+      versionKeyOffset(key('l', { ctrlKey: true, altKey: true })),
+    ).toBeUndefined()
+    expect(
+      versionKeyOffset(key('h', { ctrlKey: true, metaKey: true })),
+    ).toBeUndefined()
   })
 })

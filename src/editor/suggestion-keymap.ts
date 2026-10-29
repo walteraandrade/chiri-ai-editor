@@ -57,8 +57,8 @@ const dismissBubble = (handle: EditorHandle): boolean => {
 export const stepVersionAtCursor =
   (offset: number) =>
   (handle: EditorHandle): boolean => {
-    const found = suggestionAtCursor(handle.state)
-    if (found?.status !== 'ready' || found.history.length < 2) return false
+    const found = activeAtCursor(handle.state)
+    if (found === undefined || found.history.length < 2) return false
     handle.dispatch({
       effects: showVersionEffect.of({
         id: found.id,
