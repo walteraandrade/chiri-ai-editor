@@ -4,13 +4,14 @@
 
 A browser Markdown editor with an AI co-author. Select text, or put the cursor in a paragraph, and ask for a change with a Quick action (Shorter, Clearer, More formal, Fix grammar), free text, or `⌘K`. The AI answers inline as a tracked change: the old text struck through, the new text beside it, and a one-line Rationale on a card in the margin (on hover when the window is narrow). Small edits show a word-level diff; rewrites show the whole block. You can Accept, Reject, or Refine a Suggestion ("make it shorter", then "now more formal"). A Review pass reads the whole Document, optionally with a Focus ("tone only"), and streams up to six Suggestions, with Accept all and Reject all. Nothing touches the Document until you Accept, and Accept is a normal edit, so `⌘Z` undoes it.
 
-![Review pass with the Focus "tone only": two word-level Suggestions and one block-level, with the Accept / Reject / Refine card floating above the active one](docs/chiri/verification/img/5-12.png)
+![Two Suggestions, a word-level change and a block-level rewrite, with the Active Suggestion's card in the right margin: its Rationale, Accept, Reject and Refine](docs/chiri/verification/img/margin-cards-1.png)
 
 **How it was built.**
 - A planning session (Claude Code, `grilling` skill) produced the [ADRs](docs/chiri/adr/), the [glossary](GLOSSARY.md), the [plan](docs/PLAN.md) and six issues.
 - An orchestrator session (Claude Code, `opus`) ran the six slices one after another. Each slice had a `sonnet` implementer subagent (tests first for the pure modules, then the UI), a check of the acceptance criteria in a real browser, and a review by `opus` (Standards and Spec) followed by `sonnet` until clean. The maintainer decided at three gates: the model (A), the core flow (B) and this submission (C).
 - The default model, `openai/gpt-6.1-terra`, was chosen by a [Bake-off](docs/chiri/bakeoff.md) of 9 models on the same requests (final run US$0.056; about US$0.17 for the three full runs plus the language re-check; about US$0.23 for everything spent on choosing the model, with the prompt checks and probes).
 - Every model call made while building was recorded against the US$5 budget in the [AI cost log](docs/chiri/ai-costs.md). The UI has no end-to-end suite; it was checked by hand, and each check is written up in [docs/chiri/verification/](docs/chiri/verification/).
+- After the submission, more sessions polished the app, each ending in its own PR: the Chiri palette, a flat UI and keyboard and placement fixes for the AI bubble ([PR #14](https://github.com/walteraandrade/chiri-ai-editor/pull/14)), a clearer backlog ([PR #15](https://github.com/walteraandrade/chiri-ai-editor/pull/15)) and margin cards for the Active Suggestion ([PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16)).
 
 ## How to run it
 
@@ -41,7 +42,8 @@ Keys (`Ctrl` instead of `⌘` outside macOS):
 |---|---|
 | `⌘K` | Ask about the selection, or the paragraph under the cursor. Inside a Suggestion: Refine it. |
 | `⌘Enter` | Accept the Suggestion under the cursor. |
-| `Esc` | Close the bubble or the Refine box; cancel a request or a Refine in flight; otherwise Reject the Suggestion under the cursor. |
+| `Tab` | With the bubble or the Active Suggestion's card open: move into it. `Tab` and `Shift+Tab` then cycle its buttons. |
+| `Esc` | Close the bubble or the Refine box; cancel a request or a Refine in flight; on a card button, go back to the text; otherwise Reject the Suggestion under the cursor. |
 | `⌘Z` | Undo an Accept, or an Accept all in one step. Reject cannot be undone. |
 
 ## With more time
@@ -58,6 +60,6 @@ Details and context in [docs/BACKLOG.md](docs/BACKLOG.md).
 - [Architecture decisions](docs/chiri/adr/) (10 ADRs), [glossary](GLOSSARY.md), [plan](docs/PLAN.md)
 - [Bake-off](docs/chiri/bakeoff.md): all 9 models side by side
 - [AI cost log](docs/chiri/ai-costs.md): US$0.305 of 5.00 spent
-- [Verification records](docs/chiri/verification/): one per slice, with screenshots and the AI call tables
+- [Verification records](docs/chiri/verification/): one per slice, plus PR #14 and PR #16, with screenshots and the AI call tables
 - [The challenge](docs/chiri/CHALLENGE.md)
-- [`ai-sessions/`](ai-sessions/): the raw Claude Code `.jsonl` files, as saved. Only OpenRouter keys are masked (`sk-or-***MASKED***`); nothing else is edited. The planning session is in the `grilling` folder. The orchestrator session is in the `chiri-implementation-orchestration` folder, and its implementer and reviewer subagents are under `<session id>/subagents/`. The orchestrator session continues after the export, so its last turns (Gate C and the merge) are not in it.
+- [`ai-sessions/`](ai-sessions/): the raw Claude Code `.jsonl` files, as saved. Only OpenRouter keys are masked (`sk-or-***MASKED***`); nothing else is edited. The planning session is in the `grilling` folder. The orchestrator session is in the `chiri-implementation-orchestration` folder, and its implementer and reviewer subagents are under `<session id>/subagents/`. The sessions after the submission are in `app-review-diagnostico` (backlog wording, margin cards), `grilling` (selection fix and palette, then the docs check that ran this export) and `chiri-implementation-orchestration` (a project overview). The session that ran the export continues after it, so its last turns (opening and merging the PR with the export) are not in it.
