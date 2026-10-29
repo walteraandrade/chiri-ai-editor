@@ -66,7 +66,7 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-29 | PR #20 | review document → focus: tone | `openai/gpt-6.1-terra` → OpenAI | 969 / 227 / 48 / 0 | 0.002104 | – / 1735 / 3329 | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
 | 2026-10-29 | PR #20 | review document → default criteria (keyboard check) | `openai/gpt-6.1-terra` → OpenAI | 975 / 328 / 0 / 0 | 0.002615 | 5720 / 1578 / 5114 (first 2666) | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
 
-**Running total:** US$0.313 of 5.00 (the key's usage counter read US$9.071 before PR #20's last check, against US$8.743 before slice 2; the rows add up to 0.286, 0.275 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20)
+**Running total:** US$0.331 of 5.00 (the key's usage counter read US$9.074 after PR #20, against US$8.743 before slice 2; the rows add up to 0.286, 0.275 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report, issue #18's checks in PR #19, and the use noted under PR #16 and PR #20)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -101,4 +101,4 @@ Notes on issue #18:
 Notes on PR #20:
 - Slice cost is about US$0.0073: 3 Review passes. The three forced failures never reached OpenRouter.
 - The in-page log of the first two passes was lost on a page reload, so those rows come from `/generation` by id and have no client latency; the third pass was saved right away.
-- The counter rose about US$0.023 since PR #16's reading (9.048 → 9.071). The first two rows explain 0.0047 and issue #18's checks (PR #19) 0.0062; the rest is the maintainer's own check of the PR #19 build in the same hour, which is not recorded here, so it stays in the upper bound only.
+- The counter rose about US$0.026 since PR #16's reading (9.048 → 9.074). These rows explain 0.0073 and issue #18's checks (PR #19) 0.0062; the rest is the maintainer's own check of the PR #19 build in the same hour, which is not recorded here, so it stays in the upper bound only.
