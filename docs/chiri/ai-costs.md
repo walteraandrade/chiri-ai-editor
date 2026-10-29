@@ -66,7 +66,7 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-29 | PR #20 | review document → focus: tone | `openai/gpt-6.1-terra` → OpenAI | 969 / 227 / 48 / 0 | 0.002104 | – / 1735 / 3329 | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
 | 2026-10-29 | PR #20 | review document → default criteria (keyboard check) | `openai/gpt-6.1-terra` → OpenAI | 975 / 328 / 0 / 0 | 0.002615 | 5720 / 1578 / 5114 (first 2666) | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
 
-**Running total:** US$0.331 of 5.00 (the key's usage counter read US$9.074 after PR #20, against US$8.743 before slice 2; the rows add up to 0.286, 0.275 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report, issue #18's checks in PR #19, and the use noted under PR #16 and PR #20)
+**Running total:** US$0.331 of 5.00 (the key's usage counter read US$9.074 after PR #20, against US$8.743 before slice 2; the rows add up to 0.292, 0.281 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
