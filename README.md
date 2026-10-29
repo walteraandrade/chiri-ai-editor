@@ -42,6 +42,7 @@ Keys (`Ctrl` instead of `⌘` outside macOS):
 |---|---|
 | `⌘K` | Ask about the selection, or the paragraph under the cursor. Inside a Suggestion: Refine it. |
 | `⌘Enter` | Accept the Suggestion under the cursor. |
+| `Ctrl+H` / `Ctrl+L` | Inside a Suggestion with more than one version: show the previous / next one (`Ctrl` on macOS too). |
 | `Tab` | With the bubble or the Active Suggestion's card open: move into it. `Tab` and `Shift+Tab` then cycle its buttons. |
 | `Esc` | Close the bubble or the Refine box; cancel a request or a Refine in flight; on a card button, go back to the text; otherwise Reject the Suggestion under the cursor. |
 | `⌘Z` | Undo an Accept, or an Accept all in one step. Reject cannot be undone. |

@@ -16,6 +16,7 @@ import {
 import {
   activeAtCursor,
   cancelRefineEffect,
+  showVersionEffect,
   suggestionAtCursor,
 } from './suggestion-field'
 
@@ -53,6 +54,20 @@ const dismissBubble = (handle: EditorHandle): boolean => {
   return true
 }
 
+export const stepVersionAtCursor =
+  (offset: number) =>
+  (handle: EditorHandle): boolean => {
+    const found = suggestionAtCursor(handle.state)
+    if (found?.status !== 'ready' || found.history.length < 2) return false
+    handle.dispatch({
+      effects: showVersionEffect.of({
+        id: found.id,
+        index: found.shown + offset,
+      }),
+    })
+    return true
+  }
+
 export const escapeAtCursor = (handle: EditorHandle): boolean =>
   dismissBubble(handle) ||
   closeRefineInput(handle) ||
@@ -73,6 +88,8 @@ export const suggestionKeymap = Prec.highest(
     { key: 'Mod-k', run: openAskOrRefine, preventDefault: true },
     { key: 'Mod-Enter', run: acceptAtCursor },
     { key: 'Escape', run: escapeAtCursor },
+    { key: 'Ctrl-h', run: stepVersionAtCursor(-1) },
+    { key: 'Ctrl-l', run: stepVersionAtCursor(1) },
     { key: 'Tab', run: focusOpenCard(false), shift: focusOpenCard(true) },
   ]),
 )

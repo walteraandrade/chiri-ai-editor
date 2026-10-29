@@ -11,10 +11,15 @@ import {
   beginRefineEffect,
   failRefineEffect,
   resolveEffect,
+  resolveRefineEffect,
   suggestionsField,
   suggestionsOf,
 } from './suggestion-field'
-import { escapeAtCursor, openAskOrRefine } from './suggestion-keymap'
+import {
+  escapeAtCursor,
+  openAskOrRefine,
+  stepVersionAtCursor,
+} from './suggestion-keymap'
 
 const DOC = 'First paragraph here.\n\nSecond paragraph here.'
 
@@ -259,5 +264,57 @@ describe('escapeAtCursor with a Refine', () => {
 
     escapeAtCursor(handle)
     expect(suggestionsOf(handle.state).items).toEqual([])
+  })
+})
+
+describe('stepVersionAtCursor', () => {
+  const shownOf = (handle: EditorHandle) => {
+    const found = findSuggestion(suggestionsOf(handle.state), 'a')
+    return found?.status === 'ready' ? found.shown : undefined
+  }
+
+  const refined = (): EditorHandle => {
+    const handle = createHandle(3)
+    openReadySuggestion(handle)
+    startRefine(handle)
+    handle.dispatch({
+      effects: resolveRefineEffect.of({
+        id: 'a',
+        result: {
+          replacement: 'First one.',
+          rationale: 'Tighter.',
+          unchanged: false,
+        },
+      }),
+    })
+    return handle
+  }
+
+  it('steps back and forth through the versions of the Suggestion under the cursor', () => {
+    const handle = refined()
+    expect(shownOf(handle)).toBe(1)
+    expect(stepVersionAtCursor(-1)(handle)).toBe(true)
+    expect(shownOf(handle)).toBe(0)
+    expect(stepVersionAtCursor(1)(handle)).toBe(true)
+    expect(shownOf(handle)).toBe(1)
+  })
+
+  it('keeps the key at either end and while refining, so the browser does not act on it', () => {
+    const handle = refined()
+    expect(stepVersionAtCursor(1)(handle)).toBe(true)
+    expect(shownOf(handle)).toBe(1)
+    startRefine(handle)
+    expect(stepVersionAtCursor(-1)(handle)).toBe(true)
+    expect(shownOf(handle)).toBe(1)
+  })
+
+  it('passes the key on with a single version or outside every Suggestion', () => {
+    const single = createHandle(3)
+    openReadySuggestion(single)
+    expect(stepVersionAtCursor(-1)(single)).toBe(false)
+    const outside = refined()
+    outside.dispatch({ selection: { anchor: 30 } })
+    expect(stepVersionAtCursor(-1)(outside)).toBe(false)
+    expect(shownOf(outside)).toBe(1)
   })
 })

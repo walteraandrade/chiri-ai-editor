@@ -23,6 +23,19 @@ Extra checks:
 - **The Refine input survives a version step.** Typing "abc" in the Refine input, then clicking "Previous version": focus stays in the input with "abc", the counter reads `1 / 2`, and the next key types into it ([18-6](img/18-6.png)). The Card now updates its children in place (`syncChildren` in `src/editor/dom.ts`) instead of replacing them all, so the input and the arrow row stay in the page; the old refocus step for the input went away with it.
 - **"No change" adds no step.** "keep the ten percent rollout detail" came back equal to the shown Replacement: no new step, no arrows (the existing `resolveRefine` rule).
 
+## Maintainer check: version shortcuts
+
+The maintainer tried the build and found no way to switch versions from the keyboard besides Tab. The issue had decided "no dedicated shortcut in v1"; the maintainer chose `Ctrl+H` / `Ctrl+L`, active only with the cursor inside a Suggestion with 2 or more versions. Checked on the maintainer's `pnpm dev`, with a 2-step Suggestion injected through the suggestion effects (no model call):
+
+| Check | Result |
+|---|---|
+| In the app today, outside Suggestions | `Ctrl+←` jumps a word, `Alt+←` jumps to the paragraph start, `Ctrl+]` / `Ctrl+[` indent and outdent the line. `Ctrl+]` inside a block Suggestion indents its line and keeps the Suggestion (an insert at its start counts as outside) |
+| `Ctrl+H` / `Ctrl+L` inside | `2 / 2` → `1 / 2` (Rationale "First.") → `2 / 2`; at `1 / 2` another `Ctrl+H` changes nothing and the Document is untouched ([18-9](img/18-9.png)) |
+| `Ctrl+H` outside a Suggestion | Text and caret unchanged, the arrows keep their version. Whether the browser's History opens there was not checked: headless Chrome has no browser UI |
+| Hint | The arrows' tooltip reads "Previous version (Ctrl+H)" (`⌃H` on macOS), with `aria-keyshortcuts="Control+H"` |
+
+`src/editor/suggestion-keymap.test.ts` covers the command: it steps both ways, keeps the key at either end and while refining (so the browser does not act on it), and passes it on with a single version or outside every Suggestion. `src/ui/platform.test.ts` covers the `⌃` / `Ctrl+` hint.
+
 ## Request body of the Refine from `1/3`
 
 The user message of the fourth call (`refine p5 → say we now deploy on weekdays`), read from a HAR of the session. The history lists only the first Instruction, and `<latest-replacement>` is the `1 / 3` Replacement, not the `3 / 3` one:
@@ -50,6 +63,7 @@ New instruction: say we now deploy on weekdays
 | [18-6](img/18-6.png) | Refine input with text and focus kept after a version step |
 | [18-7](img/18-7.png) | Failed Refine from `1 / 2`: error and Retry, both steps kept |
 | [18-8](img/18-8.png) | After a failed Refine at `2 / 2`, stepping to `1 / 2` dismissed the error |
+| [18-9](img/18-9.png) | `Ctrl+H` stepped to `1 / 2` from the keyboard |
 
 ## AI call records
 

@@ -13,7 +13,11 @@ import {
 } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion, SuggestionId } from '../suggestions/types'
-import { detectApplePlatform, formatShortcut } from '../ui/platform'
+import {
+  detectApplePlatform,
+  formatCtrlShortcut,
+  formatShortcut,
+} from '../ui/platform'
 import {
   type CardPlacement,
   cardPlacementOf,
@@ -269,12 +273,22 @@ type VersionNav = {
 const createVersionNav = (view: EditorView): VersionNav => {
   let target: { readonly id: SuggestionId; readonly index: number } | null =
     null
-  const stepButton = (label: string, glyph: string, offset: number) =>
+  const stepButton = (
+    label: string,
+    glyph: string,
+    key: string,
+    offset: number,
+  ) =>
     el(
       'button',
       {
         class: 'cm-ai-button cm-ai-version-step',
-        attrs: { type: 'button', 'aria-label': label, title: label },
+        attrs: {
+          type: 'button',
+          'aria-label': label,
+          'aria-keyshortcuts': `Control+${key}`,
+          title: `${label} (${formatCtrlShortcut(key, detectApplePlatform())})`,
+        },
         on: {
           click: () => {
             if (target === null) return
@@ -289,8 +303,8 @@ const createVersionNav = (view: EditorView): VersionNav => {
       },
       [glyph],
     )
-  const previous = stepButton('Previous version', '‹', -1)
-  const next = stepButton('Next version', '›', 1)
+  const previous = stepButton('Previous version', '‹', 'H', -1)
+  const next = stepButton('Next version', '›', 'L', 1)
   const count = el('span', {
     class: 'cm-ai-version-count',
     attrs: { 'aria-live': 'polite' },
