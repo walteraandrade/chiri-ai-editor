@@ -13,6 +13,7 @@ import { acceptSuggestionById, type EditorHandle } from './suggestion-commands'
 import {
   cancelRefineEffect,
   rejectEffect,
+  showVersionEffect,
   suggestionsField,
   suggestionsOf,
 } from './suggestion-field'
@@ -464,6 +465,39 @@ describe('refine', () => {
     await settle()
     runtime.actions.retryRefine(handle, 'a')
     expect(refines).toEqual([])
+  })
+
+  it('sends only the Instructions up to the shown step and its Replacement, then cuts the later steps', async () => {
+    const { runtime, handle, refines } = await openReady()
+    runtime.actions.refine(handle, 'a', SHORTER_FREE)
+    only(refines).resolve(ok('First, clearer.'))
+    await settle()
+    runtime.actions.refine(handle, 'a', FORMAL)
+    refines[1]?.resolve(ok('The first paragraph, formally.'))
+    await settle()
+    expect(readyOf(handle).history).toHaveLength(3)
+
+    handle.dispatch({ effects: showVersionEffect.of({ id: 'a', index: 0 }) })
+    runtime.actions.refine(handle, 'a', freeTextInstruction('add a verb'))
+
+    const fromFirst = refines[2]
+    expect(fromFirst?.request.history).toEqual([
+      quickActionInstruction('clearer').text,
+    ])
+    expect(fromFirst?.request.latestReplacement).toBe(
+      'First paragraph, clearer.',
+    )
+    expect(fromFirst?.request.instruction).toBe('add a verb')
+
+    fromFirst?.resolve(ok('First paragraph reads clearer.'))
+    await settle()
+    expect(
+      readyOf(handle).history.map((step) => step.instruction.text),
+    ).toEqual([quickActionInstruction('clearer').text, 'add a verb'])
+    expect(readyOf(handle)).toMatchObject({
+      shown: 1,
+      replacement: 'First paragraph reads clearer.',
+    })
   })
 
   it('uses the mapped range after an edit before the Suggestion', async () => {

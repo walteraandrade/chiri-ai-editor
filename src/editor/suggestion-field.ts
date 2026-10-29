@@ -17,6 +17,7 @@ import {
   resolveSuggestion,
   retryRefine,
   retrySuggestion,
+  showVersion,
   suggestionAt,
 } from '../suggestions/state'
 import type {
@@ -52,6 +53,10 @@ export const failRefineEffect = StateEffect.define<{
 }>()
 export const retryRefineEffect = StateEffect.define<SuggestionId>()
 export const cancelRefineEffect = StateEffect.define<SuggestionId>()
+export const showVersionEffect = StateEffect.define<{
+  readonly id: SuggestionId
+  readonly index: number
+}>()
 export const rejectEffect = StateEffect.define<SuggestionId>()
 export const acceptEffect = StateEffect.define<SuggestionId>()
 export const acceptManyEffect = StateEffect.define<readonly SuggestionId[]>()
@@ -75,6 +80,8 @@ const applyEffect = (
     return failRefine(state, effect.value.id, effect.value.error)
   if (effect.is(retryRefineEffect)) return retryRefine(state, effect.value)
   if (effect.is(cancelRefineEffect)) return cancelRefine(state, effect.value)
+  if (effect.is(showVersionEffect))
+    return showVersion(state, effect.value.id, effect.value.index)
   if (effect.is(rejectEffect)) return rejectSuggestion(state, effect.value)
   if (effect.is(rejectReviewEffect)) return rejectReviewSuggestions(state)
   return state

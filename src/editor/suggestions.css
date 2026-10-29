@@ -233,6 +233,36 @@
   display: flex;
 }
 
+.cm-ai-version {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.cm-ai-version-step {
+  justify-content: center;
+  min-width: 1.75rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.cm-ai-version-count {
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.cm-ai-version-instruction {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding-left: 0.2rem;
+  color: var(--color-ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cm-ai-card-error {
   display: flex;
   align-items: center;

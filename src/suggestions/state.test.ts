@@ -24,6 +24,7 @@ import {
   resolveSuggestion,
   retryRefine,
   retrySuggestion,
+  showVersion,
   suggestionAt,
 } from './state'
 import type {
@@ -177,6 +178,7 @@ describe('resolveSuggestion', () => {
         rationale: 'Cut a word.',
       },
     ])
+    expect(found.shown).toBe(0)
     expect(found.refine).toEqual({ status: 'idle' })
     expect(found.diff.mode).toBe('word')
     expect(found.sequence).toBe(0)
@@ -867,6 +869,158 @@ describe('refine', () => {
     })
   })
 
+  const threeSteps = (): SuggestionsState =>
+    resolveRefine(
+      beginRefine(
+        resolveRefine(working(), 'a', result('Hi world', 'Short.')),
+        'a',
+        SHORTEST,
+      ),
+      'a',
+      result('Hi', 'Tiny.'),
+    )
+
+  describe('showVersion', () => {
+    it('shows the newest step after each Refine', () => {
+      expect(readyOf(opened()).shown).toBe(0)
+      expect(readyOf(threeSteps()).shown).toBe(2)
+    })
+
+    it('makes the Replacement, Rationale and diff follow the shown step', () => {
+      const first = readyOf(showVersion(threeSteps(), 'a', 0))
+      expect(first).toMatchObject({
+        shown: 0,
+        replacement: 'Hello new world',
+        rationale: 'Because.',
+        original: ORIGINAL,
+        refine: { status: 'idle' },
+      })
+      expect(first.diff).toEqual(adaptiveDiff(ORIGINAL, 'Hello new world'))
+      expect(first.history).toEqual(readyOf(threeSteps()).history)
+      const second = readyOf(showVersion(threeSteps(), 'a', 1))
+      expect(second).toMatchObject({
+        shown: 1,
+        replacement: 'Hi world',
+        rationale: 'Short.',
+      })
+      expect(second.diff).toEqual(adaptiveDiff(ORIGINAL, 'Hi world'))
+    })
+
+    it('steps back to the newest step', () => {
+      const back = readyOf(
+        showVersion(showVersion(threeSteps(), 'a', 0), 'a', 2),
+      )
+      expect(back).toEqual(readyOf(threeSteps()))
+    })
+
+    it('ignores an index outside the history', () => {
+      const state = threeSteps()
+      expect(showVersion(state, 'a', -1)).toBe(state)
+      expect(showVersion(state, 'a', 3)).toBe(state)
+      expect(showVersion(state, 'a', 0.5)).toBe(state)
+    })
+
+    it('ignores the step already shown', () => {
+      const state = threeSteps()
+      expect(showVersion(state, 'a', 2)).toBe(state)
+    })
+
+    it('ignores a Suggestion that is refining', () => {
+      const state = beginRefine(threeSteps(), 'a', FORMAL)
+      expect(showVersion(state, 'a', 0)).toBe(state)
+    })
+
+    it('still steps after a failed Refine and keeps its error', () => {
+      const failed = failRefine(beginRefine(threeSteps(), 'a', FORMAL), 'a', {
+        type: 'network',
+        message: 'offline',
+      })
+      const shown = readyOf(showVersion(failed, 'a', 0))
+      expect(shown.shown).toBe(0)
+      expect(shown.refine.status).toBe('failed')
+    })
+
+    it('ignores unknown, pending and error Suggestions', () => {
+      const pending = begun(draft('a', 0, 10))
+      expect(showVersion(pending, 'a', 0)).toBe(pending)
+      const idle = threeSteps()
+      expect(showVersion(idle, 'missing', 0)).toBe(idle)
+      const failed = failSuggestion(pending, 'a', error)
+      expect(showVersion(failed, 'a', 0)).toBe(failed)
+    })
+
+    it('leaves other Suggestions and the notice alone', () => {
+      const state = ready(
+        beginSuggestion(threeSteps(), draft('b', 40, 50)),
+        'b',
+      )
+      const next = showVersion(state, 'a', 0)
+      expect(mustFind(next, 'b')).toBe(mustFind(state, 'b'))
+      expect(next.notice).toBe(state.notice)
+    })
+  })
+
+  describe('Refine from an earlier step', () => {
+    const fromFirst = (): SuggestionsState =>
+      beginRefine(showVersion(threeSteps(), 'a', 0), 'a', FORMAL)
+
+    it('drops the later steps and appends the new one on success', () => {
+      const after = readyOf(
+        resolveRefine(fromFirst(), 'a', result('Good day, world', 'Formal.')),
+      )
+      expect(after.history).toEqual([
+        {
+          instruction: SHORTER,
+          replacement: 'Hello new world',
+          rationale: 'Because.',
+        },
+        {
+          instruction: FORMAL,
+          replacement: 'Good day, world',
+          rationale: 'Formal.',
+        },
+      ])
+      expect(after).toMatchObject({
+        shown: 1,
+        replacement: 'Good day, world',
+        rationale: 'Formal.',
+        refine: { status: 'idle' },
+      })
+      expect(after.diff).toEqual(adaptiveDiff(ORIGINAL, 'Good day, world'))
+    })
+
+    it('keeps every step on "no change" for the shown Replacement', () => {
+      const state = resolveRefine(fromFirst(), 'a', result('Hello new world'))
+      expect(readyOf(state).history).toHaveLength(3)
+      expect(readyOf(state).shown).toBe(0)
+      expect(state.notice?.kind).toBe('no-change')
+    })
+
+    it('keeps every step when the Refine fails', () => {
+      const failed = readyOf(failRefine(fromFirst(), 'a', error))
+      expect(failed.history).toHaveLength(3)
+      expect(failed.shown).toBe(0)
+      expect(failed.replacement).toBe('Hello new world')
+    })
+
+    it('cuts after the shown step when a retry succeeds', () => {
+      const state = resolveRefine(
+        retryRefine(failRefine(fromFirst(), 'a', error), 'a'),
+        'a',
+        result('Good day, world'),
+      )
+      expect(readyOf(state).history.map((step) => step.replacement)).toEqual([
+        'Hello new world',
+        'Good day, world',
+      ])
+    })
+
+    it('keeps every step when the Refine is cancelled', () => {
+      const cancelled = readyOf(cancelRefine(fromFirst(), 'a'))
+      expect(cancelled).toEqual(readyOf(showVersion(threeSteps(), 'a', 0)))
+    })
+  })
+
   describe('while refining', () => {
     it('Accept removes the Suggestion and nothing is in flight', () => {
       const doc = 'x'.repeat(100)
@@ -944,6 +1098,22 @@ describe('instructionHistory', () => {
       'Make it shorter.',
       'Now more formal.',
     ])
+  })
+
+  it('stops at the shown step', () => {
+    const FORMAL: Instruction = { type: 'free-text', text: 'Now more formal.' }
+    const state = showVersion(
+      resolveRefine(
+        beginRefine(ready(begun(draft('a', 0, 10)), 'a', 'one'), 'a', FORMAL),
+        'a',
+        result('two'),
+      ),
+      'a',
+      0,
+    )
+    const found = mustFind(state, 'a')
+    if (found.status !== 'ready') throw new Error('not ready')
+    expect(instructionHistory(found)).toEqual(['Make it shorter.'])
   })
 })
 
