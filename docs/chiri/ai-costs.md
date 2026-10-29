@@ -62,8 +62,10 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-29 | #18 | cursor in p4 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 511 / 57 / 0 / 0 | 0.000796 | 2662 / 2201 / 2229 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
 | 2026-10-29 | #18 | refine p4 → keep the ten percent rollout detail (no change) | `openai/gpt-6.1-terra` → OpenAI | 585 / 60 / 0 / 0 | 0.000885 | 2236 / 1946 / 1971 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
 | 2026-10-29 | #18 | refine p4 → turn it into a single sentence | `openai/gpt-6.1-terra` → OpenAI | 585 / 56 / 0 / 0 | 0.000865 | 2360 / 1604 / 1635 | stop | 1/1 | [18-refine-version-arrows.md](verification/18-refine-version-arrows.md) |
+| 2026-10-29 | PR #20 | review document → default criteria | `openai/gpt-6.1-terra` → OpenAI | 975 / 325 / 0 / 0 | 0.002600 | – / 869 / 4378 | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
+| 2026-10-29 | PR #20 | review document → focus: tone | `openai/gpt-6.1-terra` → OpenAI | 969 / 227 / 48 / 0 | 0.002104 | – / 1735 / 3329 | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
 
-**Running total:** US$0.311 of 5.00 (the key's usage counter read US$9.054 after issue #18, against US$8.743 before slice 2; the rows add up to 0.284, 0.273 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report and the use noted under PR #16)
+**Running total:** US$0.310 of 5.00 (the key's usage counter read US$9.071 after PR #20, against US$8.743 before slice 2; the rows add up to 0.283, 0.272 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -94,3 +96,8 @@ Notes on PR #16:
 Notes on issue #18:
 - Slice cost is about US$0.0062: 7 real calls, all recorded (2 Quick actions to open Suggestions, 5 Refines). The forced network failure never reached OpenRouter.
 - The key's usage counter rose about US$0.006 since PR #16, which matches the rows.
+
+Notes on PR #20:
+- Slice cost is about US$0.0047: 2 Review passes. The three forced failures never reached OpenRouter.
+- The in-page log was lost on a page reload, so the rows come from `/generation` by id and have no client latency.
+- The counter rose about US$0.017 since PR #16's last reading. These rows explain 0.0047; the rest includes the maintainer's own check of the PR #19 build in the same hour, which is not recorded here, so it stays in the upper bound only.
