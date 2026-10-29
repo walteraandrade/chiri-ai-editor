@@ -11,7 +11,7 @@
 
 - **The AI acts only when asked.**
 - **Selection bubble:** Quick actions (Shorter, Clearer, More formal, Fix grammar) plus a free-text "Ask AI…" field. `Cmd/Ctrl+K` opens the same field. With no selection, the Target is the Block under the cursor.
-- **Review pass:** a toolbar button with an optional Focus. Without Focus, the AI looks at clarity, concision, grammar and tone consistency. It returns at most 6 Suggestions, most important first. It skips code blocks and Blocks that already have an open Suggestion. When the pass ends (done, stopped or failed) and the focus is not in the text, the cursor goes to the start of the open review Suggestion closest to the top, which makes it the Active Suggestion, and the page scrolls to it. If the user is working in the text, nothing moves.
+- **Review pass:** a toolbar button with an optional Focus. Without Focus, the AI looks at clarity, concision, grammar and tone consistency. It returns at most 6 Suggestions, most important first. It skips code blocks and Blocks that already have an open Suggestion. When the pass ends (done, stopped or failed) and the focus is not in the text or one of its Cards, the cursor goes to the start of the open review Suggestion closest to the top, which makes it the Active Suggestion, and the page scrolls to it. If the user is working in the text, nothing moves.
 - **No slash commands, no proactive hints.**
 - Many Suggestions can be open at once from day one.
 
