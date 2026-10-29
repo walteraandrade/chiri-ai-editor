@@ -46,7 +46,7 @@ Keys (`Ctrl` instead of `⌘` outside macOS):
 
 ## With more time
 
-Details and sources in [docs/BACKLOG.md](docs/BACKLOG.md).
+Details and context in [docs/BACKLOG.md](docs/BACKLOG.md).
 
 1. **Version arrows for Refine** (‹ 1/3 ›). Every Refine step is already kept; only the UI is missing.
 2. **Undoable Reject.** One stray `Esc` loses a Suggestion for good.
