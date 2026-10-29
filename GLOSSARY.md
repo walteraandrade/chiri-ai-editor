@@ -17,7 +17,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Card** | The box tied to a Suggestion with its Rationale, plus Accept / Reject / Refine on the Active Suggestion. A margin card sits right of the text, level with the Suggestion's first line, when the window has room; otherwise the Card floats above the Suggestion. |
 | **Accept** | Apply the Replacement to the Document. A normal edit, so `Cmd+Z` undoes it. |
 | **Reject** | Drop the Suggestion. Not undoable in v1. |
-| **Refine** | A follow-up Instruction on an open Suggestion. Produces a new Replacement in place. The diff is always against the original text. |
+| **Refine** | A follow-up Instruction on an open Suggestion. Produces a new Replacement in place. The diff is always against the original text. Each step (the first request plus each Refine) is a version; the Card's arrows `‹ n / m ›` switch between them. |
 | **Discard** | Remove a Suggestion because the user edited inside its range or a newer Suggestion overlapped it. Shows a discreet notice. |
 | **Review pass** | On-demand request: the AI reads the whole Document (Blocks numbered `p1`, `p2`, …) and returns up to 6 Suggestions, one per Block, streamed one by one. |
 | **Focus** | Optional free text that narrows a Review pass ("focus on tone"). |

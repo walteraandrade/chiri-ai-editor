@@ -1,6 +1,6 @@
 # Backlog
 
-Reviewed at the end of slice 6, in the order I would do them. Done items are gone: the Active Suggestion no longer jumps to each new review Suggestion, and a broken answer stream has its own error text (both [PR #12](https://github.com/walteraandrade/chiri-ai-editor/pull/12)). Margin cards replaced the floating Accept / Reject / Refine toolbar on windows with room for them ([PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16)).
+Reviewed at the end of slice 6, in the order I would do them. Done items are gone: the Active Suggestion no longer jumps to each new review Suggestion, and a broken answer stream has its own error text (both [PR #12](https://github.com/walteraandrade/chiri-ai-editor/pull/12)). Margin cards replaced the floating Accept / Reject / Refine toolbar on windows with room for them ([PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16)). Refine version arrows browse and accept earlier Replacements ([#18](https://github.com/walteraandrade/chiri-ai-editor/issues/18)).
 
 ## Next
 
@@ -8,7 +8,6 @@ Context links point to where the related code, decision or evidence lives. A mer
 
 | Item | Why it waits | Context |
 |---|---|---|
-| Refine version arrows ‹ 1/3 › | The history is already kept for every step (`history`); only the UI is missing | [PR #11](https://github.com/walteraandrade/chiri-ai-editor/pull/11) |
 | Undoable Reject (CodeMirror `invertedEffects`) | About 30 lines, but v1 accepts that a stray `Esc` loses a Suggestion. A Refine in flight or an error card already takes a first `Esc` before it Rejects | [ADR 0007](chiri/adr/0007-suggestion-lifecycle.md), [PR #11](https://github.com/walteraandrade/chiri-ai-editor/pull/11) |
 | Harden the Review prompt | The shipped wording passes on all 9 Bake-off models, but one sentence's position made two of them return junk Replacements. Any change needs a Bake-off re-run, about US$0.056 per full run | [PR #9](https://github.com/walteraandrade/chiri-ai-editor/pull/9), [bakeoff.md](chiri/bakeoff.md) |
 | Junk-guard tuning | The guard drops a Replacement under 3 words for an original over 15 words (headings exempt). That covers the junk seen in the Bake-off (`x`, "Thank you!"); other shapes would pass every check | [PR #12](https://github.com/walteraandrade/chiri-ai-editor/pull/12), [bakeoff.md](chiri/bakeoff.md) |

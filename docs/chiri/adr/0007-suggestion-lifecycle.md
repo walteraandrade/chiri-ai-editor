@@ -1,6 +1,6 @@
 # 0007. Suggestion lifecycle
 
-- Status: Accepted (2026-10-28). Amended (2026-10-28): the toolbar became a margin card, from the backlog.
+- Status: Accepted (2026-10-28). Amended (2026-10-28): the toolbar became a margin card, from the backlog. Amended (2026-10-29): Refine version arrows, from the backlog ([#18](https://github.com/walteraandrade/chiri-ai-editor/issues/18)).
 - Source: planning session, Q13, Q19, Q20, Q21, Q22, Q25, Q32
 
 ## Context
@@ -14,7 +14,8 @@ Suggestions are overlays ([0001](0001-inline-overlay-suggestions.md)) and the us
 - **Overlaps:** a new request over an open Suggestion replaces it, so the last one wins. The Review pass skips Blocks with open Suggestions.
 - **Active Suggestion:** shows the Accept / Reject / Refine card. When the window has room right of the text, the card sits in that margin, level with the Suggestion's first line, and always shows the Rationale: it covers no text, and a card that grew on hover would move its buttons away from the pointer. Otherwise it floats above the Suggestion, and its Rationale shows on hover and when the text cursor is inside it (keyboard users can't hover). Other Suggestions show only the inline diff; on hover, their Rationale shows in a card without buttons, in the same place.
 - **Keys, with the cursor inside a Suggestion:** `Cmd/Ctrl+Enter` Accepts, `Esc` Rejects. Accept is a normal edit, so `Cmd+Z` undoes it. Reject is not undoable in v1. A Review pass also offers Accept all and Reject all.
-- **Refine:** a follow-up Instruction on the Active Suggestion. The new Replacement replaces the old one in place. The diff is always against the original text. History stays in memory, with no version arrows in v1.
+- **Refine:** a follow-up Instruction on the Active Suggestion. The new Replacement replaces the old one in place. The diff is always against the original text. History stays in memory.
+- **Versions:** once a Suggestion has 2 or more steps (the first request plus each Refine), its Card shows `‹ n / m ›` with the shown step's Instruction. The arrows switch the shown Replacement, its Rationale and the inline diff; Accept applies the shown version. The original text is not a version: Reject covers it. A Refine from an earlier version sends only the Instructions up to it, with its Replacement as the latest; on success the later steps are dropped and the new one is appended, like typing after an undo. A failed or cancelled Refine drops nothing. The arrows are disabled while a Refine is in flight. No dedicated shortcut: the obvious keys belong to CodeMirror (`Alt-ArrowLeft` / `Alt-ArrowRight`, `Mod-[` / `Mod-]`), and Tab already reaches the Card.
 - **Persistence:** only the Document text goes to `localStorage`. Open Suggestions are lost on reload.
 - **Failures:**
   - Missing key: banner ([0005](0005-local-only-vite-proxy.md)).
