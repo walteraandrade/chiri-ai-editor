@@ -3,6 +3,7 @@ import { EditorView } from '@codemirror/view'
 import type { ModelClient } from '../ai/client'
 import type { SuggestionNotice } from '../suggestions/types'
 import { askBubble } from './ask-bubble'
+import { cardPlacement } from './card-placement'
 import { interactionState } from './interaction-state'
 import { refineInputField } from './refine-input'
 import {
@@ -52,6 +53,7 @@ export const suggestionExtensions = ({
     onDrop: review.onDrop,
   }).extension,
   suggestionDecorations,
+  cardPlacement,
   suggestionCards,
   suggestionKeymap,
   EditorView.updateListener.of((update) => {

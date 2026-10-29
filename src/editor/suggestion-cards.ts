@@ -11,6 +11,13 @@ import { freeTextInstruction } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion, SuggestionId } from '../suggestions/types'
 import { detectApplePlatform, formatShortcut } from '../ui/platform'
+import {
+  type CardPlacement,
+  cardPlacementOf,
+  MARGIN_CARD_WIDTH,
+  marginAnchorAt,
+  placementField,
+} from './card-placement'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
@@ -40,7 +47,34 @@ type CardContent = {
 
 type CardKind = 'active' | 'hover'
 
-const contentFor = (
+type PlacementSpec = {
+  readonly side: Pick<Tooltip, 'above' | 'strictSide'>
+  readonly attrs: Readonly<Record<string, string>>
+  readonly alwaysShowRationale: boolean
+  readonly position: (
+    view: EditorView,
+  ) => Pick<TooltipView, 'getCoords' | 'resize'>
+}
+
+const placements: Readonly<Record<CardPlacement, PlacementSpec>> = {
+  floating: {
+    side: { above: true },
+    attrs: {},
+    alwaysShowRationale: false,
+    position: () => ({}),
+  },
+  margin: {
+    side: { above: false, strictSide: true },
+    attrs: { style: `width: ${MARGIN_CARD_WIDTH}px` },
+    alwaysShowRationale: true,
+    position: (view) => ({
+      getCoords: (pos) => marginAnchorAt(view, pos),
+      resize: false,
+    }),
+  },
+}
+
+export const contentFor = (
   kind: CardKind,
   state: EditorState,
 ): CardContent | undefined => {
@@ -52,7 +86,10 @@ const contentFor = (
       active.from <= cursorOf(state) && cursorOf(state) <= active.to
     return {
       suggestion: active,
-      showRationale: cursorInside || hoveredId === active.id,
+      showRationale:
+        placements[cardPlacementOf(state)].alwaysShowRationale ||
+        cursorInside ||
+        hoveredId === active.id,
       showActions: true,
       refineOpen: refineInputOpenFor(state) === active.id,
     }
@@ -266,13 +303,15 @@ const openedRefine = (update: ViewUpdate): boolean =>
   )
 
 const cardCreator =
-  (kind: CardKind) =>
+  (kind: CardKind, placement: CardPlacement) =>
   (view: EditorView): TooltipView => {
     const refineForm = createRefineForm(view)
     const dom = el('div', {
-      class: `cm-ai-card cm-ai-card-${kind}`,
-      attrs:
-        kind === 'active' ? { role: 'group', 'aria-label': 'Suggestion' } : {},
+      class: `cm-ai-card cm-ai-card-${kind} cm-ai-card-${placement}`,
+      attrs: {
+        ...placements[placement].attrs,
+        ...(kind === 'active' && { role: 'group', 'aria-label': 'Suggestion' }),
+      },
       on: {
         mousedown: (event) => {
           if (event.target !== refineForm.input) event.preventDefault()
@@ -307,6 +346,7 @@ const cardCreator =
     sync(view.state)
     return {
       dom,
+      ...placements[placement].position(view),
       update: (update) => {
         sync(update.state)
         if (openedRefine(update) && refineForm.form.isConnected)
@@ -315,24 +355,32 @@ const cardCreator =
     }
   }
 
-const createActiveCard = cardCreator('active')
-const createHoverCard = cardCreator('hover')
+const creators: Readonly<
+  Record<CardPlacement, Record<CardKind, (view: EditorView) => TooltipView>>
+> = {
+  floating: {
+    active: cardCreator('active', 'floating'),
+    hover: cardCreator('hover', 'floating'),
+  },
+  margin: {
+    active: cardCreator('active', 'margin'),
+    hover: cardCreator('hover', 'margin'),
+  },
+}
 
-const tooltipFor = (
-  kind: CardKind,
-  state: EditorState,
-  create: (view: EditorView) => TooltipView,
-): Tooltip | null => {
+const tooltipFor = (kind: CardKind, state: EditorState): Tooltip | null => {
   const content = contentFor(kind, state)
-  return content
-    ? { pos: content.suggestion.from, above: true, clip: false, create }
-    : null
+  if (!content) return null
+  const placement = cardPlacementOf(state)
+  return {
+    pos: content.suggestion.from,
+    clip: false,
+    create: creators[placement][kind],
+    ...placements[placement].side,
+  }
 }
 
 export const suggestionCards = showTooltip.computeN(
-  [suggestionsField, interactionField, 'selection'],
-  (state) => [
-    tooltipFor('active', state, createActiveCard),
-    tooltipFor('hover', state, createHoverCard),
-  ],
+  [suggestionsField, interactionField, placementField, 'selection'],
+  (state) => [tooltipFor('active', state), tooltipFor('hover', state)],
 )
