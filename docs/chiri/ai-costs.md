@@ -100,4 +100,4 @@ Notes on issue #18:
 Notes on PR #20:
 - Slice cost is about US$0.0047: 2 Review passes. The three forced failures never reached OpenRouter.
 - The in-page log was lost on a page reload, so the rows come from `/generation` by id and have no client latency.
-- The counter rose about US$0.017 since PR #16's last reading. These rows explain 0.0047; the rest includes the maintainer's own check of the PR #19 build in the same hour, which is not recorded here, so it stays in the upper bound only.
+- The counter rose about US$0.023 since PR #16's reading (9.048 → 9.071). These rows explain 0.0047 and issue #18's checks (PR #19) 0.0062; the rest is the maintainer's own check of the PR #19 build in the same hour, which is not recorded here, so it stays in the upper bound only.
