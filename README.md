@@ -57,7 +57,7 @@ Details and context in [docs/BACKLOG.md](docs/BACKLOG.md).
 
 - [Architecture decisions](docs/chiri/adr/) (10 ADRs), [glossary](GLOSSARY.md), [plan](docs/PLAN.md)
 - [Bake-off](docs/chiri/bakeoff.md): all 9 models side by side
-- [AI cost log](docs/chiri/ai-costs.md): US$0.269 of 5.00 spent
+- [AI cost log](docs/chiri/ai-costs.md): US$0.305 of 5.00 spent
 - [Verification records](docs/chiri/verification/): one per slice, with screenshots and the AI call tables
 - [The challenge](docs/chiri/CHALLENGE.md)
 - [`ai-sessions/`](ai-sessions/): the raw Claude Code `.jsonl` files, as saved. Only OpenRouter keys are masked (`sk-or-***MASKED***`); nothing else is edited. The planning session is in the `grilling` folder. The orchestrator session is in the `chiri-implementation-orchestration` folder, and its implementer and reviewer subagents are under `<session id>/subagents/`. The orchestrator session continues after the export, so its last turns (Gate C and the merge) are not in it.

@@ -51,8 +51,12 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-28 | #5 | review document → default criteria, stopped with Stop after the first Suggestion | `openai/gpt-6.1-terra` | – | not reported | 2154 (client) | aborted | aborted | [5-review-pass.md](verification/5-review-pass.md) |
 | 2026-10-28 | #5 | review document → default criteria, tall viewport (Accept all, `Ctrl+Z`; 5 Suggestions) | `openai/gpt-6.1-terra` → OpenAI | 975 / 331 / 0 / 0 | 0.002630 | 5566 / 1122 / 5199 (first 1898) | stop | 1/1 | [5-review-pass.md](verification/5-review-pass.md) |
 | 2026-10-28 | #5 | Forced failures (2 stubbed out-of-credit, 2 stubbed streams broken mid-answer) | `openai/gpt-6.1-terra` | – | 0 | 5 to 411 (client) | – | 4 stubs | [5-review-pass.md](verification/5-review-pass.md) |
+| 2026-10-28 | PR #16 | maintainer check, pasted Document: select p1 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 675 / 46 / 0 / 0 | 0.000905 | 2854 / 1544 / 1544 | stop | 1/1 | [PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16) |
+| 2026-10-28 | PR #16 | maintainer check, pasted Document: review document → focus: Shorten the Description | `openai/gpt-6.1-terra` → OpenAI | 1907 / 198 / 0 / 0 | 0.003373 | 4052 / 1041 / 3240 (first Suggestion 4006) | stop | 1/1 | [PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16) |
+| 2026-10-28 | PR #16 | maintainer check, pasted Document: review document → focus: Tone | `openai/gpt-6.1-terra` → OpenAI | 1850 / 120 / 0 / 0 | 0.002912 | 2908 / 1393 / 2518 (first 2847) | stop | 1/1 | [PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16) |
+| 2026-10-28 | PR #16 | maintainer check, pasted Document: review document → focus: concision | `openai/gpt-6.1-terra` → OpenAI | 1837 / 792 / 0 / 0 | 0.006256 | 10447 / 926 / 9574 (first 5060) | stop | 1/1 | [PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16) |
 
-**Running total:** US$0.269 of 5.00 (the key's usage counter read US$9.012 in slice 6, against US$8.743 before slice 2; the rows add up to 0.265, 0.254 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report)
+**Running total:** US$0.305 of 5.00 (the key's usage counter read US$9.048 after PR #16, against US$8.743 before slice 2; the rows add up to 0.278, 0.267 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report and the use noted under PR #16)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -75,3 +79,7 @@ Notes on slice 5:
 Notes on slice 6:
 - No model calls. The fresh-clone check only used `GET /models` and `GET /auth/key` through the proxy, which are not generations and cost nothing.
 - The counter is the lifetime usage of the key, so US$0.269 is an upper bound for this project. It agrees with the rows within the unreported aborted requests (the Stopped pass of slice 5 and the aborted requests of slices 3 and 4).
+
+Notes on PR #16:
+- No model calls in the implementer's checks: Suggestions were injected through the suggestion effects in dev mode. The 4 rows are the maintainer's own check on a pasted Document, read from `window.__aiCalls`; `window.__reviewDrops` was empty.
+- The counter rose US$0.036 since slice 6 and these rows explain US$0.013. The rest is use of the key outside these rows, so it stays in the upper bound only.
