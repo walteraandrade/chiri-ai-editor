@@ -53,7 +53,7 @@ New instruction: say we now deploy on weekdays
 
 ## AI call records
 
-Read from `window.__aiCalls` (`agent-browser eval`) after the generation endpoint had filled in provider and OpenRouter latency, and formatted with `formatRecordsTable` from `src/ai/records.ts`. The last row is the forced failure; it never reached OpenRouter.
+Read from `window.__aiCalls` (`agent-browser eval`) after the generation endpoint had filled in provider and OpenRouter latency, and formatted with `formatRecordsTable` from `src/ai/records.ts`. The last row is the first forced failure. The second, `refine p4 → fail please` from the re-check after the review fix, came from a reloaded page and is not in this table. Neither reached OpenRouter.
 
 | Task | Model requested | Served by | Tokens in / out / reasoning / cached | Cost (US$) | Latency client / OpenRouter / generation (ms) | Finish | Valid | Generation id |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
