@@ -133,6 +133,10 @@
   padding: 0.4rem;
 }
 
+.cm-editor .cm-tooltip.cm-ai-card-margin {
+  box-shadow: none;
+}
+
 .cm-editor .cm-tooltip.cm-ai-card-hover {
   pointer-events: none;
   animation-delay: 160ms;

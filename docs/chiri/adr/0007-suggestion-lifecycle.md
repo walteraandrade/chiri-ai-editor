@@ -1,6 +1,6 @@
 # 0007. Suggestion lifecycle
 
-- Status: Accepted (2026-10-28)
+- Status: Accepted (2026-10-28). Amended (2026-10-28): the toolbar became a margin card, from the backlog.
 - Source: planning session, Q13, Q19, Q20, Q21, Q22, Q25, Q32
 
 ## Context
@@ -12,7 +12,7 @@ Suggestions are overlays ([0001](0001-inline-overlay-suggestions.md)) and the us
 - **Edits outside a Suggestion:** its range is mapped through the change (CodeMirror `ChangeSet` mapping).
 - **Edits inside an open Suggestion, or inside an in-flight request's Target:** Discard it, with a discreet notice ("Suggestion discarded: the text changed").
 - **Overlaps:** a new request over an open Suggestion replaces it, so the last one wins. The Review pass skips Blocks with open Suggestions.
-- **Active Suggestion:** shows the Accept / Reject / Refine toolbar. Its Rationale shows on hover, and when the text cursor is inside it (keyboard users can't hover). Other Suggestions show only the inline diff.
+- **Active Suggestion:** shows the Accept / Reject / Refine card. When the window has room right of the text, the card sits in that margin, level with the Suggestion's first line, and always shows the Rationale: it covers no text, and a card that grew on hover would move its buttons away from the pointer. Otherwise it floats above the Suggestion, and its Rationale shows on hover and when the text cursor is inside it (keyboard users can't hover). Other Suggestions show only the inline diff; on hover, their Rationale shows in a card without buttons, in the same place.
 - **Keys, with the cursor inside a Suggestion:** `Cmd/Ctrl+Enter` Accepts, `Esc` Rejects. Accept is a normal edit, so `Cmd+Z` undoes it. Reject is not undoable in v1. A Review pass also offers Accept all and Reject all.
 - **Refine:** a follow-up Instruction on the Active Suggestion. The new Replacement replaces the old one in place. The diff is always against the original text. History stays in memory, with no version arrows in v1.
 - **Persistence:** only the Document text goes to `localStorage`. Open Suggestions are lost on reload.

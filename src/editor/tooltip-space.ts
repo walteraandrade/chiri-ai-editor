@@ -20,7 +20,7 @@ export const spaceBelow = (
   bottom: viewport.height,
 })
 
-const viewportOf = (view: EditorView): Viewport => {
+export const viewportOf = (view: EditorView): Viewport => {
   const root = view.dom.ownerDocument.documentElement
   return { width: root.clientWidth, height: root.clientHeight }
 }
