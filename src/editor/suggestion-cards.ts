@@ -42,7 +42,7 @@ import {
 } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
 
-export type VersionView = {
+type VersionView = {
   readonly index: number
   readonly count: number
   readonly instruction: string

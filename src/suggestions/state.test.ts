@@ -930,14 +930,17 @@ describe('refine', () => {
       expect(showVersion(state, 'a', 0)).toBe(state)
     })
 
-    it('still steps after a failed Refine and keeps its error', () => {
-      const failed = failRefine(beginRefine(threeSteps(), 'a', FORMAL), 'a', {
-        type: 'network',
-        message: 'offline',
-      })
-      const shown = readyOf(showVersion(failed, 'a', 0))
-      expect(shown.shown).toBe(0)
-      expect(shown.refine.status).toBe('failed')
+    it('still steps after a failed Refine and dismisses its error, so Retry never runs on another step', () => {
+      const failed = failRefine(
+        beginRefine(threeSteps(), 'a', FORMAL),
+        'a',
+        error,
+      )
+      const stepped = showVersion(failed, 'a', 0)
+      expect(readyOf(stepped).shown).toBe(0)
+      expect(readyOf(stepped).refine).toEqual({ status: 'idle' })
+      expect(readyOf(stepped).history).toHaveLength(3)
+      expect(retryRefine(stepped, 'a')).toBe(stepped)
     })
 
     it('ignores unknown, pending and error Suggestions', () => {

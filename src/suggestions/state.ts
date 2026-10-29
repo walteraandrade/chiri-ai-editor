@@ -183,7 +183,10 @@ export const showVersion = (
     index === found.shown ||
     found.history[index] === undefined
     ? state
-    : replaceItem(state, showingStep(found, found.history, index))
+    : replaceItem(state, {
+        ...showingStep(found, found.history, index),
+        refine: { status: 'idle' },
+      })
 }
 
 export const failRefine = (
