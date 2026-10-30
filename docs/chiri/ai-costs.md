@@ -70,8 +70,9 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-30 | PR #23 | review document → default criteria (started by mistake on a 6-word Document) | `openai/gpt-6.1-terra` → OpenAI | 416 / 22 / 9 / 0 | 0.000526 | 2435 / 1754 / 1855 | stop | 1/1, no Suggestions | [23-document-history.md](verification/23-document-history.md) |
 | 2026-10-30 | PR #23 | review document → default criteria, then Accept all | `openai/gpt-6.1-terra` → OpenAI | 975 / 324 / 0 / 0 | 0.002595 | 5412 / – / – (first 2133) | stop | 1/1, 5 Suggestions | [23-document-history.md](verification/23-document-history.md) |
 | 2026-10-30 | PR #24 | select p1–p46 → Fix grammar (46-Block Document) | `openai/gpt-6.1-terra` → OpenAI | 3962 / 3808 / 0 / 0 | 0.023992 | 45276 / 1317 / 44859 | stop | 1/1 | [24-long-target.md](verification/24-long-target.md) |
+| 2026-10-30 | PR #24 | select p1–p45 → Fix grammar (the maintainer's Document, repeated) | `openai/gpt-6.1-terra` → OpenAI | 5452 / 2827 / 90 / 5449 | 0.014410 | 32998 / – / – | stop | 1/1 | [24-long-target.md](verification/24-long-target.md) |
 
-**Running total:** US$0.369 of 5.00 (the key's usage counter read US$9.172 after the PR #24 check, US$9.088 after the Document History check and US$9.083 after PR #22, against US$8.743 before slice 2; the rows add up to about 0.322, 0.308 recorded plus 0.013 estimated from the key's counters (rounded), and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20. The counter rose US$0.008 between the PR #20 note and the Document History check, and US$0.060 between that check and the PR #24 check, outside these rows)
+**Running total:** US$0.384 of 5.00 (the key's usage counter read US$9.172 after the PR #24 check, US$9.088 after the Document History check and US$9.083 after PR #22, against US$8.743 before slice 2; the rows add up to about 0.337, 0.323 recorded plus 0.013 estimated from the key's counters (rounded), and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20. The counter rose US$0.008 between the PR #20 note and the Document History check, and US$0.060 between that check and the PR #24 check, outside these rows)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -114,6 +115,6 @@ Notes on PR #23 (Document History):
 - The lifetime counter rose about US$0.0046 since PR #22 (9.083 → 9.0876), which matches.
 
 Notes on PR #24 (long Targets):
-- Slice cost is US$0.0240: 1 real call, recorded. The five forced failures never reached OpenRouter.
-- The key's usage counter rose exactly that much across the call (9.148292 → 9.172283).
+- Slice cost is US$0.0384: 2 real calls, recorded. The forced failures never reached OpenRouter. The second call repeated the maintainer's Fix grammar on their Document to see why it "did nothing" (3 changes, none on screen).
+- The key's usage counter rose exactly that much across the first call (9.148292 → 9.172283). Between it and the repeat it rose another US$0.0254 (→ 9.197672): the maintainer's own run of the same request, outside these rows.
 - Before the check, the counter had risen US$0.060 since the Document History check. That is the maintainer's own use, including the timed-out `select p1–p45 → Fix grammar` that led to this fix, which OpenRouter billed but did not report. It stays in the upper bound only.

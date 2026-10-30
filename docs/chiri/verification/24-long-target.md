@@ -8,6 +8,7 @@
 - `maxOutputTokens` for a Target was 4096. This check used 3808, so a slightly longer Target would have been cut (`length`), failed as invalid output, and been retried once at the same cost.
 - The error card is a block widget at the end of the Target, so for a long Target it is far from where the user is.
 - The selection bubble sits at the end of the selection where the cursor is, so after `Ctrl+A` it was at the end of the Document, off screen.
+- After the fix, the maintainer's Fix grammar on their whole Document (`SKILL.md`, 122 lines) "did nothing": it returned one Suggestion with 3 small changes (lines 39, 56 and 74), none on screen, and nothing said how many there were or where. The Card sat level with line 1.
 
 ## Change
 
@@ -22,22 +23,27 @@ update listener: newlyFailed(before, after) → Toast "<describeError>" [Retry] 
   Retry: same as the card's Retry
   Show:  scroll the error card to the center
 
-selection bubble getCoords → keepInBand(anchor, Target range, visible band)
-  anchor off screen and part of the Target on screen → nearest screen edge
+selection bubble and Cards getCoords → inViewCoords → keepInBand(anchor, range, visible band)
+  anchor off screen and part of the range on screen → nearest screen edge
+
+Active Suggestion Card, when showsChanges (2+ changes, or more than one line)
+  "3 changes" / "Change 2 of 3"     changeLabel(changeSpots(suggestion), cursor)
+  [↑] [↓]                           stepChange: cursor to the previous / next change, scrolled to the center, wrapping
 ```
 
-ADRs [0004](../adr/0004-user-triggered-ai-and-review-pass.md) (bubble on screen), [0007](../adr/0007-suggestion-lifecycle.md) (timeout, error Toast) and [0008](../adr/0008-validated-streaming-only.md) (Target requests stream) are amended.
+ADRs [0004](../adr/0004-user-triggered-ai-and-review-pass.md) (bubble on screen), [0007](../adr/0007-suggestion-lifecycle.md) (timeout, error Toast, change count, Card on screen) and [0008](../adr/0008-validated-streaming-only.md) (Target requests stream) are amended.
 
 ## What was checked
 
 | Check | Result | Evidence |
 |---|---|---|
-| TDD | Pass | `src/ai/client.test.ts`: output token limit (base for a short Target, grows with a long one, stops at 32768); stall timeout (keeps waiting while the model writes past both stall limits, times out when the model sends nothing, times out when it goes silent mid-answer); the existing Target tests now answer with a stream. `src/suggestions/state.test.ts`: `newlyFailed` lists Suggestions that failed in this step, skips ones already failed, lists one again when its retry fails. `src/editor/ask-bubble.test.ts`: `keepInBand` keeps an on-screen anchor, moves to the bottom or top edge when the anchor is off screen, moves when the anchor line is cut by an edge, stays put when none of the range is on screen. `pnpm test`: 837 tests green |
+| TDD | Pass | `src/ai/client.test.ts`: output token limit (base for a short Target, grows with a long one, stops at 32768); stall timeout (keeps waiting while the model writes past both stall limits, times out when the model sends nothing, times out when it goes silent mid-answer); the existing Target tests now answer with a stream. `src/suggestions/state.test.ts`: `newlyFailed` lists Suggestions that failed in this step, skips ones already failed, lists one again when its retry fails. `src/editor/ask-bubble.test.ts`: `keepInBand` keeps an on-screen anchor, moves to the bottom or top edge when the anchor is off screen, moves when the anchor line is cut by an edge, stays put when none of the range is on screen (now in `keep-in-view.test.ts`, shared by the bubble and the Cards). `src/suggestions/changes.test.ts`: where each change starts, a deletion and its insertion as one change, a pure insertion, a block rewrite as one change, next / previous with wrapping, the label, when the count shows. `src/editor/suggestion-cards.test.ts`: the count on a Suggestion over two lines, "Change 1 of 1" with the cursor on it, none on a one-line Suggestion with one change. `pnpm test`: 856 tests green |
 | A long Target finishes | Pass | Fix grammar on all 46 Blocks: pending for 45 s, then one Suggestion with its inline diff and Card ([long-target-3](img/long-target-3.png)). 3962 tokens in, 3808 out, `stop`, valid at the first attempt. With the old 30 s it would have failed |
 | The error shows from anywhere | Pass | Model call failing (wrapped `fetch`, never reached OpenRouter), page at the top: a Toast "Could not reach the model. Check your connection, then retry." with Retry and Show ([long-target-1](img/long-target-1.png)); the error card is about 7400 px below |
 | Show | Pass | `scrollY` 0 → 6975; the error card at 643–688 px of a 900 px viewport, the Toast closed ([long-target-2](img/long-target-2.png)) |
 | Retry from the Toast | Pass | Sends the same request again: records 4 → 5 (`select p1–p46 → Fix grammar`, error `network`), and the new failure brings a new Toast |
 | Selection bubble on a long selection | Pass | Before: with the whole Document selected, the bubble sat at the end of the selection, 7440 px down, so the checks above clicked Fix grammar through the DOM. After (maintainer's request): `Ctrl+A` at the top puts it at the bottom edge of the screen, 811–892 px of 900 ([long-target-4](img/long-target-4.png)); it stays there scrolled to the middle (`scrollY` 3473); at the end it sits by the cursor (625–707 px). A real click on its Fix grammar then started the request (wrapped `fetch`, never reached OpenRouter). At the end it shows above the cursor rather than below: CodeMirror keeps the side it flipped to at the edge |
+| Where the changes are | Pass | Repeated the maintainer's run in a new tab of their Chrome (same Document, same request, real call): one Suggestion over the 122 lines with 3 changes at lines 39, 56 and 74, none on the first screen. Then, on the 46-Block Document with a Suggestion of 3 changes injected through the suggestion effects (no model call): the margin Card reads "3 changes ↑ ↓" ([long-target-5](img/long-target-5.png)); real clicks on ↓ gave "Change 1 of 3" (line 4), "Change 2 of 3" (line 40, `scrollY` 3046), "Change 3 of 3" (line 84, `scrollY` 6824), then "Change 1 of 3" again; ↑ from there gave "Change 3 of 3". While scrolled, the Card stayed at 120 px, below the header ([long-target-6](img/long-target-6.png)). At 1000 px the floating Card did the same ([long-target-7](img/long-target-7.png)) |
 
 ## AI call records
 
@@ -46,6 +52,7 @@ Read from `window.__aiCalls` (`agent-browser eval`) after the generation endpoin
 | Task | Model requested | Served by | Tokens in / out / reasoning / cached | Cost (US$) | Latency client / OpenRouter / generation (ms) | Finish | Valid | Generation id |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | select p1–p46 → Fix grammar | openai/gpt-6.1-terra | openai/gpt-6.1-terra-20261026 · OpenAI | 3962 / 3808 / 0 / 0 | 0.023992 | 45276 / 1317 / 44859 | stop | valid | gen-1793377893-uAdho0UztvwGEM4E5zFv |
+| select p1–p45 → Fix grammar (the maintainer's Document, repeated in their Chrome) | openai/gpt-6.1-terra | OpenAI | 5452 / 2827 / 90 / 5449 | 0.014410 | 32998 / – / – | stop | valid | not kept (tab closed before enrichment) |
 | select p1–p46 → Fix grammar (×5, forced) | openai/gpt-6.1-terra | – | – / – / – / – | – | – | – | error: network | – |
 
-Total: US$0.023992 for 1 call.
+Total: US$0.038402 for 2 calls. The repeat reused 5449 cached input tokens, which shows the maintainer's own run had sent the same prompt and been answered.

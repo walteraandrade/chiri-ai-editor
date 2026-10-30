@@ -263,6 +263,18 @@
   white-space: nowrap;
 }
 
+.cm-ai-changes {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cm-ai-changes-count {
+  flex: 1;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .cm-ai-card-error {
   display: flex;
   align-items: center;
