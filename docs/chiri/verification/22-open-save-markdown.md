@@ -24,7 +24,7 @@ Headless Chrome cannot show the native pickers, so the checks replaced `window.s
 | Save with no file yet | Pass | `Ctrl+S` on the sample: save picker with `suggestedName: release-process-update-weekday-deploys.md`; the fake returned `release-notes.md`, 1910 characters written, toast "Saved release-notes.md", name in the header, tab title `release-notes.md · Chiri` |
 | Unsaved changes, then Save in place | Pass | Typing shows the dot and `• release-notes.md · Chiri` ([open-save-1](img/open-save-1.png)). `Ctrl+S` writes 1918 characters to the same handle with no picker; the dot goes away |
 | Open | Pass | Open button: `notes.md` with a byte order mark loads as `# Notes\n\nOpened from disk.\n`, cursor at 0, editor focused, toast, `localStorage` updated by autosave |
-| Undo past Open | Pass | `Ctrl+Z`: the previous text is back and the dot shows (it differs from `notes.md`). `Ctrl+Shift+Z` is not redo outside macOS in CodeMirror, so it undid one more step (the earlier typing). `Ctrl+Y` twice: back to the file, dot gone |
+| Undo past Open | Pass | `Ctrl+Z`: the previous text is back and the dot shows (it differs from `notes.md`). In this headless browser `Ctrl+Shift+Z` undid one more step (the earlier typing) instead of redoing, though CodeMirror binds it to redo on Linux; not looked into, since this change does not touch the history keys. `Ctrl+Y` twice: back to the file, dot gone |
 | CRLF file, edit and take it back (review fix) | Pass | `crlf.md` with CRLF loads as LF. Typing a letter shows the dot; Backspace clears it |
 | Cancel | Pass | Both pickers throwing `AbortError` (`Ctrl+O`, `Ctrl+Shift+S`): text, name and toast unchanged |
 | Write refused | Pass | `createWritable` throwing `NotAllowedError`: toast "Could not save notes.md", dot stays |
@@ -46,6 +46,8 @@ First pass (`opus`, Standards and Spec): no Standards findings. Fixed from the S
 - A failed write left the writable open; it is now aborted.
 - Open and Save moved from the React hook into `createFileActions`, so their order and messages are tested; `replaceDocument` stops the Review pass itself, and both runtimes have a test for Open.
 - ADR 0011 and the README now say that Chrome asks for write permission once, that Save as suggests the current name, and that Firefox and Safari download for Save as too.
+
+Second pass (`sonnet`): clean. It mutation-tested the fixes (no lock, always lock, no reset of the lock, no abort, no line-ending normalization, no Review stop); each mutation fails at least one test. It corrected a wrong claim in this file about `Ctrl+Shift+Z`.
 
 ## AI call records
 
