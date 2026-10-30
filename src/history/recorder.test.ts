@@ -130,6 +130,30 @@ describe('createHistoryRecorder', () => {
     })
   })
 
+  it('keeps edits typed while a Save waits after the saved Version', () => {
+    const { recorder, tick } = createRecorder()
+    recorder.edited('start a')
+    recorder.edited('start a b')
+    recorder.saved({ text: 'start a', name: 'notes.md' })
+    expect(recorder.snapshot().slice(1)).toMatchObject([
+      { cause: { kind: 'edited' }, text: 'start a', saved: 'notes.md' },
+    ])
+    tick(IDLE_MS)
+    expect(recorder.snapshot().slice(1)).toMatchObject([
+      { text: 'start a', saved: 'notes.md' },
+      { cause: { kind: 'edited' }, text: 'start a b' },
+    ])
+  })
+
+  it('records the text before a replace even with no edit waiting', () => {
+    const { recorder } = createRecorder()
+    recorder.replaced('changed elsewhere')
+    expect(recorder.snapshot().at(-1)).toMatchObject({
+      cause: { kind: 'edited' },
+      text: 'changed elsewhere',
+    })
+  })
+
   it('flush records pending edits right away, once', () => {
     const { recorder, persist, tick } = createRecorder()
     recorder.edited('start x')

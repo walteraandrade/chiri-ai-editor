@@ -73,10 +73,23 @@ export function App({
     (event: HistoryEvent) => applyHistoryEvent(history, event),
     [history],
   )
+  const focusEditor = useCallback(
+    () => documentControls?.focus(),
+    [documentControls],
+  )
+  const historyView = useHistoryView(history, focusEditor)
+  const { mode, versions, close: closeHistory } = historyView
+  const onOpened = useCallback(
+    (opened: { readonly text: string; readonly name: string }) => {
+      history.opened(opened)
+      closeHistory()
+    },
+    [history, closeHistory],
+  )
   const file = useMarkdownFile({
     controls: documentControls,
     notify: showToast,
-    onOpened: history.opened,
+    onOpened,
     onSaved: history.saved,
   })
   const { edited } = file
@@ -88,30 +101,28 @@ export function App({
     [onDocumentChange, edited],
   )
 
-  const focusEditor = useCallback(
-    () => documentControls?.focus(),
-    [documentControls],
-  )
-  const historyView = useHistoryView(history, focusEditor)
-  const { mode, versions } = historyView
   const shown =
     mode.kind === 'version'
       ? versions.find((version) => version.id === mode.id)
       : undefined
   const currentText = documentControls?.text() ?? ''
-  const { close: closeHistory } = historyView
   const reviewControls = useMemo(
     () => controls && beforeReviewChanges(controls, closeHistory),
     [controls, closeHistory],
   )
 
-  const restore = (version: Version): void => {
-    if (documentControls === null) return
-    documentControls.restore(version.text)
-    history.restored({ text: version.text, from: version.id })
-    historyView.close()
-    showToast(`Restored the Version from ${formatClock(version.at)}`)
-  }
+  const restore = useCallback(
+    (version: Version): void => {
+      if (documentControls === null) return
+      documentControls.restore(version.text)
+      history.restored({ text: version.text, from: version.id })
+      closeHistory()
+      showToast(
+        `Restored the Version from ${formatClock(version.at, Date.now())}`,
+      )
+    },
+    [documentControls, history, closeHistory, showToast],
+  )
 
   return (
     <div className="min-h-screen">

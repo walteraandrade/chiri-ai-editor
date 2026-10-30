@@ -48,6 +48,8 @@ export function Timeline({
   const selectedId = mode.kind === 'version' ? mode.id : null
   const focusId = selectedId ?? versions.at(-1)?.id
   const gaps = Math.max(versions.length - 1, 1)
+  const now = Date.now()
+  const clockOf = (at: number) => formatClock(at, now)
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const current = Number(
@@ -76,8 +78,8 @@ export function Timeline({
       >
         <div className="absolute inset-x-0 top-1/2 h-px bg-fill-hover" />
         {versions.map((version, index) => {
-          const description = describeVersion(versions, version, formatClock)
-          const clock = formatClock(version.at)
+          const description = describeVersion(versions, version, clockOf)
+          const clock = clockOf(version.at)
           const share = index / gaps
           const selected = version.id === selectedId
           return (

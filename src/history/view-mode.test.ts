@@ -34,6 +34,12 @@ describe('nextHistoryMode', () => {
     ).toEqual({ kind: 'version', id: 3 })
   })
 
+  it('goes back to the editor when stepping from a Version that is gone', () => {
+    expect(
+      next({ kind: 'version', id: 99 }, { type: 'step', delta: -1 }),
+    ).toEqual({ kind: 'editing' })
+  })
+
   it('ignores a step outside the Version view', () => {
     const full = { kind: 'full' } as const
     expect(next(full, { type: 'step', delta: 1 })).toBe(full)
@@ -79,6 +85,10 @@ describe('dotTarget', () => {
 
   it('starts from the newest Version when none is shown', () => {
     expect(dotTarget(history, null, 'ArrowLeft')).toBe(2)
+  })
+
+  it('moves from the newest Version when the current one is gone', () => {
+    expect(dotTarget(history, 99, 'ArrowLeft')).toBe(2)
   })
 
   it('returns null for other keys', () => {

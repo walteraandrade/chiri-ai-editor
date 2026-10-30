@@ -11,7 +11,7 @@ export const formatAgo = (at: number, now: number): string => {
   return `${days} ${days === 1 ? 'day' : 'days'} ago`
 }
 
-export const formatClock = (at: number, now: number = Date.now()): string => {
+export const formatClock = (at: number, now: number): string => {
   const date = new Date(at)
   const sameDay = new Date(now).toDateString() === date.toDateString()
   return sameDay

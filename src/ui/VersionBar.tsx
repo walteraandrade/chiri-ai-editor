@@ -19,7 +19,9 @@ export function VersionBar({
   onRestore,
   onClose,
 }: VersionBarProps) {
-  const { label, headline } = describeVersion(versions, version, formatClock)
+  const now = Date.now()
+  const clockOf = (at: number) => formatClock(at, now)
+  const { label, headline } = describeVersion(versions, version, clockOf)
   const same = version.text === currentText
   return (
     <div className="mx-auto max-w-3xl px-6 pb-3">
@@ -29,7 +31,7 @@ export function VersionBar({
       >
         <p className="min-w-0">
           <span className="text-ink-strong">
-            {formatClock(version.at)} · {label}
+            {clockOf(version.at)} · {label}
           </span>
           <span className="text-ink-muted"> · {headline}</span>
           <span className="block text-ink-muted text-xs">

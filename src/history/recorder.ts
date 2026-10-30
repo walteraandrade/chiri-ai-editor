@@ -93,7 +93,7 @@ export const createHistoryRecorder = ({
     opened: ({ text, name }) => record(text, { kind: 'opened', name }),
     restored: ({ text, from }) => record(text, { kind: 'restored', from }),
     saved: ({ text, name }) => {
-      flush()
+      if (pending?.text === text) flush()
       commit(markSaved(history, { text, name, at: now() }))
     },
     flush,

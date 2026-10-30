@@ -33,7 +33,7 @@ describe('describeVersion', () => {
     const history = startHistory('one two three', 1)
     expect(describeLast(history)).toEqual({
       author: 'file',
-      label: 'Start',
+      label: 'Started',
       headline: 'Started with 3 words',
     })
   })
@@ -41,7 +41,11 @@ describe('describeVersion', () => {
   it('names the file of an Opened Version', () => {
     expect(
       describeLast(withVersion({ kind: 'opened', name: 'notes.md' }, 'x')),
-    ).toEqual({ author: 'file', label: 'File', headline: 'Opened notes.md' })
+    ).toEqual({
+      author: 'file',
+      label: 'Opened',
+      headline: 'Opened notes.md',
+    })
   })
 
   it('counts the words of an Edited Version', () => {
@@ -109,6 +113,20 @@ describe('describeVersion', () => {
       label: 'AI · Review pass',
       headline: 'Accepted 2 Suggestions',
     })
+  })
+
+  it('labels an Accept all of different requests as Suggestions', () => {
+    expect(
+      describeLast(
+        withVersion(
+          {
+            kind: 'accepted',
+            changes: [change({}), change({ instruction: 'Clearer' })],
+          },
+          'one',
+        ),
+      ),
+    ).toMatchObject({ label: 'AI · Suggestions' })
   })
 
   it('points a Restored Version at the time of its source', () => {

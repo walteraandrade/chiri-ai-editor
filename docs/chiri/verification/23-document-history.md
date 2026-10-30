@@ -25,7 +25,7 @@ App
 
 | Check | Result | Evidence |
 |---|---|---|
-| TDD | Pass | `history.test.ts` (start, record, skip equal text, cap at 50, Save mark, resume), `recorder.test.ts` (idle delay, pending edits before an Accept, replace, Open, Restore, Save, flush once, no persist without a change, subscribers, clock), `storage.test.ts` (round trip, bad JSON, bad shapes, quota fallback to 10 then 1), `line-changes.test.ts` (word change in a line, only changed list items, added and removed lines, trailing newline, word counts), `story.test.ts` (each Cause's label and headline, Review pass Focus, Accept all, summary, marks), `view-mode.test.ts` (show, step, toggle, close, missing Version, keys), `time.test.ts`, `events.test.ts`, `history-events.test.ts` (typing, Accept, Accept all, Open, Restore, no text change). `pnpm test`: 799 green |
+| TDD | Pass | `history.test.ts` (start, record, skip equal text, cap at 50, Save mark, resume), `recorder.test.ts` (idle delay, pending edits before an Accept, replace, Open, Restore, Save, edits typed while Save waits, flush once, no persist without a change, subscribers, clock), `storage.test.ts` (round trip, bad JSON, bad shapes, quota fallback to 10 then 1, `makeRoomFor` shrinking the History until the Document fits), `line-changes.test.ts` (word change in a line, only changed list items, two lines replaced by one, a deleted block before kept lines, added and removed lines, trailing newline, word counts), `story.test.ts` (each Cause's label and headline, Review pass Focus, Accept all, summary, marks), `view-mode.test.ts` (show, step, toggle, close, missing Version, keys), `time.test.ts` (both `formatClock` branches), `events.test.ts`, `history-events.test.ts` (typing, Accept, Accept all, Open, Restore, no text change). `pnpm test`: 814 green |
 | Fresh start | Pass | Empty storage: one Started dot, `chiri.history` stored |
 | Accept | Pass | More formal on the title Block, Accept: an accent dot "AI · More formal" with the Rationale, stored with origin `ask` ([history-1](img/history-1.png)) |
 | Your edits | Pass | Typing, then 30 s idle: a "You added 3 words" dot |
@@ -47,6 +47,18 @@ Found while checking, and fixed:
 - A changed heading line lost its heading size in the Version view.
 - The Review button worked while a Version was shown (see below).
 - An Accept all repeated "Review pass:" before every Rationale; the label now shows only when the Suggestions came from different requests.
+
+## Review
+
+First pass (`opus`, Standards and Spec). Fixed:
+
+- Save while Chrome's permission prompt waits, with typing meanwhile, put the History out of order: the newer edits became a Version, then the older saved text a second one, as if words were removed. Save now marks the saved text first and keeps the newer edits pending.
+- A full History could take the room the Document's autosave needs, and the autosave failure was silent. The autosave now shrinks the stored History (10, then 1, then none) until the Document fits (`makeRoomFor`).
+- Open while a Version or the Full history was shown kept that view over the opened file; Open now goes back to the editor.
+- `formatClock` read the clock by default and had no tests; `now` is required and both branches are tested. A mixed Accept all label, two `lineChanges` cases and a few unknown-id paths gained tests. One `countWords` instead of three. `lineChanges` is a `flatMap` instead of a loop. Labels follow the Glossary: "Started", "Opened", "View in Timeline".
+- ADR 0012 now says that the arrow keys show the Version they land on, that the Document comes first in storage, and how Save orders Versions.
+
+Left as is: Open of a file whose text equals the Document records no Opened Version (the equal-text rule); with 50 Versions stored, a new Version can trim the one being shown, which sends the view back to the editor.
 
 ## AI call records
 

@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import type { StorageLike } from '../document/storage'
+import {
+  loadDocument,
+  type StorageLike,
+  saveDocument,
+} from '../document/storage'
 import { recordVersion, startHistory } from './history'
-import { HISTORY_STORAGE_KEY, loadHistory, saveHistory } from './storage'
+import {
+  HISTORY_STORAGE_KEY,
+  loadHistory,
+  makeRoomFor,
+  saveHistory,
+} from './storage'
 import type { History } from './types'
 
 const createFakeStorage = (
@@ -88,6 +97,9 @@ describe('loadHistory', () => {
     expect(
       loadHistory(stored({ cause: { kind: 'edited' }, saved: 3 })),
     ).toBeNull()
+    expect(
+      loadHistory(stored({ cause: { kind: 'edited' }, at: 'noon' })),
+    ).toBeNull()
     expect(loadHistory(stored({ cause: { kind: 'edited' } }))).toEqual([
       { id: 1, at: 1, text: 'a', cause: { kind: 'edited' } },
     ])
@@ -131,5 +143,67 @@ describe('saveHistory', () => {
     const { storage } = createFakeStorage({}, 10)
     expect(saveHistory(storage, sample)).toBe(false)
     expect(saveHistory(null, sample)).toBe(false)
+  })
+})
+
+const createSharedStorage = (limit: number) => {
+  const data = new Map<string, string>()
+  const usedBesides = (key: string): number =>
+    [...data].reduce(
+      (total, [other, value]) => (other === key ? total : total + value.length),
+      0,
+    )
+  const storage: StorageLike = {
+    getItem: (key) => data.get(key) ?? null,
+    setItem: (key, value) => {
+      if (usedBesides(key) + value.length > limit)
+        throw new Error('QuotaExceededError')
+      data.set(key, value)
+    },
+  }
+  return storage
+}
+
+describe('makeRoomFor', () => {
+  const history = longHistory(30)
+
+  it('leaves the History alone when the write fits', () => {
+    const storage = createSharedStorage(10_000)
+    saveHistory(storage, history)
+    expect(
+      makeRoomFor(storage, history, () => saveDocument(storage, 'doc')),
+    ).toBe(true)
+    expect(loadHistory(storage)).toEqual(history)
+  })
+
+  it('shrinks the stored History until the Document fits', () => {
+    const storage = createSharedStorage(5000)
+    saveHistory(storage, history)
+    const text = 'd'.repeat(1500)
+    expect(
+      makeRoomFor(storage, history, () => saveDocument(storage, text)),
+    ).toBe(true)
+    expect(loadDocument(storage, '')).toBe(text)
+    expect(loadHistory(storage)).toEqual(history.slice(-10))
+  })
+
+  it('empties the stored History as a last resort', () => {
+    const storage = createSharedStorage(5000)
+    saveHistory(storage, history)
+    const text = 'd'.repeat(4900)
+    expect(
+      makeRoomFor(storage, history, () => saveDocument(storage, text)),
+    ).toBe(true)
+    expect(loadDocument(storage, '')).toBe(text)
+    expect(loadHistory(storage)).toEqual([])
+  })
+
+  it('returns false when the write never fits', () => {
+    const storage = createSharedStorage(100)
+    expect(
+      makeRoomFor(storage, history, () =>
+        saveDocument(storage, 'd'.repeat(200)),
+      ),
+    ).toBe(false)
   })
 })

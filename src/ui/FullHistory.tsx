@@ -104,7 +104,7 @@ export function FullHistory({
                     className="cm-ai-button text-sm"
                     onClick={() => onView(version.id)}
                   >
-                    View in timeline
+                    View in Timeline
                   </button>
                 </div>
               </div>

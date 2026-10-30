@@ -1,5 +1,5 @@
 import { type ArrayChange, diffArrays, diffWords } from 'diff'
-import { adaptiveDiff, type DiffHunk } from '../diff/adaptive-diff'
+import { adaptiveDiff, countWords, type DiffHunk } from '../diff/adaptive-diff'
 
 export type LineChange =
   | { readonly kind: 'same'; readonly lines: readonly string[] }
@@ -23,32 +23,18 @@ export const lineChanges = (
   after: string,
 ): readonly LineChange[] => {
   const parts = diffArrays(linesOf(before), linesOf(after))
-  const changes: LineChange[] = []
-  for (let index = 0; index < parts.length; index++) {
-    const part = parts[index]
-    if (part === undefined) continue
-    if (!part.added && !part.removed) {
-      changes.push({ kind: 'same', lines: part.value })
-      continue
-    }
+  return parts.flatMap((part, index): readonly LineChange[] => {
+    if (!part.added && !part.removed)
+      return [{ kind: 'same', lines: part.value }]
+    if (part.added && parts[index - 1]?.removed) return []
     const next = parts[index + 1]
-    const paired =
-      next !== undefined &&
-      next.added !== part.added &&
-      (next.added || next.removed)
-    const removed = part.removed ? part : paired ? next : undefined
-    const added = part.added ? part : paired ? next : undefined
-    if (paired) index++
-    changes.push({
-      kind: 'changed',
-      hunks: changedHunks(joined(removed), joined(added)),
-    })
-  }
-  return changes
+    const removed = part.removed ? part : undefined
+    const added = part.added ? part : next?.added ? next : undefined
+    return [
+      { kind: 'changed', hunks: changedHunks(joined(removed), joined(added)) },
+    ]
+  })
 }
-
-const countWords = (text: string): number =>
-  text.split(/\s+/).filter((word) => word !== '').length
 
 export const wordDelta = (
   before: string,

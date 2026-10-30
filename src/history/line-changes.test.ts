@@ -59,6 +59,38 @@ describe('lineChanges', () => {
     ])
   })
 
+  it('diffs a run of two lines replaced by one as one change', () => {
+    const changes = lineChanges('a\nold one\nold two\nz', 'a\nnew\nz')
+    expect(changes.map((change) => change.kind)).toEqual([
+      'same',
+      'changed',
+      'same',
+    ])
+    const hunks = changes[1]?.kind === 'changed' ? changes[1].hunks : []
+    expect(
+      hunks
+        .filter((hunk) => hunk.type !== 'inserted')
+        .map((hunk) => hunk.text)
+        .join(''),
+    ).toBe('old one\nold two')
+    expect(
+      hunks
+        .filter((hunk) => hunk.type !== 'deleted')
+        .map((hunk) => hunk.text)
+        .join(''),
+    ).toBe('new')
+  })
+
+  it('keeps the lines after a deleted block', () => {
+    expect(lineChanges('gone\n\nkept\nalso kept', 'kept\nalso kept')).toEqual([
+      {
+        kind: 'changed',
+        hunks: [{ type: 'deleted', text: 'gone\n', from: 0, to: 5 }],
+      },
+      { kind: 'same', lines: ['kept', 'also kept'] },
+    ])
+  })
+
   it('treats a trailing newline difference as no change', () => {
     expect(lineChanges('a\n', 'a')).toEqual([{ kind: 'same', lines: ['a'] }])
   })

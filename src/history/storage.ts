@@ -67,6 +67,18 @@ const tryStore = (storage: StorageLike, history: History): boolean => {
   }
 }
 
+export const makeRoomFor = (
+  storage: StorageLike | null,
+  history: History,
+  write: () => boolean,
+): boolean =>
+  write() ||
+  (storage !== null &&
+    [...FALLBACK_SIZES, 0].some(
+      (size) =>
+        tryStore(storage, size === 0 ? [] : history.slice(-size)) && write(),
+    ))
+
 export const saveHistory = (
   storage: StorageLike | null,
   history: History,

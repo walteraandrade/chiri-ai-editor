@@ -1,3 +1,4 @@
+import { countWords } from '../diff/adaptive-diff'
 import { DEFAULT_REVIEW_FOCUS } from '../suggestions/review'
 import { previousVersion } from './history'
 import { wordDelta } from './line-changes'
@@ -22,9 +23,6 @@ export const markOf = (cause: VersionCause): VersionMark =>
 
 export const plural = (count: number, word: string): string =>
   `${count} ${word}${count === 1 ? '' : 's'}`
-
-const countWords = (text: string): number =>
-  text.split(/\s+/).filter((word) => word !== '').length
 
 export const changeLabel = (change: AcceptedChange): string =>
   change.origin === 'ask'
@@ -82,11 +80,15 @@ export const describeVersion = (
     case 'started':
       return {
         author: 'file',
-        label: 'Start',
+        label: 'Started',
         headline: `Started with ${plural(countWords(version.text), 'word')}`,
       }
     case 'opened':
-      return { author: 'file', label: 'File', headline: `Opened ${cause.name}` }
+      return {
+        author: 'file',
+        label: 'Opened',
+        headline: `Opened ${cause.name}`,
+      }
     case 'edited':
       return {
         author: 'you',

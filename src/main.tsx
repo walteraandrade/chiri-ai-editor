@@ -6,18 +6,13 @@ import { SAMPLE_DOCUMENT } from './document/sample-document'
 import { getLocalStorage, loadDocument, saveDocument } from './document/storage'
 import { resumeHistory } from './history/history'
 import { createHistoryRecorder } from './history/recorder'
-import { loadHistory, saveHistory } from './history/storage'
+import { loadHistory, makeRoomFor, saveHistory } from './history/storage'
 import { App } from './ui/App'
 
 const AUTOSAVE_DELAY_MS = 400
 const HISTORY_IDLE_MS = 30_000
 
 const storage = getLocalStorage()
-const autosave = createAutosave({
-  save: (text) => saveDocument(storage, text),
-  delayMs: AUTOSAVE_DELAY_MS,
-})
-
 const initialDoc = loadDocument(storage, SAMPLE_DOCUMENT)
 const storedHistory = loadHistory(storage)
 const initialHistory = resumeHistory(storedHistory, initialDoc, Date.now())
@@ -27,6 +22,12 @@ const history = createHistoryRecorder({
   persist: (versions) => saveHistory(storage, versions),
   now: Date.now,
   idleMs: HISTORY_IDLE_MS,
+})
+
+const autosave = createAutosave({
+  save: (text) =>
+    makeRoomFor(storage, history.snapshot(), () => saveDocument(storage, text)),
+  delayMs: AUTOSAVE_DELAY_MS,
 })
 
 const flushAll = (): void => {
