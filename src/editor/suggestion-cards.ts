@@ -7,8 +7,9 @@ import {
   type ViewUpdate,
 } from '@codemirror/view'
 import {
+  type ChangeRange,
   changeLabel,
-  changeSpots,
+  changeRanges,
   showsChanges,
   stepChange,
 } from '../suggestions/changes'
@@ -34,7 +35,7 @@ import {
 import { el, syncChildren } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
-import { inViewCoords, lineRectAt } from './keep-in-view'
+import { inViewCoords, textRectAt } from './keep-in-view'
 import {
   closeRefineEffect,
   openRefineEffect,
@@ -77,38 +78,31 @@ type PlacementSpec = {
   readonly alwaysShowRationale: boolean
   readonly position: (
     view: EditorView,
-    kind: CardKind,
+    rangeOf: (pos: number) => ChangeRange,
   ) => Pick<TooltipView, 'getCoords' | 'resize'>
 }
-
-const cardRange = (view: EditorView, kind: CardKind, pos: number) =>
-  contentFor(kind, view.state)?.suggestion ?? { from: pos, to: pos }
-
-const textAnchorAt = (view: EditorView, pos: number) =>
-  view.coordsAtPos(pos) ??
-  lineRectAt(view, pos, view.contentDOM.getBoundingClientRect().left)
 
 const placements: Readonly<Record<CardPlacement, PlacementSpec>> = {
   floating: {
     side: { above: true },
     attrs: {},
     alwaysShowRationale: false,
-    position: (view, kind) => ({
+    position: (view, rangeOf) => ({
       getCoords: (pos) =>
-        inViewCoords(view, textAnchorAt(view, pos), cardRange(view, kind, pos)),
+        inViewCoords(
+          view,
+          textRectAt(view, pos, view.contentDOM.getBoundingClientRect().left),
+          rangeOf(pos),
+        ),
     }),
   },
   margin: {
     side: { above: false, strictSide: true },
     attrs: { style: `width: ${MARGIN_CARD_WIDTH}px` },
     alwaysShowRationale: true,
-    position: (view, kind) => ({
+    position: (view, rangeOf) => ({
       getCoords: (pos) =>
-        inViewCoords(
-          view,
-          marginAnchorAt(view, pos),
-          cardRange(view, kind, pos),
-        ),
+        inViewCoords(view, marginAnchorAt(view, pos), rangeOf(pos)),
       resize: false,
     }),
   },
@@ -150,7 +144,7 @@ export const contentFor = (
       refineOpen: refineInputOpenFor(state) === active.id,
       version: versionOf(active),
       changes: showsChanges(active)
-        ? changeLabel(changeSpots(active), cursorOf(state))
+        ? changeLabel(changeRanges(active), cursorOf(state))
         : null,
     }
   }
@@ -334,7 +328,7 @@ const createVersionNav = (view: EditorView): VersionNav => {
     el(
       'button',
       {
-        class: 'cm-ai-button cm-ai-version-step',
+        class: 'cm-ai-button cm-ai-step',
         attrs: {
           type: 'button',
           'aria-label': label,
@@ -382,7 +376,7 @@ const stepActiveChange = (view: EditorView, direction: 1 | -1): void => {
   const active = activeOf(view.state)
   if (!active) return
   const target = stepChange(
-    changeSpots(active),
+    changeRanges(active),
     cursorOf(view.state),
     direction,
   )
@@ -402,7 +396,7 @@ const createChangeNav = (view: EditorView): ChangeNav => {
     el(
       'button',
       {
-        class: 'cm-ai-button cm-ai-version-step',
+        class: 'cm-ai-button cm-ai-step',
         attrs: { type: 'button', 'aria-label': label, title: label },
         on: { click: () => stepActiveChange(view, direction) },
       },
@@ -554,6 +548,7 @@ const cardCreator =
       },
     })
     let renderedKey = ''
+    let range: ChangeRange | null = null
     let formOwner: SuggestionId | null = null
     const syncFormOwner = (state: EditorState): void => {
       const next = refineInputOpenFor(state)
@@ -565,6 +560,7 @@ const cardCreator =
       syncFormOwner(state)
       const content = contentFor(kind, state)
       if (!content) return
+      range = { from: content.suggestion.from, to: content.suggestion.to }
       const key = contentKey(content)
       if (key === renderedKey) return
       renderedKey = key
@@ -576,7 +572,10 @@ const cardCreator =
     sync(view.state)
     return {
       dom,
-      ...placements[placement].position(view, kind),
+      ...placements[placement].position(
+        view,
+        (pos) => range ?? { from: pos, to: pos },
+      ),
       update: (update) => {
         sync(update.state)
         if (openedRefine(update) && refineForm.form.isConnected)

@@ -26,11 +26,7 @@ export const keepInBand = ({
   return { left, right: left, top: y, bottom: y }
 }
 
-export const lineRectAt = (
-  view: EditorView,
-  pos: number,
-  left: number,
-): Rect => {
+const lineRectAt = (view: EditorView, pos: number, left: number): Rect => {
   const block = view.lineBlockAt(pos)
   return {
     left,
@@ -40,7 +36,7 @@ export const lineRectAt = (
   }
 }
 
-const rectAt = (view: EditorView, pos: number, left: number): Rect =>
+export const textRectAt = (view: EditorView, pos: number, left: number): Rect =>
   view.coordsAtPos(pos) ?? lineRectAt(view, pos, left)
 
 const visibleBand = (view: EditorView): Band => {
@@ -63,8 +59,8 @@ export const inViewCoords = (
   keepInBand({
     anchor,
     range: {
-      top: rectAt(view, from, left).top,
-      bottom: rectAt(view, to, left).bottom,
+      top: textRectAt(view, from, left).top,
+      bottom: textRectAt(view, to, left).bottom,
     },
     band: visibleBand(view),
     left,

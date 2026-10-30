@@ -20,7 +20,7 @@ import { currentTarget } from './current-target'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
-import { inViewCoords, lineRectAt } from './keep-in-view'
+import { inViewCoords, textRectAt } from './keep-in-view'
 import { beginEffect } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
 
@@ -95,7 +95,7 @@ const bubbleCoords = (view: EditorView, pos: number): Rect => {
   const left = view.contentDOM.getBoundingClientRect().left
   return inViewCoords(
     view,
-    view.coordsAtPos(pos) ?? lineRectAt(view, pos, left),
+    textRectAt(view, pos, left),
     currentTarget(view.state) ?? { from: pos, to: pos },
     left,
   )

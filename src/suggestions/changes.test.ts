@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { adaptiveDiff } from '../diff/adaptive-diff'
-import { changeLabel, changeSpots, showsChanges, stepChange } from './changes'
+import { changeLabel, changeRanges, showsChanges, stepChange } from './changes'
 
 const at = (from: number, original: string, replacement: string) => ({
   from,
@@ -8,47 +8,59 @@ const at = (from: number, original: string, replacement: string) => ({
   diff: adaptiveDiff(original, replacement),
 })
 
-describe('changeSpots', () => {
-  it('finds where each change starts in the Document', () => {
+describe('changeRanges', () => {
+  it('finds where each change sits in the Document', () => {
     const suggestion = at(
       100,
       'The team review their work and it matter a lot.',
       'The team reviews their work and it matters a lot.',
     )
-    expect(changeSpots(suggestion)).toEqual([109, 134])
+    expect(changeRanges(suggestion)).toEqual([
+      { from: 109, to: 115 },
+      { from: 134, to: 140 },
+    ])
   })
 
   it('counts a deletion and its insertion as one change', () => {
-    expect(changeSpots(at(0, 'one two three', 'one 2 three'))).toEqual([4])
+    expect(changeRanges(at(0, 'one two three', 'one 2 three'))).toEqual([
+      { from: 4, to: 7 },
+    ])
   })
 
-  it('counts a pure insertion', () => {
-    expect(changeSpots(at(10, 'one three', 'one two three'))).toEqual([14])
+  it('counts a pure insertion as an empty range', () => {
+    expect(changeRanges(at(10, 'one three', 'one two three'))).toEqual([
+      { from: 14, to: 14 },
+    ])
   })
 
-  it('has one change at the start for a block rewrite', () => {
+  it('has one change over the whole Target for a block rewrite', () => {
     expect(
-      changeSpots(at(7, 'An old sentence here.', 'Something else entirely.')),
-    ).toEqual([7])
+      changeRanges(at(7, 'An old sentence here.', 'Something else entirely.')),
+    ).toEqual([{ from: 7, to: 28 }])
   })
 })
 
 describe('stepChange', () => {
-  const spots = [10, 40, 90]
+  const ranges = [
+    { from: 10, to: 14 },
+    { from: 40, to: 46 },
+    { from: 90, to: 90 },
+  ]
 
   it('goes to the next change after the cursor', () => {
-    expect(stepChange(spots, 10, 1)).toBe(40)
-    expect(stepChange(spots, 41, 1)).toBe(90)
+    expect(stepChange(ranges, 10, 1)).toBe(40)
+    expect(stepChange(ranges, 43, 1)).toBe(90)
   })
 
-  it('goes to the previous change before the cursor', () => {
-    expect(stepChange(spots, 90, -1)).toBe(40)
-    expect(stepChange(spots, 39, -1)).toBe(10)
+  it('goes to the change before the one the cursor is in', () => {
+    expect(stepChange(ranges, 90, -1)).toBe(40)
+    expect(stepChange(ranges, 43, -1)).toBe(10)
+    expect(stepChange(ranges, 40, -1)).toBe(10)
   })
 
   it('wraps around at both ends', () => {
-    expect(stepChange(spots, 95, 1)).toBe(10)
-    expect(stepChange(spots, 5, -1)).toBe(90)
+    expect(stepChange(ranges, 95, 1)).toBe(10)
+    expect(stepChange(ranges, 12, -1)).toBe(90)
   })
 
   it('has nowhere to go without changes', () => {
@@ -57,13 +69,21 @@ describe('stepChange', () => {
 })
 
 describe('changeLabel', () => {
+  const ranges = [
+    { from: 10, to: 14 },
+    { from: 40, to: 46 },
+    { from: 90, to: 90 },
+  ]
+
   it('counts the changes while the cursor is elsewhere', () => {
-    expect(changeLabel([10, 40, 90], 50)).toBe('3 changes')
-    expect(changeLabel([10], 50)).toBe('1 change')
+    expect(changeLabel(ranges, 50)).toBe('3 changes')
+    expect(changeLabel([{ from: 10, to: 12 }], 50)).toBe('1 change')
   })
 
-  it('says which change the cursor is on', () => {
-    expect(changeLabel([10, 40, 90], 40)).toBe('Change 2 of 3')
+  it('says which change the cursor is in, anywhere inside it', () => {
+    expect(changeLabel(ranges, 40)).toBe('Change 2 of 3')
+    expect(changeLabel(ranges, 43)).toBe('Change 2 of 3')
+    expect(changeLabel(ranges, 90)).toBe('Change 3 of 3')
   })
 })
 

@@ -72,7 +72,7 @@ export type ModelClientConfig = {
 }
 
 export const DEFAULT_TIMEOUTS_MS: RequestKindLimits = {
-  target: 300_000,
+  target: 600_000,
   review: 30_000,
 }
 
