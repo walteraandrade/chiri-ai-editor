@@ -4,6 +4,7 @@ import type { ClientError } from '../ai/errors'
 import { adaptiveDiff } from '../diff/adaptive-diff'
 import { matchEdgeWhitespace } from './replacement'
 import type {
+  FailedSuggestion,
   Instruction,
   NoticeKind,
   ReadySuggestion,
@@ -340,6 +341,16 @@ export const inFlightSuggestionIds = (
   state: SuggestionsState,
 ): readonly SuggestionId[] =>
   state.items.filter(isInFlight).map((item) => item.id)
+
+export const newlyFailed = (
+  before: SuggestionsState,
+  after: SuggestionsState,
+): readonly FailedSuggestion[] =>
+  after.items.filter(
+    (item): item is FailedSuggestion =>
+      item.status === 'error' &&
+      findSuggestion(before, item.id)?.status !== 'error',
+  )
 
 const contains = (item: Suggestion, position: number): boolean =>
   item.from <= position && position <= item.to

@@ -3,13 +3,15 @@ import { useEffect } from 'react'
 const TOAST_DURATION_MS = 4500
 const ACTION_TOAST_DURATION_MS = 12000
 
+export type ToastAction = {
+  readonly label: string
+  readonly run: () => void
+}
+
 export type ToastMessage = {
   readonly id: number
   readonly text: string
-  readonly action?: {
-    readonly label: string
-    readonly run: () => void
-  }
+  readonly actions: readonly ToastAction[]
 }
 
 type ToastProps = {
@@ -19,7 +21,7 @@ type ToastProps = {
 
 export function Toast({ message, onDismiss }: ToastProps) {
   const id = message?.id
-  const hasAction = message?.action !== undefined
+  const hasAction = (message?.actions.length ?? 0) > 0
 
   useEffect(() => {
     if (id === undefined) return undefined
@@ -42,18 +44,19 @@ export function Toast({ message, onDismiss }: ToastProps) {
           className="toast-in pointer-events-auto flex items-center gap-3 bg-raised px-4 py-2 text-ink text-sm shadow-lg"
         >
           <span>{message.text}</span>
-          {message.action ? (
+          {message.actions.map((action) => (
             <button
+              key={action.label}
               type="button"
               className="cm-ai-button text-ink-strong"
               onClick={() => {
-                message.action?.run()
+                action.run()
                 onDismiss()
               }}
             >
-              {message.action.label}
+              {action.label}
             </button>
-          ) : null}
+          ))}
         </p>
       ) : null}
     </div>
