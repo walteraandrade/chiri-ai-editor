@@ -7,22 +7,31 @@ import type { DocumentControls } from '../editor/document-controls'
 import { fileCommandOf } from './file-commands'
 import { detectApplePlatform } from './platform'
 
+type FileEvent = { readonly text: string; readonly name: string }
+
 type MarkdownFileOptions = {
   readonly controls: DocumentControls | null
   readonly notify: (text: string) => void
+  readonly onOpened: (file: FileEvent) => void
+  readonly onSaved: (file: FileEvent) => void
 }
 
-export const useMarkdownFile = ({ controls, notify }: MarkdownFileOptions) => {
+export const useMarkdownFile = ({
+  controls,
+  notify,
+  onOpened,
+  onSaved,
+}: MarkdownFileOptions) => {
   const [session, dispatch] = useReducer(
     nextFileSession<MarkdownFileHandle>,
     null,
   )
   const inputRef = useRef<HTMLInputElement>(null)
-  const latest = useRef({ session, controls, notify })
+  const latest = useRef({ session, controls, notify, onOpened, onSaved })
 
   useEffect(() => {
-    latest.current = { session, controls, notify }
-  }, [session, controls, notify])
+    latest.current = { session, controls, notify, onOpened, onSaved }
+  }, [session, controls, notify, onOpened, onSaved])
 
   const { open, save } = useMemo(
     () =>
@@ -31,7 +40,11 @@ export const useMarkdownFile = ({ controls, notify }: MarkdownFileOptions) => {
         fallback: browserFileFallback(() => inputRef.current),
         editor: () => latest.current.controls,
         session: () => latest.current.session,
-        dispatch,
+        dispatch: (event) => {
+          dispatch(event)
+          if (event.type === 'opened') latest.current.onOpened(event)
+          if (event.type === 'saved') latest.current.onSaved(event)
+        },
         notify: (text) => latest.current.notify(text),
       }),
     [],

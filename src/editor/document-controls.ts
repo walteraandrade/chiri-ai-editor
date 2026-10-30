@@ -5,6 +5,8 @@ import { replaceDocument } from './document-commands'
 export type DocumentControls = {
   readonly text: () => string
   readonly replace: (text: string) => void
+  readonly restore: (text: string) => void
+  readonly focus: () => void
 }
 
 export const bindDocumentControls = (view: EditorView): DocumentControls => ({
@@ -13,4 +15,6 @@ export const bindDocumentControls = (view: EditorView): DocumentControls => ({
     replaceDocument(view, text)
     view.focus()
   },
+  restore: (text) => replaceDocument(view, text, 'input.restore'),
+  focus: () => view.focus(),
 })

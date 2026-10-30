@@ -6,6 +6,7 @@ import {
   bindDocumentControls,
   type DocumentControls,
 } from '../editor/document-controls'
+import { historyEvents } from '../editor/history-events'
 import {
   bindReviewControls,
   type ReviewControls,
@@ -14,6 +15,7 @@ import type { ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
 import { suggestionExtensions } from '../editor/suggestions'
 import { spaceBelowHeader } from '../editor/tooltip-space'
+import type { HistoryEvent } from '../history/events'
 import type { SuggestionNotice } from '../suggestions/types'
 
 type EditorPaneProps = {
@@ -24,6 +26,7 @@ type EditorPaneProps = {
   readonly onReviewNotice: (notice: ReviewNotice) => void
   readonly onReviewControls: (controls: ReviewControls | null) => void
   readonly onDocumentControls: (controls: DocumentControls | null) => void
+  readonly onHistoryEvent: (event: HistoryEvent) => void
   readonly getTopInset: () => number
 }
 
@@ -35,6 +38,7 @@ export function EditorPane({
   onReviewNotice,
   onReviewControls,
   onDocumentControls,
+  onHistoryEvent,
   getTopInset,
 }: EditorPaneProps) {
   const parentRef = useRef<HTMLDivElement>(null)
@@ -46,6 +50,7 @@ export function EditorPane({
     onReviewNotice,
     onReviewControls,
     onDocumentControls,
+    onHistoryEvent,
     getTopInset,
   })
 
@@ -57,6 +62,7 @@ export function EditorPane({
       onReviewNotice,
       onReviewControls,
       onDocumentControls,
+      onHistoryEvent,
       getTopInset,
     }
   }, [
@@ -66,6 +72,7 @@ export function EditorPane({
     onReviewNotice,
     onReviewControls,
     onDocumentControls,
+    onHistoryEvent,
     getTopInset,
   ])
 
@@ -78,6 +85,7 @@ export function EditorPane({
       onChange: (doc) => handlersRef.current.onChange(doc),
       extensions: [
         spaceBelowHeader(() => handlersRef.current.getTopInset()),
+        historyEvents((event) => handlersRef.current.onHistoryEvent(event)),
         ...suggestionExtensions({
           client: createLazyModelClient(() =>
             import('../ai/browser-client').then((module) =>

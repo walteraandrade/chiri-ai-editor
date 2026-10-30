@@ -32,3 +32,22 @@ export const bindReviewControls = (view: EditorView): ReviewControls => ({
     return true
   },
 })
+
+export const beforeReviewChanges = (
+  controls: ReviewControls,
+  before: () => void,
+): ReviewControls => ({
+  ...controls,
+  start: (focus) => {
+    before()
+    controls.start(focus)
+  },
+  acceptAll: () => {
+    before()
+    controls.acceptAll()
+  },
+  rejectAll: () => {
+    before()
+    controls.rejectAll()
+  },
+})

@@ -1,26 +1,44 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { DocumentControls } from '../editor/document-controls'
-import type { ReviewControls } from '../editor/review-controls'
+import {
+  beforeReviewChanges,
+  type ReviewControls,
+} from '../editor/review-controls'
 import { idleReviewStatus, type ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
+import { applyHistoryEvent, type HistoryEvent } from '../history/events'
+import type { HistoryRecorder } from '../history/recorder'
+import { formatClock } from '../history/time'
+import type { Version } from '../history/types'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
 import { FileControls } from './FileControls'
 import { FileName } from './FileName'
+import { FullHistory } from './FullHistory'
 import { Hint } from './Hint'
+import { LineDiff } from './LineDiff'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { ReviewToolbar } from './ReviewToolbar'
+import { Timeline } from './Timeline'
 import { Toast, type ToastMessage } from './Toast'
+import { useHistoryView } from './use-history-view'
 import { useMarkdownFile } from './use-markdown-file'
+import { VersionBar } from './VersionBar'
 
 type AppProps = {
   readonly initialDoc: string
   readonly hasApiKey: boolean
   readonly onDocumentChange: (doc: string) => void
+  readonly history: HistoryRecorder
 }
 
-export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
+export function App({
+  initialDoc,
+  hasApiKey,
+  onDocumentChange,
+  history,
+}: AppProps) {
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
   const [controls, setControls] = useState<ReviewControls | null>(null)
@@ -51,9 +69,15 @@ export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
     (notice: ReviewNotice) => showToast(notice.text, notice.retry),
     [showToast],
   )
+  const onHistoryEvent = useCallback(
+    (event: HistoryEvent) => applyHistoryEvent(history, event),
+    [history],
+  )
   const file = useMarkdownFile({
     controls: documentControls,
     notify: showToast,
+    onOpened: history.opened,
+    onSaved: history.saved,
   })
   const { edited } = file
   const onChange = useCallback(
@@ -63,6 +87,31 @@ export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
     },
     [onDocumentChange, edited],
   )
+
+  const focusEditor = useCallback(
+    () => documentControls?.focus(),
+    [documentControls],
+  )
+  const historyView = useHistoryView(history, focusEditor)
+  const { mode, versions } = historyView
+  const shown =
+    mode.kind === 'version'
+      ? versions.find((version) => version.id === mode.id)
+      : undefined
+  const currentText = documentControls?.text() ?? ''
+  const { close: closeHistory } = historyView
+  const reviewControls = useMemo(
+    () => controls && beforeReviewChanges(controls, closeHistory),
+    [controls, closeHistory],
+  )
+
+  const restore = (version: Version): void => {
+    if (documentControls === null) return
+    documentControls.restore(version.text)
+    history.restored({ text: version.text, from: version.id })
+    historyView.close()
+    showToast(`Restored the Version from ${formatClock(version.at)}`)
+  }
 
   return (
     <div className="min-h-screen">
@@ -84,21 +133,51 @@ export function App({ initialDoc, hasApiKey, onDocumentChange }: AppProps) {
               onOpen={file.open}
               onSave={file.save}
             />
-            <ReviewToolbar status={review} controls={controls} />
+            <ReviewToolbar status={review} controls={reviewControls} />
           </div>
         </div>
+        <Timeline
+          versions={versions}
+          mode={mode}
+          highlighted={historyView.hovered}
+          onDot={historyView.onDot}
+          onNow={historyView.close}
+          onToggleFull={historyView.toggleFull}
+        />
+        {shown ? (
+          <VersionBar
+            versions={versions}
+            version={shown}
+            currentText={currentText}
+            onStep={historyView.step}
+            onRestore={restore}
+            onClose={historyView.close}
+          />
+        ) : null}
       </header>
       <main className="mx-auto max-w-3xl px-6 pt-4 pb-40">
-        <EditorPane
-          initialDoc={initialDoc}
-          onChange={onChange}
-          onNotice={onNotice}
-          onReviewStatus={setReview}
-          onReviewNotice={onReviewNotice}
-          onReviewControls={setControls}
-          onDocumentControls={setDocumentControls}
-          getTopInset={getTopInset}
-        />
+        {shown ? <LineDiff before={currentText} after={shown.text} /> : null}
+        {mode.kind === 'full' ? (
+          <FullHistory
+            versions={versions}
+            flashId={historyView.flashId}
+            onHover={historyView.setHovered}
+            onView={historyView.view}
+          />
+        ) : null}
+        <div hidden={mode.kind !== 'editing'}>
+          <EditorPane
+            initialDoc={initialDoc}
+            onChange={onChange}
+            onNotice={onNotice}
+            onReviewStatus={setReview}
+            onReviewNotice={onReviewNotice}
+            onReviewControls={setControls}
+            onDocumentControls={setDocumentControls}
+            onHistoryEvent={onHistoryEvent}
+            getTopInset={getTopInset}
+          />
+        </div>
       </main>
       <Toast message={toast} onDismiss={dismissToast} />
       {hasApiKey ? null : <MissingKeyBanner />}
