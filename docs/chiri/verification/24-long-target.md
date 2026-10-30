@@ -1,6 +1,6 @@
-# Long Target verification: stall timeout and error Toast
+# PR #24 verification: long Targets, error Toast, bubble on screen
 
-No issue: the maintainer hit it on 2026-10-30. `select p1–p45 → Fix grammar` failed with "The model took too long to answer" after 30003 ms (their `window.__aiCalls`: no usage, no generation id), and the error card sat after the last Block, off screen. Checked on 2026-10-30 in a real browser (`agent-browser`, headless Chrome, 1440 x 900) against `pnpm dev` on this branch, with `openai/gpt-6.1-terra` ([ADR 0010](../adr/0010-model-bakeoff.md)) through the Vite proxy, on a generated 46-Block Document (3239 words, 17620 characters, with grammar errors on purpose).
+[PR #24](https://github.com/walteraandrade/chiri-ai-editor/pull/24). No issue: the maintainer hit it on 2026-10-30. `select p1–p45 → Fix grammar` failed with "The model took too long to answer" after 30003 ms (their `window.__aiCalls`: no usage, no generation id), and the error card sat after the last Block, off screen. Checked on 2026-10-30 in a real browser (`agent-browser`, headless Chrome, 1440 x 900) against `pnpm dev` on this branch, with `openai/gpt-6.1-terra` ([ADR 0010](../adr/0010-model-bakeoff.md)) through the Vite proxy, on a generated 46-Block Document (3239 words, 17620 characters, with grammar errors on purpose).
 
 ## Cause
 
