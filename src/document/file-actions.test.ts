@@ -252,6 +252,25 @@ describe('one file action at a time', () => {
     expect(notices).toEqual(['Opened a.md', 'Opened b.md'])
   })
 
+  it('reports the text once when a second Save comes while the picker is up', async () => {
+    const { editor } = fakeEditor('# A\n')
+    const picked = deferred<MarkdownFileHandle>()
+    const onSaving = vi.fn()
+    const { actions } = setup({
+      host: {
+        showOpenFilePicker: vi.fn(),
+        showSaveFilePicker: () => picked.promise,
+      },
+      editor,
+      onSaving,
+    })
+    const first = actions.save(false)
+    await actions.save(false)
+    picked.resolve(fakeHandle('a.md'))
+    await first
+    expect(onSaving).toHaveBeenCalledTimes(1)
+  })
+
   it('never locks on the file input, which may not report a cancel', async () => {
     const { editor } = fakeEditor('Old.')
     const pickFile = vi

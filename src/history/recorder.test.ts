@@ -200,12 +200,21 @@ describe('createHistoryRecorder', () => {
   })
 
   it('records a Version when Save starts, even with no edit waiting', () => {
-    const { recorder, tick } = createRecorder()
+    const { recorder } = createRecorder()
+    recorder.saving('start s')
+    expect(recorder.snapshot().at(-1)).toMatchObject({
+      cause: { kind: 'edited' },
+      text: 'start s',
+    })
+  })
+
+  it('drops the pending edits and their timer once Save starts', () => {
+    const { recorder, persist, tick } = createRecorder()
     recorder.edited('start s')
     recorder.saving('start s')
-    expect(recorder.snapshot().at(-1)?.text).toBe('start s')
     tick(IDLE_MS)
     expect(recorder.snapshot()).toHaveLength(2)
+    expect(persist).toHaveBeenCalledTimes(1)
   })
 
   it('records the text before a replace even with no edit waiting', () => {
