@@ -6,6 +6,7 @@ import {
 } from '@codemirror/state'
 import {
   type EditorView,
+  type Rect,
   showTooltip,
   type Tooltip,
   type TooltipView,
@@ -19,6 +20,7 @@ import { currentTarget } from './current-target'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
+import { inViewCoords, textRectAt } from './keep-in-view'
 import { beginEffect } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
 
@@ -87,6 +89,16 @@ const isAsking = (state: EditorState): boolean =>
 export const targetPreviewRange = (state: EditorState): Range | undefined => {
   if (!isAsking(state) || !state.selection.main.empty) return undefined
   return currentTarget(state)
+}
+
+const bubbleCoords = (view: EditorView, pos: number): Rect => {
+  const left = view.contentDOM.getBoundingClientRect().left
+  return inViewCoords(
+    view,
+    textRectAt(view, pos, left),
+    currentTarget(view.state) ?? { from: pos, to: pos },
+    left,
+  )
 }
 
 const buildBubble = (view: EditorView) => {
@@ -185,6 +197,7 @@ const buildBubble = (view: EditorView) => {
 
   const tooltipView: TooltipView = {
     dom,
+    getCoords: (pos) => bubbleCoords(view, pos),
     mount: () => focusIfAsking(view.state),
     update: (update) => {
       const reopened = update.transactions.some((transaction) =>

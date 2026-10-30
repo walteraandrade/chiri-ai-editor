@@ -240,7 +240,7 @@
   min-width: 0;
 }
 
-.cm-ai-version-step {
+.cm-ai-step {
   justify-content: center;
   min-width: 1.75rem;
   padding: 0.1rem 0.4rem;
@@ -261,6 +261,18 @@
   color: var(--color-ink-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.cm-ai-changes {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cm-ai-changes-count {
+  flex: 1;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .cm-ai-card-error {

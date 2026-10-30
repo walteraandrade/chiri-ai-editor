@@ -21,6 +21,7 @@ type FileActionsOptions = {
   readonly session: () => FileSession<MarkdownFileHandle> | null
   readonly dispatch: (event: FileSessionEvent<MarkdownFileHandle>) => void
   readonly notify: (text: string) => void
+  readonly onSaving?: (text: string) => void
 }
 
 export type FileActions = {
@@ -35,6 +36,7 @@ export const createFileActions = ({
   session,
   dispatch,
   notify,
+  onSaving,
 }: FileActionsOptions): FileActions => {
   let busy = false
 
@@ -69,6 +71,7 @@ export const createFileActions = ({
   const save = (saveAs: boolean) =>
     exclusive(async (target, current) => {
       const text = current.text()
+      onSaving?.(text)
       const file = session()
       const name = file?.name ?? suggestedFileName(text)
       try {

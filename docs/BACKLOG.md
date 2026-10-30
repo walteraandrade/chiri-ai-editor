@@ -24,4 +24,4 @@ Context links point to where the related code, decision or evidence lives. A mer
 
 ## Out of scope, by choice
 
-Deploy / hosted demo · proactive AI · slash commands · split-pane before/after · chat sidebar · version history · multiple documents · real-time multi-user collaboration · mobile layout · browser end-to-end tests (the UI is checked by hand, see `chiri/verification/`).
+Deploy / hosted demo · proactive AI · slash commands · split-pane before/after · chat sidebar · multiple documents · real-time multi-user collaboration · mobile layout · browser end-to-end tests (the UI is checked by hand, see `chiri/verification/`).

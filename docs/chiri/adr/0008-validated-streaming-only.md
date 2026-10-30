@@ -1,6 +1,6 @@
 # 0008. Stream only where each piece arrives validated
 
-- Status: Accepted (2026-10-28)
+- Status: Accepted (2026-10-28). Amended (2026-10-30): Target requests stream to tell a stalled model from a slow one, from the maintainer's check (45 Blocks → Fix grammar timed out at 30 s).
 - Source: planning session, Q24, Q31
 
 ## Context
@@ -14,7 +14,7 @@ AI SDK v7, verified in its docs on 2026-10-28:
 ## Decision
 
 - **Review pass:** stream with `Output.array` and `elementStream`. Each Suggestion appears once it is schema-validated by the SDK and checked by the app (`blockId` exists, Replacement differs from the original).
-- **Target requests and Refine:** not streamed. `Output.object`, validated before anything is shown.
+- **Target requests and Refine:** streamed only so the app can tell a stalled model from a slow one ([0007](0007-suggestion-lifecycle.md)). Nothing shows until the whole `Output.object` is validated.
 - **Reopen rule:** if the chosen model's median latency for Target requests is above ~3 s, add a Draft preview: streamed text without a diff that turns into the diff once validated.
 
 ## Consequences
