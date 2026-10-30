@@ -7,6 +7,7 @@ import type { ClientError } from '../ai/errors'
 import { type Block, extractBlocks } from '../blocks/extract-blocks'
 import { quickActionInstruction } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
+import { replaceDocument } from './document-commands'
 import { reviewRunOf, reviewStatusOf } from './review-field'
 import {
   createReviewRuntime,
@@ -521,6 +522,26 @@ describe('Stop', () => {
     const { runtime, handle, notices } = setup()
     runtime.actions.stop(handle)
     expect(notices).toEqual([])
+  })
+})
+
+describe('opening a file while a pass streams', () => {
+  it('stops the pass, drops its Suggestions and keeps late edits out', async () => {
+    const { runtime, handle, streams, notices } = setup()
+    runtime.actions.start(handle, '')
+    const stream = only(streams)
+    await stream.push(editEvent(SECOND, 'Second one.'))
+
+    replaceDocument(handle, '# Opened\n\nFrom a file.\n')
+
+    expect(stream.request.signal?.aborted).toBe(true)
+    expect(reviewRunOf(handle.state)).toBeNull()
+    expect(idsOf(handle)).toEqual([])
+    await stream.push(editEvent(THIRD, 'Late.'))
+    await stream.finish()
+    expect(idsOf(handle)).toEqual([])
+    expect(handle.state.doc.toString()).toBe('# Opened\n\nFrom a file.\n')
+    expect(notices).toEqual([{ text: 'Review stopped: 1 suggestion' }])
   })
 })
 

@@ -10,8 +10,9 @@ import {
 
 const abortError = () => new DOMException('The user aborted.', 'AbortError')
 
-const fakeHandle = (name: string, content = '') => {
+const fakeHandle = (name: string, content = '', failWrite = false) => {
   const written: string[] = []
+  const aborted: string[] = []
   const handle: MarkdownFileHandle = {
     name,
     getFile: async () => new File([content], name),
@@ -19,15 +20,20 @@ const fakeHandle = (name: string, content = '') => {
       let pending = ''
       return {
         write: async (data: string) => {
+          if (failWrite)
+            throw new DOMException('Disk full.', 'QuotaExceededError')
           pending += data
         },
         close: async () => {
           written.push(pending)
         },
+        abort: async () => {
+          aborted.push(pending)
+        },
       }
     },
   }
-  return { handle, written }
+  return { handle, written, aborted }
 }
 
 const fakeFallback = (file: File | null = null) => {
@@ -153,6 +159,21 @@ describe('saveMarkdownFile', () => {
     expect(saved?.handle).toBe(copy.handle)
     expect(current.written).toEqual([])
     expect(copy.written).toEqual(['Text'])
+  })
+
+  it('aborts the write and lets the error through when writing fails', async () => {
+    const { handle, written, aborted } = fakeHandle('notes.md', '', true)
+    const { fallback } = fakeFallback()
+    await expect(
+      saveMarkdownFile(pickerHost(vi.fn(), vi.fn()), fallback, {
+        text: 'Text',
+        handle,
+        name: 'notes.md',
+        saveAs: false,
+      }),
+    ).rejects.toThrow('Disk full.')
+    expect(written).toEqual([])
+    expect(aborted).toEqual([''])
   })
 
   it('returns null when the save picker is cancelled', async () => {

@@ -3,7 +3,7 @@ import { type FileSession, nextFileSession } from './file-session'
 
 const HANDLE = { kind: 'handle' }
 
-const opened = (): FileSession<typeof HANDLE> =>
+const opened = (): FileSession<typeof HANDLE> | null =>
   nextFileSession<typeof HANDLE>(null, {
     type: 'opened',
     name: 'notes.md',

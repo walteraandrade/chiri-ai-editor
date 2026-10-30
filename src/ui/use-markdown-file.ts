@@ -1,12 +1,8 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import { useEffect, useMemo, useReducer, useRef } from 'react'
 import { browserFileFallback, browserFileHost } from '../document/browser-files'
-import {
-  type MarkdownFileHandle,
-  openMarkdownFile,
-  saveMarkdownFile,
-} from '../document/file-access'
+import type { MarkdownFileHandle } from '../document/file-access'
+import { createFileActions } from '../document/file-actions'
 import { nextFileSession } from '../document/file-session'
-import { suggestedFileName } from '../document/markdown-file'
 import type { DocumentControls } from '../editor/document-controls'
 import { fileCommandOf } from './file-commands'
 import { detectApplePlatform } from './platform'
@@ -21,63 +17,28 @@ export const useMarkdownFile = ({ controls, notify }: MarkdownFileOptions) => {
     nextFileSession<MarkdownFileHandle>,
     null,
   )
-  const sessionRef = useRef(session)
   const inputRef = useRef<HTMLInputElement>(null)
-  const fallback = useMemo(
-    () => browserFileFallback(() => inputRef.current),
+  const latest = useRef({ session, controls, notify })
+
+  useEffect(() => {
+    latest.current = { session, controls, notify }
+  }, [session, controls, notify])
+
+  const { open, save } = useMemo(
+    () =>
+      createFileActions({
+        host: browserFileHost,
+        fallback: browserFileFallback(() => inputRef.current),
+        editor: () => latest.current.controls,
+        session: () => latest.current.session,
+        dispatch,
+        notify: (text) => latest.current.notify(text),
+      }),
     [],
   )
 
-  useEffect(() => {
-    sessionRef.current = session
-  }, [session])
-
-  const open = useCallback(async () => {
-    if (controls === null) return
-    try {
-      const opened = await openMarkdownFile(browserFileHost(), fallback)
-      if (opened === null) return
-      controls.replace(opened.text)
-      dispatch({ type: 'opened', ...opened })
-      notify(`Opened ${opened.name}`)
-    } catch {
-      notify('Could not open the file')
-    }
-  }, [controls, fallback, notify])
-
-  const save = useCallback(
-    async (saveAs: boolean) => {
-      if (controls === null) return
-      const text = controls.text()
-      const current = sessionRef.current
-      const name = current?.name ?? suggestedFileName(text)
-      try {
-        const saved = await saveMarkdownFile(browserFileHost(), fallback, {
-          text,
-          handle: current?.handle ?? null,
-          name,
-          saveAs,
-        })
-        if (saved === null) return
-        dispatch({
-          type: 'saved',
-          name: saved.name,
-          handle: saved.handle,
-          text,
-          current: controls.text(),
-        })
-        notify(
-          `${saved.method === 'download' ? 'Downloaded' : 'Saved'} ${saved.name}`,
-        )
-      } catch {
-        notify(`Could not save ${name}`)
-      }
-    },
-    [controls, fallback, notify],
-  )
-
-  const edited = useCallback(
-    (text: string) => dispatch({ type: 'edited', text }),
+  const edited = useMemo(
+    () => (text: string) => dispatch({ type: 'edited', text }),
     [],
   )
 

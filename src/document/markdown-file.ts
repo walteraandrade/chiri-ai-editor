@@ -8,7 +8,10 @@ const BYTE_ORDER_MARK = String.fromCharCode(0xfeff)
 const MAX_SLUG_LENGTH = 60
 
 export const decodeMarkdown = (text: string): string =>
-  text.startsWith(BYTE_ORDER_MARK) ? text.slice(BYTE_ORDER_MARK.length) : text
+  (text.startsWith(BYTE_ORDER_MARK)
+    ? text.slice(BYTE_ORDER_MARK.length)
+    : text
+  ).replace(/\r\n?/g, '\n')
 
 const slugOf = (title: string): string =>
   title

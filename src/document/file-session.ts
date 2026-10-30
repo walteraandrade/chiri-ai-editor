@@ -3,7 +3,7 @@ export type FileSession<H> = {
   readonly handle: H | null
   readonly savedText: string
   readonly dirty: boolean
-} | null
+}
 
 export type FileSessionEvent<H> =
   | {
@@ -22,9 +22,9 @@ export type FileSessionEvent<H> =
   | { readonly type: 'edited'; readonly text: string }
 
 export const nextFileSession = <H>(
-  session: FileSession<H>,
+  session: FileSession<H> | null,
   event: FileSessionEvent<H>,
-): FileSession<H> => {
+): FileSession<H> | null => {
   if (event.type === 'opened')
     return {
       name: event.name,

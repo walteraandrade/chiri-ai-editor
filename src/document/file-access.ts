@@ -3,6 +3,7 @@ import { decodeMarkdown } from './markdown-file'
 type WritableText = {
   readonly write: (data: string) => Promise<void>
   readonly close: () => Promise<void>
+  readonly abort: () => Promise<void>
 }
 
 export type MarkdownFileHandle = {
@@ -122,8 +123,13 @@ const writeText = async (
   text: string,
 ): Promise<void> => {
   const writable = await handle.createWritable()
-  await writable.write(text)
-  await writable.close()
+  try {
+    await writable.write(text)
+    await writable.close()
+  } catch (error) {
+    await writable.abort().catch(() => undefined)
+    throw error
+  }
 }
 
 export const saveMarkdownFile = async (

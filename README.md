@@ -47,7 +47,7 @@ Keys (`Ctrl` instead of `⌘` outside macOS):
 | `Esc` | Close the bubble or the Refine box; cancel a request or a Refine in flight; on a card button, go back to the text; otherwise Reject the Suggestion under the cursor. |
 | `⌘Z` | Undo an Accept, or an Accept all in one step. Reject cannot be undone. |
 | `⌘O` | Open a `.md` file. Stops a Review pass and drops open Suggestions; `⌘Z` brings the previous text back. |
-| `⌘S` / `⇧⌘S` | Save / Save as. Shift-click on Save is Save as. |
+| `⌘S` / `⇧⌘S` | Save / Save as. Shift-click on Save is Save as. In Firefox and Safari both download a copy. |
 
 ## With more time
 
