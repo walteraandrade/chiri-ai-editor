@@ -13,8 +13,8 @@
 - **When a Version is recorded:**
   - Accept records one Version; Accept all records one Version that lists every accepted Suggestion. The editor tells them apart by the `input.accept` user event and reads the Suggestions from the state before the transaction.
   - Open and Restore record a Version once the text is replaced.
-  - Your edits (typing, paste, undo, redo, anything that is not an Accept, Open or Restore) wait as pending edits. They become one Edited Version after 30 s without a change, right before any other Version, or when the page hides.
-  - Save marks the newest Version holding the saved text, and records one first if none does. Anything that happens while Save waits (typing, an Accept or a Restore during Chrome's permission prompt) comes after it.
+  - Your edits (typing, paste, undo, redo, anything that is not an Accept, Open or Restore) wait as pending edits. They become one Edited Version after 30 s without a change, right before any other Version, when Save starts (even if it is then cancelled), or when the page hides.
+  - When Save finishes, it marks the newest Version holding the saved text, recording one only if none does (an old one trimmed away). Since Save started by recording that text, anything that happens while it waits (typing, an Accept or a Restore during Chrome's permission prompt) comes after it.
   - A Version with the same text as the last one is not recorded.
 - **Pending edits never mix with the AI's.** They become their own Edited Version before an Accepted one, so an Accepted Version holds only the Suggestions' changes.
 - **Storage:** `localStorage`, key `chiri.history`, next to the Document. At most 50 Versions; the oldest go first. If the browser refuses the write (quota), the newest 10 are stored, then only the newest; the session keeps all of them in memory. The Document comes first: if its autosave is refused, the stored History shrinks to 10, then 1, then none, until the Document fits. Stored data that does not parse starts a fresh History. If the stored History ends with a text other than the Document's, an Edited Version is recorded on load.

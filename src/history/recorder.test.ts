@@ -122,6 +122,7 @@ describe('createHistoryRecorder', () => {
   it('marks the saved text, recording pending edits first', () => {
     const { recorder } = createRecorder()
     recorder.edited('start more')
+    recorder.saving('start more')
     recorder.saved({ text: 'start more', name: 'notes.md' })
     expect(recorder.snapshot().at(-1)).toMatchObject({
       cause: { kind: 'edited' },
@@ -133,6 +134,7 @@ describe('createHistoryRecorder', () => {
   it('keeps edits typed while a Save waits after the saved Version', () => {
     const { recorder, tick } = createRecorder()
     recorder.edited('start a')
+    recorder.saving('start a')
     recorder.edited('start a b')
     recorder.saved({ text: 'start a', name: 'notes.md' })
     expect(recorder.snapshot().slice(1)).toMatchObject([
@@ -148,6 +150,7 @@ describe('createHistoryRecorder', () => {
   it('marks the saved text in place when an Accept came during the Save', () => {
     const { recorder } = createRecorder()
     recorder.edited('start typed')
+    recorder.saving('start typed')
     recorder.accepted({
       before: 'start typed',
       text: 'typed',
@@ -168,6 +171,7 @@ describe('createHistoryRecorder', () => {
     recorder.edited('start x')
     recorder.flush()
     recorder.edited('start')
+    recorder.saving('start')
     recorder.saved({ text: 'start', name: 'notes.md' })
     expect(
       recorder.snapshot().map((version) => [version.text, version.saved]),
@@ -176,6 +180,32 @@ describe('createHistoryRecorder', () => {
       ['start x', undefined],
       ['start', 'notes.md'],
     ])
+  })
+
+  it('keeps the saved text in place when typing and an Accept came during the Save', () => {
+    const { recorder } = createRecorder()
+    recorder.edited('start p')
+    recorder.saving('start p')
+    recorder.edited('start p2')
+    recorder.accepted({ before: 'start p2', text: 'B', changes: [shorter] })
+    recorder.saved({ text: 'start p', name: 'notes.md' })
+    expect(
+      recorder.snapshot().map((version) => [version.text, version.saved]),
+    ).toEqual([
+      ['start', undefined],
+      ['start p', 'notes.md'],
+      ['start p2', undefined],
+      ['B', undefined],
+    ])
+  })
+
+  it('records a Version when Save starts, even with no edit waiting', () => {
+    const { recorder, tick } = createRecorder()
+    recorder.edited('start s')
+    recorder.saving('start s')
+    expect(recorder.snapshot().at(-1)?.text).toBe('start s')
+    tick(IDLE_MS)
+    expect(recorder.snapshot()).toHaveLength(2)
   })
 
   it('records the text before a replace even with no edit waiting', () => {

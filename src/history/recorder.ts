@@ -26,6 +26,7 @@ export type HistoryRecorder = {
     readonly text: string
     readonly from: VersionId
   }) => void
+  readonly saving: (text: string) => void
   readonly saved: (input: {
     readonly text: string
     readonly name: string
@@ -92,10 +93,9 @@ export const createHistoryRecorder = ({
     replaced: settle,
     opened: ({ text, name }) => record(text, { kind: 'opened', name }),
     restored: ({ text, from }) => record(text, { kind: 'restored', from }),
-    saved: ({ text, name }) => {
-      if (pending?.text === text) flush()
-      commit(markSaved(history, { text, name, at: now() }))
-    },
+    saving: settle,
+    saved: ({ text, name }) =>
+      commit(markSaved(history, { text, name, at: now() })),
     flush,
   }
 }

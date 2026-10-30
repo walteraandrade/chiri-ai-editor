@@ -13,6 +13,7 @@ type MarkdownFileOptions = {
   readonly controls: DocumentControls | null
   readonly notify: (text: string) => void
   readonly onOpened: (file: FileEvent) => void
+  readonly onSaving: (text: string) => void
   readonly onSaved: (file: FileEvent) => void
 }
 
@@ -20,6 +21,7 @@ export const useMarkdownFile = ({
   controls,
   notify,
   onOpened,
+  onSaving,
   onSaved,
 }: MarkdownFileOptions) => {
   const [session, dispatch] = useReducer(
@@ -27,11 +29,18 @@ export const useMarkdownFile = ({
     null,
   )
   const inputRef = useRef<HTMLInputElement>(null)
-  const latest = useRef({ session, controls, notify, onOpened, onSaved })
+  const latest = useRef({
+    session,
+    controls,
+    notify,
+    onOpened,
+    onSaving,
+    onSaved,
+  })
 
   useEffect(() => {
-    latest.current = { session, controls, notify, onOpened, onSaved }
-  }, [session, controls, notify, onOpened, onSaved])
+    latest.current = { session, controls, notify, onOpened, onSaving, onSaved }
+  }, [session, controls, notify, onOpened, onSaving, onSaved])
 
   const { open, save } = useMemo(
     () =>
@@ -46,6 +55,7 @@ export const useMarkdownFile = ({
           if (event.type === 'saved') latest.current.onSaved(event)
         },
         notify: (text) => latest.current.notify(text),
+        onSaving: (text) => latest.current.onSaving(text),
       }),
     [],
   )

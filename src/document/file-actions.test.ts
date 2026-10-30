@@ -45,9 +45,10 @@ type Options = {
   readonly host?: FileHost
   readonly fallback?: FileFallback
   readonly editor?: EditorText | null
+  readonly onSaving?: (text: string) => void
 }
 
-const setup = ({ host = {}, fallback, editor }: Options = {}) => {
+const setup = ({ host = {}, fallback, editor, onSaving }: Options = {}) => {
   let session: FileSession<MarkdownFileHandle> | null = null
   const events: FileSessionEvent<MarkdownFileHandle>[] = []
   const notices: string[] = []
@@ -69,6 +70,7 @@ const setup = ({ host = {}, fallback, editor }: Options = {}) => {
     notify: (text) => {
       notices.push(text)
     },
+    ...(onSaving && { onSaving }),
   })
   return { actions, events, notices, downloads, session: () => session }
 }
@@ -148,6 +150,25 @@ describe('save', () => {
     )
     expect(session()).toMatchObject({ name: 'picked.md', handle, dirty: false })
     expect(notices).toEqual(['Saved picked.md'])
+  })
+
+  it('reports the text it saves before the picker answers', async () => {
+    const { editor } = fakeEditor('# A\n')
+    const picked = deferred<MarkdownFileHandle>()
+    const onSaving = vi.fn()
+    const { actions } = setup({
+      host: {
+        showOpenFilePicker: vi.fn(),
+        showSaveFilePicker: () => picked.promise,
+      },
+      editor,
+      onSaving,
+    })
+    const saving = actions.save(false)
+    expect(onSaving).toHaveBeenCalledWith('# A\n')
+    picked.resolve(fakeHandle('a.md'))
+    await saving
+    expect(onSaving).toHaveBeenCalledTimes(1)
   })
 
   it('stays dirty when the text changed while the save ran', async () => {

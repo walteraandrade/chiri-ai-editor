@@ -90,6 +90,7 @@ export function App({
     controls: documentControls,
     notify: showToast,
     onOpened,
+    onSaving: history.saving,
     onSaved: history.saved,
   })
   const { edited } = file
