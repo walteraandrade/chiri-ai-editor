@@ -272,6 +272,9 @@ export const rejectSuggestions = (
   return items.length === state.items.length ? state : { ...state, items }
 }
 
+export const clearSuggestions = (state: SuggestionsState): SuggestionsState =>
+  state.items.length === 0 ? state : { ...state, items: [] }
+
 export const rejectReviewSuggestions = (
   state: SuggestionsState,
 ): SuggestionsState => {

@@ -9,6 +9,7 @@ import {
   beginRefine,
   beginSuggestion,
   cancelRefine,
+  clearSuggestions,
   discardSuggestion,
   emptySuggestions,
   failRefine,
@@ -305,6 +306,26 @@ describe('rejectSuggestions', () => {
   it('returns the same state when nothing matches', () => {
     const state = begun(draft('a', 0, 10))
     expect(rejectSuggestions(state, ['x'])).toBe(state)
+  })
+})
+
+describe('clearSuggestions', () => {
+  const withDiscardNotice = () =>
+    mapSuggestions(
+      begun(draft('a', 0, 10), draft('b', 20, 30)),
+      ChangeSet.of({ from: 2, to: 3, insert: 'y' }, 100),
+    )
+
+  it('drops every Suggestion and keeps the sequence and the last notice', () => {
+    const state = withDiscardNotice()
+    const next = clearSuggestions(state)
+    expect(next.items).toEqual([])
+    expect(next.nextSequence).toBe(state.nextSequence)
+    expect(next.notice).toBe(state.notice)
+  })
+
+  it('returns the same state without Suggestions', () => {
+    expect(clearSuggestions(emptySuggestions)).toBe(emptySuggestions)
   })
 })
 

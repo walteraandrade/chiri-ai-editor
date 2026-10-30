@@ -3,6 +3,10 @@ import { appendReviewDrop } from '../ai/dev-log'
 import { createLazyModelClient } from '../ai/lazy-client'
 import { createEditorView } from '../editor/create-editor-view'
 import {
+  bindDocumentControls,
+  type DocumentControls,
+} from '../editor/document-controls'
+import {
   bindReviewControls,
   type ReviewControls,
 } from '../editor/review-controls'
@@ -19,6 +23,7 @@ type EditorPaneProps = {
   readonly onReviewStatus: (status: ReviewStatus) => void
   readonly onReviewNotice: (notice: ReviewNotice) => void
   readonly onReviewControls: (controls: ReviewControls | null) => void
+  readonly onDocumentControls: (controls: DocumentControls | null) => void
   readonly getTopInset: () => number
 }
 
@@ -29,6 +34,7 @@ export function EditorPane({
   onReviewStatus,
   onReviewNotice,
   onReviewControls,
+  onDocumentControls,
   getTopInset,
 }: EditorPaneProps) {
   const parentRef = useRef<HTMLDivElement>(null)
@@ -39,6 +45,7 @@ export function EditorPane({
     onReviewStatus,
     onReviewNotice,
     onReviewControls,
+    onDocumentControls,
     getTopInset,
   })
 
@@ -49,6 +56,7 @@ export function EditorPane({
       onReviewStatus,
       onReviewNotice,
       onReviewControls,
+      onDocumentControls,
       getTopInset,
     }
   }, [
@@ -57,6 +65,7 @@ export function EditorPane({
     onReviewStatus,
     onReviewNotice,
     onReviewControls,
+    onDocumentControls,
     getTopInset,
   ])
 
@@ -87,8 +96,10 @@ export function EditorPane({
       ],
     })
     handlersRef.current.onReviewControls(bindReviewControls(view))
+    handlersRef.current.onDocumentControls(bindDocumentControls(view))
     return () => {
       handlersRef.current.onReviewControls(null)
+      handlersRef.current.onDocumentControls(null)
       view.destroy()
     }
   }, [])

@@ -2,7 +2,7 @@
 
 ## What it is
 
-A browser Markdown editor with an AI co-author. Select text, or put the cursor in a paragraph, and ask for a change with a Quick action (Shorter, Clearer, More formal, Fix grammar), free text, or `⌘K`. The AI answers inline as a tracked change: the old text struck through, the new text beside it, and a one-line Rationale on a card in the margin (on hover when the window is narrow). Small edits show a word-level diff; rewrites show the whole block. You can Accept, Reject, or Refine a Suggestion ("make it shorter", then "now more formal"), and step back to an earlier version with the arrows on its card. A Review pass reads the whole Document, optionally with a Focus ("tone only"), and streams up to six Suggestions, with Accept all and Reject all; when it ends, the cursor lands on the first one in the text. Nothing touches the Document until you Accept, and Accept is a normal edit, so `⌘Z` undoes it.
+A browser Markdown editor with an AI co-author. Select text, or put the cursor in a paragraph, and ask for a change with a Quick action (Shorter, Clearer, More formal, Fix grammar), free text, or `⌘K`. The AI answers inline as a tracked change: the old text struck through, the new text beside it, and a one-line Rationale on a card in the margin (on hover when the window is narrow). Small edits show a word-level diff; rewrites show the whole block. You can Accept, Reject, or Refine a Suggestion ("make it shorter", then "now more formal"), and step back to an earlier version with the arrows on its card. A Review pass reads the whole Document, optionally with a Focus ("tone only"), and streams up to six Suggestions, with Accept all and Reject all; when it ends, the cursor lands on the first one in the text. Nothing touches the Document until you Accept, and Accept is a normal edit, so `⌘Z` undoes it. Open loads a `.md` file from disk and Save writes it back (in Chrome and Edge, to the same file; elsewhere, as a download).
 
 ![Two Suggestions, a word-level change and a block-level rewrite, with the Active Suggestion's card in the right margin: its Rationale, Accept, Reject and Refine](docs/chiri/verification/img/margin-cards-1.png)
 
@@ -46,6 +46,8 @@ Keys (`Ctrl` instead of `⌘` outside macOS):
 | `Tab` | With the bubble or the Active Suggestion's card open: move into it. `Tab` and `Shift+Tab` then cycle its buttons. |
 | `Esc` | Close the bubble or the Refine box; cancel a request or a Refine in flight; on a card button, go back to the text; otherwise Reject the Suggestion under the cursor. |
 | `⌘Z` | Undo an Accept, or an Accept all in one step. Reject cannot be undone. |
+| `⌘O` | Open a `.md` file. Stops a Review pass and drops open Suggestions; `⌘Z` brings the previous text back. |
+| `⌘S` / `⇧⌘S` | Save / Save as. Shift-click on Save is Save as. |
 
 ## With more time
 
@@ -57,7 +59,7 @@ Details and context in [docs/BACKLOG.md](docs/BACKLOG.md).
 
 ## Links
 
-- [Architecture decisions](docs/chiri/adr/) (10 ADRs), [glossary](GLOSSARY.md), [plan](docs/PLAN.md)
+- [Architecture decisions](docs/chiri/adr/) (11 ADRs), [glossary](GLOSSARY.md), [plan](docs/PLAN.md)
 - [Bake-off](docs/chiri/bakeoff.md): all 9 models side by side
 - [AI cost log](docs/chiri/ai-costs.md): US$0.331 of 5.00 spent
 - [Verification records](docs/chiri/verification/): one per slice, plus PR #14, PR #16 and issue #18, with screenshots and the AI call tables

@@ -4,7 +4,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 
 | Term | Meaning |
 |---|---|
-| **Document** | The Markdown text in the editor. The only thing the app persists (`localStorage`). |
+| **Document** | The Markdown text in the editor. The only thing the app persists: always to `localStorage`, and to a `.md` file on Save. Open replaces it with a file's text ([ADR 0011](docs/chiri/adr/0011-open-and-save-markdown-files.md)). |
 | **Block** | A top-level node of the CodeMirror Markdown syntax tree: paragraph, heading, list, blockquote, code block. A whole list is one Block. |
 | **Target** | The range an AI request is about: the selection, or the Block under the cursor when nothing is selected. |
 | **Neighbors** | The 2 Blocks before and the 2 after the Target, plus the document title (first `#`) and the current section heading. Sent as context. |

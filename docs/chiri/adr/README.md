@@ -14,5 +14,6 @@ All decisions were made in the planning session (see `ai-sessions/`), with quest
 | [0008](0008-validated-streaming-only.md) | Stream only where each piece arrives validated | Accepted |
 | [0009](0009-ai-sdk-v7.md) | AI SDK v7 instead of plain fetch | Accepted |
 | [0010](0010-model-bakeoff.md) | Choose the model by Bake-off | Accepted |
+| [0011](0011-open-and-save-markdown-files.md) | Open and save Markdown files | Accepted |
 
 Process decisions (slices, roles, gates, reviews) live in [docs/PLAN.md](../../PLAN.md).
