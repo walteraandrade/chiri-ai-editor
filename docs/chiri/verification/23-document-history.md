@@ -68,6 +68,12 @@ Not rechecked in a browser after the review: the autosave calling `makeRoomFor` 
 
 Left as is: Open of a file whose text equals the Document records no Opened Version (the equal-text rule); with 50 Versions stored, a new Version can trim the one being shown, which sends the view back to the editor.
 
+## Maintainer's check
+
+On 2026-10-30, clicking Full history froze the app for seconds. The maintainer's History had an Edited Version that replaced the whole Document with an unrelated text (21795 → 11471 characters), and `describeVersion` ran `diffWords` over both texts on every render of the Timeline and the Full history, and again on each hover: 2044 ms per call in Chrome.
+
+Fixed: `wordDelta` compares lines first and words only inside the changed runs, and gives up past 400 word edits (`maxEditLength`), counting each side's words instead. `describeVersion` keeps the headline of an Edited Version in a `WeakMap`, so later renders reuse it. On the same History after the fix: 82 ms the first time, 0 ms after, and the Full history showed 151 ms after the click. The headline is the same ("You added 1788 words and removed 3376"). Tests: `line-changes.test.ts` (only the changed lines count; a wholesale replacement counts every word on each side, in under 500 ms), `story.test.ts` (an Edited headline is worked out once). No model calls.
+
 ## AI call records
 
 | Task | Model requested | Served by | Tokens in / out / reasoning / cached | Cost (US$) | Latency client / OpenRouter / generation (ms) | Finish | Valid | Generation id |

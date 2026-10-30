@@ -56,6 +56,19 @@ const editedHeadline = (before: string, after: string): string => {
   return 'You changed spacing or formatting'
 }
 
+const editedHeadlines = new WeakMap<
+  Version,
+  { readonly before: string; readonly headline: string }
+>()
+
+const cachedEditedHeadline = (before: string, version: Version): string => {
+  const cached = editedHeadlines.get(version)
+  if (cached?.before === before) return cached.headline
+  const headline = editedHeadline(before, version.text)
+  editedHeadlines.set(version, { before, headline })
+  return headline
+}
+
 const acceptedDescription = (
   changes: readonly AcceptedChange[],
 ): VersionDescription => {
@@ -93,9 +106,9 @@ export const describeVersion = (
       return {
         author: 'you',
         label: 'You',
-        headline: editedHeadline(
+        headline: cachedEditedHeadline(
           previousVersion(history, version.id)?.text ?? '',
-          version.text,
+          version,
         ),
       }
     case 'accepted':

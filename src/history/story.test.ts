@@ -67,6 +67,21 @@ describe('describeVersion', () => {
     ).toMatchObject({ headline: 'You changed spacing or formatting' })
   })
 
+  it('works out the headline of an Edited Version once', () => {
+    const words = (seed: string) =>
+      Array.from({ length: 3000 }, (_, index) => `${seed}${index}`).join(' ')
+    const history = recordVersion(startHistory(words('a'), 1), {
+      text: words('b'),
+      cause: { kind: 'edited' },
+      at: 2,
+    })
+    const first = describeLast(history)
+    const started = performance.now()
+    const again = describeLast(history)
+    expect(performance.now() - started).toBeLessThan(5)
+    expect(again).toEqual(first)
+  })
+
   it('uses the Rationale of a single accepted Suggestion', () => {
     expect(
       describeLast(
