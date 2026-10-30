@@ -19,9 +19,9 @@ Suggestions are overlays ([0001](0001-inline-overlay-suggestions.md)) and the us
 - **Persistence:** only the Document text goes to `localStorage`, and to a file on Save ([0011](0011-open-and-save-markdown-files.md)). Open Suggestions are lost on reload, and when a file is opened.
 - **Failures:**
   - Missing key: banner ([0005](0005-local-only-vite-proxy.md)).
-  - Failed call (network, `402` out of credit, `429`): the Suggestion becomes an error card with Retry. `402` gets its own message. The card sits after the Target, off screen when the Target is long, so a Toast shows the same error with Retry and Show (scrolls to the card). A failed Refine shows its error in the Card, which stays on screen.
+  - Failed call (network, `402` out of credit, `429`): the Suggestion becomes an error card with Retry. `402` gets its own message. The card sits after the Target, off screen when the Target is long, so a Toast shows the same error with Retry and Show (scrolls to the card). A failed Refine shows its error in the Card, which stays on screen while part of the Suggestion is; there is no Toast for it.
   - Invalid output: one silent retry, then the error card.
-  - Timeout: a Target request or Refine fails when the model sends nothing for 30 s, or goes silent for 15 s once it has started, with a 10-minute ceiling, room for the largest output at about 55 tokens/s. Its output-token limit grows with the Target, up to 32,768. A fixed 30 s cut long Targets off while the model was still writing. A Review pass keeps 30 s in all.
+  - Timeout: a Target request or Refine fails when the model sends nothing for 30 s, or goes silent for 15 s once it has started, with a 10-minute ceiling shared with the silent retry, room for the largest output at about 55 tokens/s when no retry is needed. Its output-token limit grows with the Target, up to 32,768. A fixed 30 s cut long Targets off while the model was still writing. A Review pass keeps 30 s in all.
 
 ## Consequences
 

@@ -56,7 +56,9 @@ First pass (`opus`, medium; Standards and Spec in parallel, read-only). Fixed:
 - The change buttons used the version arrows' class; both use `cm-ai-step` now.
 - "Change" had no GLOSSARY entry, and ADR 0007 said "↑ / ↓ move the cursor", which reads as arrow keys; they are buttons. The ADR no longer reads as if a failed Refine raised a Toast: its error shows in the Card, which stays on screen.
 - Screenshots renamed `img/24-<n>.png` (AGENTS.md).
-- `changeRanges` used a spread on a `reduce` accumulator (Biome warning, quadratic on big diffs); it is two linear passes now.
+- While fixing, the first `changeRanges` used a spread on a `reduce` accumulator (Biome warning, quadratic on big diffs); it is two linear passes.
+
+Rechecked in a browser after the fixes (injected Suggestion, no model call): at change 2 the label read "Change 2 of 3", still "Change 2 of 3" with the cursor 3 characters in, and ↑ from there went to change 1 (line 4). Second pass (`sonnet`, on the fix commit): clean on code; its four doc nits are fixed (this paragraph, the two ADR 0007 limits below, and this list).
 
 Left as is: no issue for this PR (the record and the PR say so, as PR #20 did); `firstChunkMs` 30 s could cut a model that thinks longer before writing, but the app sends `reasoning: 'low'` and the first token came after 1.3 s; a short failed Target shows both its card and the Toast (the maintainer chose the Toast); the PR covers four related fixes from one check; the second repeat record lacks its generation id (said in the table).
 
