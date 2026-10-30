@@ -6,6 +6,7 @@ import {
 } from '../editor/review-controls'
 import { idleReviewStatus, type ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
+import type { FailureNotice } from '../editor/suggestions'
 import { applyHistoryEvent, type HistoryEvent } from '../history/events'
 import type { HistoryRecorder } from '../history/recorder'
 import { formatClock } from '../history/time'
@@ -21,7 +22,7 @@ import { LineDiff } from './LineDiff'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { ReviewToolbar } from './ReviewToolbar'
 import { Timeline } from './Timeline'
-import { Toast, type ToastMessage } from './Toast'
+import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useHistoryView } from './use-history-view'
 import { useMarkdownFile } from './use-markdown-file'
 import { VersionBar } from './VersionBar'
@@ -53,12 +54,8 @@ export function App({
   const dismissToast = useCallback(() => setToast(null), [])
 
   const showToast = useCallback(
-    (text: string, retry?: () => void) =>
-      setToast({
-        id: ++toastId.current,
-        text,
-        ...(retry && { action: { label: 'Retry', run: retry } }),
-      }),
+    (text: string, actions: readonly ToastAction[] = []) =>
+      setToast({ id: ++toastId.current, text, actions }),
     [],
   )
   const onNotice = useCallback(
@@ -66,7 +63,19 @@ export function App({
     [showToast],
   )
   const onReviewNotice = useCallback(
-    (notice: ReviewNotice) => showToast(notice.text, notice.retry),
+    (notice: ReviewNotice) =>
+      showToast(
+        notice.text,
+        notice.retry ? [{ label: 'Retry', run: notice.retry }] : [],
+      ),
+    [showToast],
+  )
+  const onFailure = useCallback(
+    (notice: FailureNotice) =>
+      showToast(notice.text, [
+        { label: 'Retry', run: notice.retry },
+        { label: 'Show', run: notice.show },
+      ]),
     [showToast],
   )
   const onHistoryEvent = useCallback(
@@ -182,6 +191,7 @@ export function App({
             initialDoc={initialDoc}
             onChange={onChange}
             onNotice={onNotice}
+            onFailure={onFailure}
             onReviewStatus={setReview}
             onReviewNotice={onReviewNotice}
             onReviewControls={setControls}

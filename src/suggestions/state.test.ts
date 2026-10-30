@@ -18,6 +18,7 @@ import {
   inFlightSuggestionIds,
   instructionHistory,
   mapSuggestions,
+  newlyFailed,
   rejectReviewSuggestions,
   rejectSuggestion,
   rejectSuggestions,
@@ -254,6 +255,35 @@ describe('failSuggestion and retrySuggestion', () => {
     const state = begun(draft('a', 0, 10))
     expect(retrySuggestion(state, 'a')).toBe(state)
     expect(retrySuggestion(state, 'missing')).toBe(state)
+  })
+})
+
+describe('newlyFailed', () => {
+  const error: ClientError = { type: 'timeout', message: 'slow' }
+  const ids = (items: readonly { readonly id: string }[]) =>
+    items.map((item) => item.id)
+
+  it('lists the Suggestions that failed in this step', () => {
+    const before = begun(draft('a', 0, 5))
+    expect(
+      ids(newlyFailed(before, failSuggestion(before, 'a', error))),
+    ).toEqual(['a'])
+  })
+
+  it('ignores Suggestions that had already failed', () => {
+    const failed = failSuggestion(begun(draft('a', 0, 5)), 'a', error)
+    const next = beginSuggestion(failed, draft('b', 10, 15))
+    expect(newlyFailed(failed, next)).toEqual([])
+  })
+
+  it('lists a Suggestion again when its retry fails', () => {
+    const retried = retrySuggestion(
+      failSuggestion(begun(draft('a', 0, 5)), 'a', error),
+      'a',
+    )
+    expect(
+      ids(newlyFailed(retried, failSuggestion(retried, 'a', error))),
+    ).toEqual(['a'])
   })
 })
 

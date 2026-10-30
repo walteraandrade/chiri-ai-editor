@@ -1,6 +1,6 @@
 # 0007. Suggestion lifecycle
 
-- Status: Accepted (2026-10-28). Amended (2026-10-28): the toolbar became a margin card, from the backlog. Amended (2026-10-29): Refine version arrows, from the backlog ([#18](https://github.com/walteraandrade/chiri-ai-editor/issues/18)). Amended (2026-10-30): files ([0011](0011-open-and-save-markdown-files.md)).
+- Status: Accepted (2026-10-28). Amended (2026-10-28): the toolbar became a margin card, from the backlog. Amended (2026-10-29): Refine version arrows, from the backlog ([#18](https://github.com/walteraandrade/chiri-ai-editor/issues/18)). Amended (2026-10-30): files ([0011](0011-open-and-save-markdown-files.md)). Amended (2026-10-30): long Targets, from the maintainer's check (45 Blocks → Fix grammar timed out at 30 s, and its error card sat off screen).
 - Source: planning session, Q13, Q19, Q20, Q21, Q22, Q25, Q32
 
 ## Context
@@ -19,9 +19,9 @@ Suggestions are overlays ([0001](0001-inline-overlay-suggestions.md)) and the us
 - **Persistence:** only the Document text goes to `localStorage`, and to a file on Save ([0011](0011-open-and-save-markdown-files.md)). Open Suggestions are lost on reload, and when a file is opened.
 - **Failures:**
   - Missing key: banner ([0005](0005-local-only-vite-proxy.md)).
-  - Failed call (network, `402` out of credit, `429`): the Suggestion becomes an error card with Retry. `402` gets its own message.
+  - Failed call (network, `402` out of credit, `429`): the Suggestion becomes an error card with Retry. `402` gets its own message. The card sits after the Target, off screen when the Target is long, so a Toast shows the same error with Retry and Show (scrolls to the card).
   - Invalid output: one silent retry, then the error card.
-  - Timeout: 30 s.
+  - Timeout: a Target request or Refine fails when the model sends nothing for 30 s, or goes silent for 15 s once it has started, with a 5-minute ceiling. Its output-token limit grows with the Target, up to 32,768. A fixed 30 s cut long Targets off while the model was still writing. A Review pass keeps 30 s in all.
 
 ## Consequences
 

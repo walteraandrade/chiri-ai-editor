@@ -1,5 +1,5 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { generateId, generateText, Output, streamText } from 'ai'
+import { generateId, Output, streamText } from 'ai'
 import type { Block } from '../blocks/extract-blocks'
 import {
   checkSuggestion,
@@ -48,6 +48,11 @@ export type RequestKindLimits = {
   readonly review: number
 }
 
+export type StallLimits = {
+  readonly firstChunk: number
+  readonly chunk: number
+}
+
 export type ModelClientConfig = {
   readonly baseURL: string
   readonly apiKey: string
@@ -56,6 +61,7 @@ export type ModelClientConfig = {
   readonly reasoning?: ReasoningSetting
   readonly maxRetries?: number
   readonly timeoutsMs?: RequestKindLimits
+  readonly stallMs?: StallLimits
   readonly minRetryMs?: number
   readonly maxOutputTokens?: RequestKindLimits
   readonly onRecord?: (record: AiCallRecord) => void
@@ -66,8 +72,13 @@ export type ModelClientConfig = {
 }
 
 export const DEFAULT_TIMEOUTS_MS: RequestKindLimits = {
-  target: 30_000,
+  target: 300_000,
   review: 30_000,
+}
+
+export const DEFAULT_STALL_MS: StallLimits = {
+  firstChunk: 30_000,
+  chunk: 15_000,
 }
 
 export const MIN_RETRY_MS = 1000
@@ -76,6 +87,10 @@ export const DEFAULT_MAX_OUTPUT_TOKENS: RequestKindLimits = {
   target: 4096,
   review: 8192,
 }
+
+export const MAX_TARGET_OUTPUT_TOKENS = 32_768
+
+const TARGET_OUTPUT_TOKENS_PER_CHAR = 0.75
 
 export const DEFAULT_MAX_RETRIES = 1
 
@@ -165,6 +180,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     reasoning = 'low',
     maxRetries = DEFAULT_MAX_RETRIES,
     timeoutsMs = DEFAULT_TIMEOUTS_MS,
+    stallMs = DEFAULT_STALL_MS,
     minRetryMs = MIN_RETRY_MS,
     maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
     clock = () => performance.now(),
@@ -279,17 +295,34 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     message: `The request took longer than ${timeoutsMs[kind]} ms`,
   })
 
+  const remainingMs = (deadlineMs: number): number =>
+    Math.max(1, Math.round(deadlineMs - clock()))
+
+  const targetOutputTokens = (original: string): number =>
+    Math.min(
+      MAX_TARGET_OUTPUT_TOKENS,
+      Math.max(
+        maxOutputTokens.target,
+        Math.ceil(original.length * TARGET_OUTPUT_TOKENS_PER_CHAR),
+      ),
+    )
+
   const callSettings = (
     attempt: Attempt,
     task: string,
-    kind: keyof RequestKindLimits,
     abortSignal: AbortSignal | undefined,
-    deadlineMs: number,
+    limits: {
+      readonly maxOutputTokens: number
+      readonly timeout: {
+        readonly totalMs: number
+        readonly firstChunkMs?: number
+        readonly chunkMs?: number
+      }
+    },
   ) => ({
     model: buildModel(),
     maxRetries,
-    maxOutputTokens: maxOutputTokens[kind],
-    timeout: { totalMs: Math.max(1, Math.round(deadlineMs - clock())) },
+    ...limits,
     abortSignal,
     runtimeContext: { requestId: attempt.requestId },
     telemetry: {
@@ -307,14 +340,26 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
     deadlineMs: number,
   ): Promise<Result<SuggestionResult>> => {
     const attempt = startAttempt()
+    const streamErrors: unknown[] = []
     try {
-      const result = await generateText({
-        ...callSettings(attempt, task, 'target', signal, deadlineMs),
+      const result = streamText({
+        ...callSettings(attempt, task, signal, {
+          maxOutputTokens: targetOutputTokens(original),
+          timeout: {
+            totalMs: remainingMs(deadlineMs),
+            firstChunkMs: stallMs.firstChunk,
+            chunkMs: stallMs.chunk,
+          },
+        }),
         instructions: parts.instructions,
         prompt: parts.prompt,
         output: Output.object({ schema: suggestionSchema }),
+        onError: ({ error }) => {
+          streamErrors.push(error)
+        },
       })
-      const check = checkSuggestion(original, result.output)
+      await result.consumeStream()
+      const check = checkSuggestion(original, await result.output)
       if (check.type === 'invalid') {
         const failure: ClientError = {
           type: 'invalid-output',
@@ -326,7 +371,7 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
       settleAttempt(attempt, { task, number, failure: undefined })
       return { ok: true, value: check.suggestion }
     } catch (error) {
-      const failure = classifyError(error)
+      const failure = classifyError(streamErrors[0] ?? error)
       settleAttempt(attempt, { task, number, failure })
       return { ok: false, error: failure }
     }
@@ -381,9 +426,11 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
         ...callSettings(
           attempt,
           task,
-          'review',
           combineSignals(request.signal, controller.signal),
-          deadlineMs,
+          {
+            maxOutputTokens: maxOutputTokens.review,
+            timeout: { totalMs: remainingMs(deadlineMs) },
+          },
         ),
         instructions: parts.instructions,
         prompt: parts.prompt,

@@ -5,7 +5,8 @@ import {
   StateField,
 } from '@codemirror/state'
 import {
-  type EditorView,
+  EditorView,
+  type Rect,
   showTooltip,
   type Tooltip,
   type TooltipView,
@@ -21,6 +22,7 @@ import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
 import { beginEffect } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
+import { viewportOf } from './tooltip-space'
 
 type Range = { readonly from: number; readonly to: number }
 
@@ -87,6 +89,66 @@ const isAsking = (state: EditorState): boolean =>
 export const targetPreviewRange = (state: EditorState): Range | undefined => {
   if (!isAsking(state) || !state.selection.main.empty) return undefined
   return currentTarget(state)
+}
+
+type Band = { readonly top: number; readonly bottom: number }
+
+const EDGE_GAP = 8
+
+export const keepInBand = ({
+  anchor,
+  range,
+  band,
+  left,
+}: {
+  readonly anchor: Rect
+  readonly range: Band
+  readonly band: Band
+  readonly left: number
+}): Rect => {
+  const below = anchor.bottom > band.bottom
+  const above = anchor.top < band.top
+  const rangeOnScreen = range.top < band.bottom && range.bottom > band.top
+  if ((!below && !above) || !rangeOnScreen) return anchor
+  const y = below ? band.bottom - EDGE_GAP : band.top + EDGE_GAP
+  return { left, right: left, top: y, bottom: y }
+}
+
+const rectAt = (view: EditorView, pos: number, left: number): Rect => {
+  const coords = view.coordsAtPos(pos)
+  if (coords) return coords
+  const block = view.lineBlockAt(pos)
+  return {
+    left,
+    right: left,
+    top: view.documentTop + block.top,
+    bottom: view.documentTop + block.bottom,
+  }
+}
+
+const visibleBand = (view: EditorView): Band => {
+  const scroller = view.scrollDOM.getBoundingClientRect()
+  const insets = view.state
+    .facet(EditorView.scrollMargins)
+    .map((margins) => margins(view)?.top ?? 0)
+  return {
+    top: Math.max(scroller.top, ...insets),
+    bottom: Math.min(scroller.bottom, viewportOf(view).height),
+  }
+}
+
+const bubbleCoords = (view: EditorView, pos: number): Rect => {
+  const left = view.contentDOM.getBoundingClientRect().left
+  const { from, to } = currentTarget(view.state) ?? { from: pos, to: pos }
+  return keepInBand({
+    anchor: rectAt(view, pos, left),
+    range: {
+      top: rectAt(view, from, left).top,
+      bottom: rectAt(view, to, left).bottom,
+    },
+    band: visibleBand(view),
+    left,
+  })
 }
 
 const buildBubble = (view: EditorView) => {
@@ -185,6 +247,7 @@ const buildBubble = (view: EditorView) => {
 
   const tooltipView: TooltipView = {
     dom,
+    getCoords: (pos) => bubbleCoords(view, pos),
     mount: () => focusIfAsking(view.state),
     update: (update) => {
       const reopened = update.transactions.some((transaction) =>

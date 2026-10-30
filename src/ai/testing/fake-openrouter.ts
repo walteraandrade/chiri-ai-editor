@@ -51,32 +51,10 @@ type CompletionOptions = {
   readonly finishReason?: string
 }
 
-export const chatCompletion = (
-  content: string,
-  {
-    id = 'gen-test-1',
-    model = 'vendor/model-served',
-    provider = 'Acme',
-    usage: usageOverride = usage(),
-    finishReason = 'stop',
-  }: CompletionOptions = {},
-): Response =>
-  jsonResponse(200, {
-    id,
-    model,
-    provider,
-    choices: [
-      {
-        message: { role: 'assistant', content },
-        finish_reason: finishReason,
-      },
-    ],
-    usage: usageOverride,
-  })
-
 type StreamOptions = CompletionOptions & {
   readonly chunkSize?: number
   readonly delayMs?: number
+  readonly stallAfter?: number
 }
 
 const sleep = (ms: number): Promise<void> =>
@@ -92,6 +70,7 @@ export const chatStream = (
     finishReason = 'stop',
     chunkSize = 24,
     delayMs = 0,
+    stallAfter,
   }: StreamOptions = {},
 ): Response => {
   const encoder = new TextEncoder()
@@ -115,7 +94,8 @@ export const chatStream = (
   return new Response(
     new ReadableStream({
       async start(controller) {
-        for (const chunk of chunks) {
+        for (const [index, chunk] of chunks.entries()) {
+          if (index === stallAfter) return
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`),
           )
