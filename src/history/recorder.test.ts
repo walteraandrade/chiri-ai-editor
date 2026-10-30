@@ -145,6 +145,39 @@ describe('createHistoryRecorder', () => {
     ])
   })
 
+  it('marks the saved text in place when an Accept came during the Save', () => {
+    const { recorder } = createRecorder()
+    recorder.edited('start typed')
+    recorder.accepted({
+      before: 'start typed',
+      text: 'typed',
+      changes: [shorter],
+    })
+    recorder.saved({ text: 'start typed', name: 'notes.md' })
+    expect(
+      recorder.snapshot().map((version) => [version.text, version.saved]),
+    ).toEqual([
+      ['start', undefined],
+      ['start typed', 'notes.md'],
+      ['typed', undefined],
+    ])
+  })
+
+  it('saves edits that went back to an older text as a new Version', () => {
+    const { recorder } = createRecorder()
+    recorder.edited('start x')
+    recorder.flush()
+    recorder.edited('start')
+    recorder.saved({ text: 'start', name: 'notes.md' })
+    expect(
+      recorder.snapshot().map((version) => [version.text, version.saved]),
+    ).toEqual([
+      ['start', undefined],
+      ['start x', undefined],
+      ['start', 'notes.md'],
+    ])
+  })
+
   it('records the text before a replace even with no edit waiting', () => {
     const { recorder } = createRecorder()
     recorder.replaced('changed elsewhere')

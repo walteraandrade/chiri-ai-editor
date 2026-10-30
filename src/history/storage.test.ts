@@ -187,6 +187,16 @@ describe('makeRoomFor', () => {
     expect(loadHistory(storage)).toEqual(history.slice(-10))
   })
 
+  it('keeps only the newest Version when ten do not leave room', () => {
+    const storage = createSharedStorage(5000)
+    saveHistory(storage, history)
+    const text = 'd'.repeat(4000)
+    expect(
+      makeRoomFor(storage, history, () => saveDocument(storage, text)),
+    ).toBe(true)
+    expect(loadHistory(storage)).toEqual(history.slice(-1))
+  })
+
   it('empties the stored History as a last resort', () => {
     const storage = createSharedStorage(5000)
     saveHistory(storage, history)

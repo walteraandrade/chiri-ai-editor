@@ -30,15 +30,16 @@ export const markSaved = (
     at,
   }: { readonly text: string; readonly name: string; readonly at: number },
 ): History => {
-  const recorded = recordVersion(history, {
-    text,
-    cause: { kind: 'edited' },
-    at,
-  })
-  const last = recorded.at(-1)
-  return last === undefined
-    ? recorded
-    : [...recorded.slice(0, -1), { ...last, saved: name }]
+  const holding = (versions: History): number =>
+    versions.findLastIndex((version) => version.text === text)
+  const recorded =
+    holding(history) < 0
+      ? recordVersion(history, { text, cause: { kind: 'edited' }, at })
+      : history
+  const index = holding(recorded)
+  return recorded.map((version, position) =>
+    position === index ? { ...version, saved: name } : version,
+  )
 }
 
 export const resumeHistory = (

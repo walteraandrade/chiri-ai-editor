@@ -72,6 +72,28 @@ describe('markSaved', () => {
     ])
   })
 
+  it('marks the newest Version holding the saved text, even if others followed', () => {
+    const history = [
+      { kind: 'edited' } as const,
+      { kind: 'accepted', changes: [] } as const,
+    ].reduce<History>(
+      (current, cause, index) =>
+        recordVersion(current, {
+          text: `v${index + 1}`,
+          cause,
+          at: index + 2,
+        }),
+      startHistory('v0', 1),
+    )
+    const saved = markSaved(history, { text: 'v0', name: 'notes.md', at: 9 })
+    expect(saved).toHaveLength(3)
+    expect(saved.map((version) => version.saved)).toEqual([
+      'notes.md',
+      undefined,
+      undefined,
+    ])
+  })
+
   it('records an Edited Version first when the saved text is newer', () => {
     const history = markSaved(startHistory('old', 1), {
       text: 'new',
