@@ -59,7 +59,7 @@ scripts/
 
 ## Git and PRs
 
-- One branch per issue, from `main`: `feat/ | fix/ | chore/ | refactor/ | docs/ | test/` + short kebab slug, max 40 chars.
+- One branch per issue, from `main` (while `main` is frozen for the assessment: from `feat/open-save-markdown`, PR #22, merged back into it): `feat/ | fix/ | chore/ | refactor/ | docs/ | test/` + short kebab slug, max 40 chars.
 - Commit messages: short, imperative, conventional prefix. No `Co-Authored-By` or other authorship trailers.
 - PR body: use the `pr` skill, filling [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Start with `Closes #N`.
 - Squash merge only.

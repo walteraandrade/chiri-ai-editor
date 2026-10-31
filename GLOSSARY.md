@@ -28,6 +28,9 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Review pass** | On-demand request: the AI reads the whole Document (Blocks numbered `p1`, `p2`, …) and returns up to 6 Suggestions, one per Block, streamed one by one. |
 | **Focus** | Optional free text that narrows a Review pass ("focus on tone"). |
 | **Draft** | (Backlog) Streamed, not-yet-validated Replacement text shown without a diff. |
+| **Skill** | (Backlog) A folder with a `SKILL.md` under a skill root, as agents read it. The Library shows it by its frontmatter `name` ([ADR 0014](docs/chiri/adr/0014-skills-on-disk.md)). |
+| **Library** | (Backlog) The sidebar listing the skill roots, their Skills and each Skill's files. |
+| **External change** | (Backlog) A change to a file made outside the app (an agent, another editor, `git pull`). Recorded as an External Version. |
 | **Bake-off** | Scripted comparison of candidate models on the same requests ([ADR 0010](docs/chiri/adr/0010-model-bakeoff.md)). |
 | **AI call record** | Per-call log entry for verification: task, model, provider, tokens, cost, timings, finish reason, generation id. |
 | **Gate** | A point where the orchestrator stops for the maintainer's decision. |
