@@ -118,3 +118,6 @@ Notes on PR #24 (long Targets):
 - Slice cost is US$0.0384: 2 real calls, recorded. The forced failures never reached OpenRouter. The second call repeated the maintainer's Fix grammar on their Document to see why it "did nothing" (3 changes, none on screen).
 - The key's usage counter rose exactly that much across the first call (9.148292 → 9.172283). Between it and the repeat it rose another US$0.0254 (→ 9.197672): the maintainer's own run of the same request, outside these rows.
 - Before the check, the counter had risen US$0.060 since the Document History check. That is the maintainer's own use, including the timed-out `select p1–p45 → Fix grammar` that led to this fix, which OpenRouter billed but did not report. It stays in the upper bound only.
+
+Notes on issue #25:
+- No model calls: the browser checks simulated the model by wrapping `window.fetch` in the page, and `/api/openrouter/**` was aborted at the network level. No rows, and the key's counter was not re-read.

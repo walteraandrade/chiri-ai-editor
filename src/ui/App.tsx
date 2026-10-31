@@ -47,6 +47,7 @@ export function App({
     useState<DocumentControls | null>(null)
   const toastId = useRef(0)
   const headerRef = useRef<HTMLElement>(null)
+  const reviewTriggerRef = useRef<HTMLButtonElement>(null)
   const getTopInset = useCallback(
     () => headerRef.current?.getBoundingClientRect().bottom ?? 0,
     [],
@@ -133,6 +134,10 @@ export function App({
     },
     [documentControls, history, closeHistory, showToast],
   )
+  const onReviewEnd = useCallback((revealed: boolean) => {
+    if (!revealed && document.activeElement === document.body)
+      reviewTriggerRef.current?.focus()
+  }, [])
 
   return (
     <div className="min-h-screen">
@@ -154,7 +159,11 @@ export function App({
               onOpen={file.open}
               onSave={file.save}
             />
-            <ReviewToolbar status={review} controls={reviewControls} />
+            <ReviewToolbar
+              status={review}
+              controls={reviewControls}
+              triggerRef={reviewTriggerRef}
+            />
           </div>
         </div>
         <Timeline
@@ -195,6 +204,7 @@ export function App({
             onReviewStatus={setReview}
             onReviewNotice={onReviewNotice}
             onReviewControls={setControls}
+            onReviewEnd={onReviewEnd}
             onDocumentControls={setDocumentControls}
             onHistoryEvent={onHistoryEvent}
             getTopInset={getTopInset}
