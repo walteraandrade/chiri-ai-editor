@@ -7,6 +7,7 @@ import {
   beginRefine,
   beginSuggestion,
   cancelRefine,
+  clearSuggestions,
   emptySuggestions,
   failRefine,
   failSuggestion,
@@ -61,6 +62,7 @@ export const rejectEffect = StateEffect.define<SuggestionId>()
 export const acceptEffect = StateEffect.define<SuggestionId>()
 export const acceptManyEffect = StateEffect.define<readonly SuggestionId[]>()
 export const rejectReviewEffect = StateEffect.define<null>()
+export const clearSuggestionsEffect = StateEffect.define<null>()
 
 const applyEffect = (
   state: SuggestionsState,
@@ -84,6 +86,7 @@ const applyEffect = (
     return showVersion(state, effect.value.id, effect.value.index)
   if (effect.is(rejectEffect)) return rejectSuggestion(state, effect.value)
   if (effect.is(rejectReviewEffect)) return rejectReviewSuggestions(state)
+  if (effect.is(clearSuggestionsEffect)) return clearSuggestions(state)
   return state
 }
 

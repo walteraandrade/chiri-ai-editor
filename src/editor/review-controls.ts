@@ -11,7 +11,6 @@ export type ReviewControls = {
   readonly stop: () => void
   readonly acceptAll: () => void
   readonly rejectAll: () => void
-  readonly revealFirst: () => boolean
 }
 
 export const bindReviewControls = (view: EditorView): ReviewControls => ({
@@ -25,10 +24,30 @@ export const bindReviewControls = (view: EditorView): ReviewControls => ({
     rejectAllReviewSuggestions(view)
     view.focus()
   },
-  revealFirst: () => {
-    const working = view.dom.contains(view.dom.ownerDocument.activeElement)
-    if (working || !revealFirstReviewSuggestion(view)) return false
-    view.focus()
-    return true
+})
+
+export const beforeReviewChanges = (
+  controls: ReviewControls,
+  before: () => void,
+): ReviewControls => ({
+  ...controls,
+  start: (focus) => {
+    before()
+    controls.start(focus)
+  },
+  acceptAll: () => {
+    before()
+    controls.acceptAll()
+  },
+  rejectAll: () => {
+    before()
+    controls.rejectAll()
   },
 })
+
+export const revealAfterReviewPass = (view: EditorView): boolean => {
+  const working = view.dom.contains(view.dom.ownerDocument.activeElement)
+  if (working || !revealFirstReviewSuggestion(view)) return false
+  view.focus()
+  return true
+}

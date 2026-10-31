@@ -9,6 +9,7 @@ import {
 } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion } from '../suggestions/types'
+import { replaceDocument } from './document-commands'
 import { acceptSuggestionById, type EditorHandle } from './suggestion-commands'
 import {
   cancelRefineEffect,
@@ -239,6 +240,23 @@ describe('abort on Discard', () => {
     await settle()
     expect(suggestionsOf(handle.state).items).toEqual([])
     expect(suggestionsOf(handle.state).notice?.kind).toBe('text-changed')
+  })
+
+  it('aborts the request when a file replaces the Document, without a notice', async () => {
+    const { client, calls } = createClient()
+    const runtime = createSuggestionRuntime({ client, createId: () => 'a' })
+    const handle = createHandle(FIRST.from + 3)
+    runtime.actions.ask(handle, quickActionInstruction('shorter'))
+    const call = only(calls)
+
+    replaceDocument(handle, '# Opened\n')
+    runtime.reconcile(handle.state)
+    expect(call.request.signal?.aborted).toBe(true)
+
+    call.resolve(ok('Late answer.'))
+    await settle()
+    expect(suggestionsOf(handle.state).items).toEqual([])
+    expect(suggestionsOf(handle.state).notice).toBeNull()
   })
 
   it('aborts the older request when a newer one overlaps it', () => {

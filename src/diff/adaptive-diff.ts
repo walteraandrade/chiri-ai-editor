@@ -114,7 +114,7 @@ const toHunks = (chunks: readonly Chunk[]): readonly DiffHunk[] =>
     { hunks: [], offset: 0 },
   ).hunks
 
-const countWords = (text: string): number =>
+export const countWords = (text: string): number =>
   text.split(/\s+/).filter((word) => word !== '').length
 
 const sumWords = (hunks: readonly DiffHunk[], type: DiffHunk['type']): number =>

@@ -1,11 +1,18 @@
 import type { EditorState } from '@codemirror/state'
 import {
-  type EditorView,
+  EditorView,
   showTooltip,
   type Tooltip,
   type TooltipView,
   type ViewUpdate,
 } from '@codemirror/view'
+import {
+  type ChangeRange,
+  changeLabel,
+  changeRanges,
+  showsChanges,
+  stepChange,
+} from '../suggestions/changes'
 import { describeError } from '../suggestions/error-message'
 import {
   freeTextInstruction,
@@ -28,6 +35,7 @@ import {
 import { el, syncChildren } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
+import { inViewCoords, textRectAt } from './keep-in-view'
 import {
   closeRefineEffect,
   openRefineEffect,
@@ -59,6 +67,7 @@ type CardContent = {
   readonly showActions: boolean
   readonly refineOpen: boolean
   readonly version: VersionView | null
+  readonly changes: string | null
 }
 
 type CardKind = 'active' | 'hover'
@@ -69,6 +78,7 @@ type PlacementSpec = {
   readonly alwaysShowRationale: boolean
   readonly position: (
     view: EditorView,
+    rangeOf: (pos: number) => ChangeRange,
   ) => Pick<TooltipView, 'getCoords' | 'resize'>
 }
 
@@ -77,14 +87,22 @@ const placements: Readonly<Record<CardPlacement, PlacementSpec>> = {
     side: { above: true },
     attrs: {},
     alwaysShowRationale: false,
-    position: () => ({}),
+    position: (view, rangeOf) => ({
+      getCoords: (pos) =>
+        inViewCoords(
+          view,
+          textRectAt(view, pos, view.contentDOM.getBoundingClientRect().left),
+          rangeOf(pos),
+        ),
+    }),
   },
   margin: {
     side: { above: false, strictSide: true },
     attrs: { style: `width: ${MARGIN_CARD_WIDTH}px` },
     alwaysShowRationale: true,
-    position: (view) => ({
-      getCoords: (pos) => marginAnchorAt(view, pos),
+    position: (view, rangeOf) => ({
+      getCoords: (pos) =>
+        inViewCoords(view, marginAnchorAt(view, pos), rangeOf(pos)),
       resize: false,
     }),
   },
@@ -125,6 +143,9 @@ export const contentFor = (
       showActions: true,
       refineOpen: refineInputOpenFor(state) === active.id,
       version: versionOf(active),
+      changes: showsChanges(active)
+        ? changeLabel(changeRanges(active), cursorOf(state))
+        : null,
     }
   }
   if (hoveredId === null || hoveredId === active?.id) return undefined
@@ -136,6 +157,7 @@ export const contentFor = (
         showActions: false,
         refineOpen: false,
         version: null,
+        changes: null,
       }
     : undefined
 }
@@ -158,6 +180,7 @@ const contentKey = ({
   showActions,
   refineOpen,
   version,
+  changes,
 }: CardContent): string =>
   [
     suggestion.id,
@@ -167,6 +190,7 @@ const contentKey = ({
     refineOpen,
     refineKey(suggestion),
     versionKey(version),
+    changes ?? '',
   ].join('\u0000')
 
 const shortcutLabel = (key: string): string =>
@@ -304,7 +328,7 @@ const createVersionNav = (view: EditorView): VersionNav => {
     el(
       'button',
       {
-        class: 'cm-ai-button cm-ai-version-step',
+        class: 'cm-ai-button cm-ai-step',
         attrs: {
           type: 'button',
           'aria-label': label,
@@ -343,6 +367,60 @@ const createVersionNav = (view: EditorView): VersionNav => {
       )
       const other = stuck === previous ? next : previous
       if (stuck !== undefined && !other.disabled) other.focus()
+      return dom
+    },
+  }
+}
+
+const stepActiveChange = (view: EditorView, direction: 1 | -1): void => {
+  const active = activeOf(view.state)
+  if (!active) return
+  const target = stepChange(
+    changeRanges(active),
+    cursorOf(view.state),
+    direction,
+  )
+  if (target === undefined) return
+  view.dispatch({
+    selection: { anchor: target },
+    effects: EditorView.scrollIntoView(target, { y: 'center' }),
+  })
+}
+
+type ChangeNav = {
+  readonly render: (label: string) => HTMLElement
+}
+
+const createChangeNav = (view: EditorView): ChangeNav => {
+  const stepButton = (label: string, glyph: string, direction: 1 | -1) =>
+    el(
+      'button',
+      {
+        class: 'cm-ai-button cm-ai-step',
+        attrs: { type: 'button', 'aria-label': label, title: label },
+        on: { click: () => stepActiveChange(view, direction) },
+      },
+      [glyph],
+    )
+  const count = el('span', {
+    class: 'cm-ai-changes-count',
+    attrs: { 'aria-live': 'polite' },
+  })
+  const dom = el(
+    'div',
+    {
+      class: 'cm-ai-changes',
+      attrs: { role: 'group', 'aria-label': 'Changes' },
+    },
+    [
+      count,
+      stepButton('Previous change', '↑', -1),
+      stepButton('Next change', '↓', 1),
+    ],
+  )
+  return {
+    render: (label) => {
+      count.textContent = label
       return dom
     },
   }
@@ -399,14 +477,22 @@ const renderCard = (
   content: CardContent,
   { form }: RefineForm,
   versionNav: VersionNav,
+  changeNav: ChangeNav,
 ): Node[] => {
-  const { suggestion, showRationale, showActions, refineOpen, version } =
-    content
+  const {
+    suggestion,
+    showRationale,
+    showActions,
+    refineOpen,
+    version,
+    changes,
+  } = content
   return [
     ...(version === null ? [] : [versionNav.render(version)]),
     ...(showRationale
       ? [el('p', { class: 'cm-ai-rationale' }, [suggestion.rationale])]
       : []),
+    ...(changes === null ? [] : [changeNav.render(changes)]),
     ...(showActions
       ? [
           el('div', { class: 'cm-ai-card-actions' }, [
@@ -435,6 +521,7 @@ const cardCreator =
   (view: EditorView): TooltipView => {
     const refineForm = createRefineForm(view)
     const versionNav = createVersionNav(view)
+    const changeNav = createChangeNav(view)
     const dom = el('div', {
       class: `cm-ai-card cm-ai-card-${kind} cm-ai-card-${placement}`,
       attrs: {
@@ -461,6 +548,7 @@ const cardCreator =
       },
     })
     let renderedKey = ''
+    let range: ChangeRange | null = null
     let formOwner: SuggestionId | null = null
     const syncFormOwner = (state: EditorState): void => {
       const next = refineInputOpenFor(state)
@@ -472,15 +560,22 @@ const cardCreator =
       syncFormOwner(state)
       const content = contentFor(kind, state)
       if (!content) return
+      range = { from: content.suggestion.from, to: content.suggestion.to }
       const key = contentKey(content)
       if (key === renderedKey) return
       renderedKey = key
-      syncChildren(dom, renderCard(view, content, refineForm, versionNav))
+      syncChildren(
+        dom,
+        renderCard(view, content, refineForm, versionNav, changeNav),
+      )
     }
     sync(view.state)
     return {
       dom,
-      ...placements[placement].position(view),
+      ...placements[placement].position(
+        view,
+        (pos) => range ?? { from: pos, to: pos },
+      ),
       update: (update) => {
         sync(update.state)
         if (openedRefine(update) && refineForm.form.isConnected)
