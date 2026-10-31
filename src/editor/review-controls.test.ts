@@ -6,7 +6,6 @@ const createControls = (calls: string[]): ReviewControls => ({
   stop: () => calls.push('stop'),
   acceptAll: () => calls.push('acceptAll'),
   rejectAll: () => calls.push('rejectAll'),
-  revealFirst: () => true,
 })
 
 describe('beforeReviewChanges', () => {
@@ -28,11 +27,10 @@ describe('beforeReviewChanges', () => {
     ])
   })
 
-  it('leaves Stop and revealFirst alone', () => {
+  it('leaves Stop alone', () => {
     const before = vi.fn()
     const controls = beforeReviewChanges(createControls([]), before)
     controls.stop()
-    controls.revealFirst()
     expect(before).not.toHaveBeenCalled()
   })
 })

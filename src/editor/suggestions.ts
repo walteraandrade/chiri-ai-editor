@@ -55,6 +55,7 @@ export type ReviewObserver = {
   readonly onStatus: (status: ReviewStatus) => void
   readonly onNotice: (notice: ReviewNotice) => void
   readonly onDrop?: (drop: ReviewDrop) => void
+  readonly onEnd?: () => void
 }
 
 type SuggestionExtensionOptions = {
@@ -82,6 +83,7 @@ export const suggestionExtensions = ({
     client,
     onNotice: review.onNotice,
     onDrop: review.onDrop,
+    onEnd: review.onEnd,
   }).extension,
   suggestionDecorations,
   cardPlacement,

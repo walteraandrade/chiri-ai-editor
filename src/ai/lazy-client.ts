@@ -8,6 +8,10 @@ type SuggestionClient = Pick<
   'requestSuggestion' | 'refineSuggestion' | 'reviewDocument'
 >
 
+export type LazyModelClient = SuggestionClient & {
+  readonly preload: () => void
+}
+
 const loadFailure = {
   ok: false,
   error: { type: 'unknown', message: LOAD_FAILED_MESSAGE },
@@ -15,7 +19,7 @@ const loadFailure = {
 
 export const createLazyModelClient = (
   load: () => Promise<SuggestionClient>,
-): SuggestionClient => {
+): LazyModelClient => {
   let loading: Promise<SuggestionClient> | undefined
 
   const get = (): Promise<SuggestionClient> => {
@@ -27,6 +31,9 @@ export const createLazyModelClient = (
   }
 
   return {
+    preload: () => {
+      get().catch(() => undefined)
+    },
     requestSuggestion: async (request) => {
       const client = await get().catch(() => undefined)
       return client ? client.requestSuggestion(request) : loadFailure

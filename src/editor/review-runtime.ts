@@ -52,6 +52,7 @@ type RuntimeOptions = {
   readonly client: Pick<ModelClient, 'reviewDocument'>
   readonly onNotice: (notice: ReviewNotice) => void
   readonly onDrop?: (drop: ReviewDrop) => void
+  readonly onEnd?: () => void
   readonly createId?: () => SuggestionId
 }
 
@@ -59,6 +60,7 @@ export const createReviewRuntime = ({
   client,
   onNotice,
   onDrop,
+  onEnd,
   createId = (() => {
     let counter = 0
     return () => `r${++counter}`
@@ -122,6 +124,7 @@ export const createReviewRuntime = ({
       text: reviewNoticeText({ added, error: failure }),
       ...(failure !== undefined && { retry: () => start(handle, focus) }),
     })
+    onEnd?.()
   }
 
   const consume = async (
@@ -192,6 +195,7 @@ export const createReviewRuntime = ({
     const added = reviewRunOf(handle.state)?.added ?? 0
     handle.dispatch({ effects: endReviewEffect.of(null) })
     onNotice({ text: reviewSummary({ added, stopped: true }) })
+    onEnd?.()
   }
 
   const destroy = (): void => {
