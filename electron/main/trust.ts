@@ -8,11 +8,12 @@ const parse = (url: string): URL | null => {
   }
 }
 
+const originOf = (url: URL): string =>
+  url.protocol === 'file:' ? FILE_ORIGIN : `${url.protocol}//${url.host}`
+
 export const appOrigin = (appUrl: string): string => {
   const parsed = parse(appUrl)
-  return parsed === null || parsed.protocol === 'file:'
-    ? FILE_ORIGIN
-    : parsed.origin
+  return parsed === null ? FILE_ORIGIN : originOf(parsed)
 }
 
 export const isAppNavigation = (target: string, appUrl: string): boolean => {
@@ -21,7 +22,7 @@ export const isAppNavigation = (target: string, appUrl: string): boolean => {
   if (to === null || app === null) return false
   return app.protocol === 'file:'
     ? to.protocol === 'file:' && to.pathname === app.pathname
-    : to.origin === app.origin
+    : originOf(to) === originOf(app)
 }
 
 export const isTrustedFrame = (

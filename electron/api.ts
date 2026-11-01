@@ -19,6 +19,11 @@ export const WATCH_FILE_CHANNEL = 'external:watch-file'
 export const EXTERNAL_CHANGES_CHANNEL = 'external:changes'
 export const LIBRARY_CREATE_SKILL_CHANNEL = 'library:create-skill'
 
+export const KEY_STATE_CHANNEL = 'key:state'
+export const KEY_SAVE_CHANNEL = 'key:save'
+export const KEY_KEEP_AS_PLAIN_TEXT_CHANNEL = 'key:keep-as-plain-text'
+export const KEY_CLEAR_CHANNEL = 'key:clear'
+
 export const FILE_NOT_FOUND_REASON = 'File not found'
 
 export type ShellInfo = {
@@ -63,6 +68,18 @@ export type ExternalChanges = {
   readonly library: boolean
 }
 
+export type KeyStorage = 'keyring' | 'plain-text' | 'session' | 'none'
+
+export type KeyDetails = {
+  readonly present: boolean
+  readonly storage: KeyStorage
+  readonly keyringAvailable: boolean
+  readonly backend: string
+  readonly unreadable: boolean
+}
+
+export type KeyState = KeyDetails & { readonly managed: boolean }
+
 export type ChiriApi = {
   readonly shellInfo: () => Promise<ShellInfo>
   readonly openFile: () => Promise<FileReadResult>
@@ -79,4 +96,8 @@ export type ChiriApi = {
   readonly createSkill: (
     request: CreateSkillRequest,
   ) => Promise<CreateSkillResult>
+  readonly keyState: () => Promise<KeyState>
+  readonly saveKey: (key: string) => Promise<KeyState>
+  readonly keepKeyAsPlainText: () => Promise<KeyState>
+  readonly clearKey: () => Promise<KeyState>
 } & HistoryApi

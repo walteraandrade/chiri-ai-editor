@@ -1,0 +1,96 @@
+import { describe, expect, it } from 'vitest'
+import type { KeyState } from '../../electron/api'
+import {
+  describeKeyState,
+  offersPlainText,
+  saveErrorMessage,
+} from './key-status'
+
+const state = (overrides: Partial<KeyState> = {}): KeyState => ({
+  managed: true,
+  present: false,
+  storage: 'none',
+  keyringAvailable: true,
+  backend: 'gnome_libsecret',
+  unreadable: false,
+  ...overrides,
+})
+
+describe('describeKeyState', () => {
+  it('says there is no key', () => {
+    expect(describeKeyState(state())).toBe('No key set.')
+  })
+
+  it('says where a stored key lives', () => {
+    expect(describeKeyState(state({ present: true, storage: 'keyring' }))).toBe(
+      'Stored in the system keyring (gnome_libsecret).',
+    )
+    expect(
+      describeKeyState(
+        state({ present: true, storage: 'keyring', backend: 'kwallet6' }),
+      ),
+    ).toBe('Stored in the system keyring (kwallet6).')
+  })
+
+  it('warns about plain text storage', () => {
+    expect(
+      describeKeyState(state({ present: true, storage: 'plain-text' })),
+    ).toBe('Stored as plain text on this machine, like .env.')
+  })
+
+  it('says a session key is forgotten on quit', () => {
+    expect(describeKeyState(state({ present: true, storage: 'session' }))).toBe(
+      'Kept for this session only. Quitting forgets it.',
+    )
+  })
+
+  it('asks for the key again when the stored one cannot be read', () => {
+    expect(describeKeyState(state({ unreadable: true }))).toBe(
+      'The stored key could not be read. Enter it again.',
+    )
+  })
+})
+
+describe('offersPlainText', () => {
+  it('offers it only for a session key with no working keyring', () => {
+    expect(
+      offersPlainText(
+        state({ present: true, storage: 'session', keyringAvailable: false }),
+      ),
+    ).toBe(true)
+  })
+
+  it('does not offer it in any other state', () => {
+    expect(offersPlainText(state())).toBe(false)
+    expect(offersPlainText(state({ present: true, storage: 'keyring' }))).toBe(
+      false,
+    )
+    expect(
+      offersPlainText(state({ present: true, storage: 'plain-text' })),
+    ).toBe(false)
+    expect(
+      offersPlainText(
+        state({ present: true, storage: 'session', keyringAvailable: true }),
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('saveErrorMessage', () => {
+  it('names an invalid key', () => {
+    expect(
+      saveErrorMessage(
+        new Error(
+          "Error invoking remote method 'key:save': Error: Invalid key",
+        ),
+      ),
+    ).toBe('That does not look like a key. Paste it again.')
+  })
+
+  it('does not echo anything else', () => {
+    expect(saveErrorMessage(new Error('boom sk-or-v1-secret'))).toBe(
+      'Could not save the key.',
+    )
+    expect(saveErrorMessage('x')).toBe('Could not save the key.')
+  })
+})

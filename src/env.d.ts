@@ -5,4 +5,5 @@ interface Window {
   chiri?: import('../electron/api').ChiriApi
   __aiCalls?: import('./ai/records').AiCallRecord[]
   __reviewDrops?: import('./ai/dev-log').ReviewDropEntry[]
+  chiri?: import('../electron/api').ChiriApi
 }

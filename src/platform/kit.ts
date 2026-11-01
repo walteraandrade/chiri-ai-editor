@@ -1,3 +1,4 @@
+import type { KeyState } from '../../electron/api'
 import type { FileSession } from '../document/file-session'
 import type { Unsaved } from '../document/unsaved'
 import type { SwitchableHistory } from '../history/hub'
@@ -91,6 +92,13 @@ export type LibraryKit<Ref> = {
   readonly subscribe: (listener: () => void) => () => void
 }
 
+export type KeySettings = {
+  readonly state: KeyState
+  readonly save: (key: string) => Promise<KeyState>
+  readonly keepAsPlainText: () => Promise<KeyState>
+  readonly clear: () => Promise<KeyState>
+}
+
 export type DiskRead =
   | {
       readonly kind: 'text'
@@ -119,6 +127,7 @@ export type PlatformKit<Ref = unknown> = {
   readonly notice: string | null
   readonly history: SwitchableHistory<Ref>
   readonly keyStatus: KeyStatus
+  readonly keySettings?: KeySettings
   readonly problems: Problems
   readonly library?: LibraryKit<Ref>
   readonly external?: ExternalKit<Ref>

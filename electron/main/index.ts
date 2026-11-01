@@ -1,24 +1,21 @@
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, type IpcMainInvokeEvent, ipcMain } from 'electron'
 import { SHELL_INFO_CHANNEL, type ShellInfo } from '../api'
+import { resolveAppUrl } from './app-url'
 import { resolveDevOptions } from './dev-options'
 import { registerFileHandlers } from './files/register'
 import { registerHistory } from './history-main'
+import { prepareInstalledApp, startInstalledApp } from './installed-app'
 import { registerLibraryHandlers } from './library/register'
 import { isAppNavigation, isTrustedFrame } from './trust'
 import { registerExternalChanges } from './watch/register'
 
 const CANVAS_COLOR = '#141417'
-const RENDERER_ENTRY = 'electron.html'
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
 
 const appUrl = (): string =>
-  devServerUrl === undefined
-    ? pathToFileURL(join(import.meta.dirname, '../renderer', RENDERER_ENTRY))
-        .href
-    : new URL(RENDERER_ENTRY, devServerUrl).href
+  resolveAppUrl({ packaged: app.isPackaged, devServerUrl })
 
 const applyDevOptions = (): void => {
   const { debugPort, userDataDir } = resolveDevOptions(process.env, {
@@ -49,6 +46,7 @@ const registerIpc = (): void => {
 const lockNavigation = (): void => {
   app.on('web-contents-created', (_event, contents) => {
     contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    contents.on('will-attach-webview', (event) => event.preventDefault())
     contents.on('will-navigate', (event, url) => {
       if (!isAppNavigation(url, appUrl())) event.preventDefault()
     })
@@ -76,9 +74,14 @@ const createWindow = (): BrowserWindow => {
 }
 
 applyDevOptions()
+prepareInstalledApp()
 lockNavigation()
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await startInstalledApp({
+    appUrl: appUrl(),
+    isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
+  })
   registerIpc()
   registerHistory({
     ipcMain,
