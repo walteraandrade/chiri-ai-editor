@@ -159,6 +159,18 @@ describe('extractBlocks', () => {
       ).toContain('Body.')
     })
 
+    it('keeps the Blocks of a Document that starts with a plain rule', () => {
+      const blocks = extractBlocks('---\n\nIntro.\n\n---\n\nRest.\n')
+      expect(blocks.map((block) => [block.id, block.kind, block.text])).toEqual(
+        [
+          ['p1', 'rule', '---'],
+          ['p2', 'paragraph', 'Intro.'],
+          ['p3', 'rule', '---'],
+          ['p4', 'paragraph', 'Rest.'],
+        ],
+      )
+    })
+
     it('does not skip a rule that is not at the start', () => {
       const blocks = extractBlocks('Intro.\n\n---\n\nBody.\n')
       expect(blocks.map((block) => block.kind)).toEqual([

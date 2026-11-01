@@ -125,7 +125,7 @@ describe('typing a frontmatter around Suggestions', () => {
   const typeAround = (handle: EditorHandle, to: number) =>
     handle.dispatch({
       changes: [
-        { from: 0, insert: '---\n' },
+        { from: 0, insert: '---\nname: demo\n' },
         { from: to, insert: '\n---' },
       ],
     })

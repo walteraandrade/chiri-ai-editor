@@ -455,7 +455,7 @@ describe('edits made while the pass streams', () => {
     runtime.actions.start(handle, '')
     handle.dispatch({
       changes: [
-        { from: 0, insert: '---\n' },
+        { from: 0, insert: '---\nname: demo\n' },
         { from: FIRST.to, insert: '\n---' },
       ],
     })

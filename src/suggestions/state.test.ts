@@ -457,7 +457,7 @@ describe('mapSuggestions', () => {
   })
 
   it('discards a Suggestion that ends up inside a frontmatter, keeps the rest', () => {
-    const frontmatter = findFrontmatter(`---\n${'y'.repeat(40)}\n---\n`)
+    const frontmatter = findFrontmatter(`---\nx: ${'y'.repeat(37)}\n---\n`)
     if (!frontmatter) throw new Error('no frontmatter')
     const next = mapSuggestions(open(), change(95, 95, 'z'), frontmatter)
     expect(idsOf(next)).toEqual(['b'])
@@ -465,7 +465,7 @@ describe('mapSuggestions', () => {
   })
 
   it('discards a Suggestion that overlaps the start of a frontmatter', () => {
-    const frontmatter = findFrontmatter(`---\n${'y'.repeat(30)}\n---\n`)
+    const frontmatter = findFrontmatter(`---\nx: ${'y'.repeat(27)}\n---\n`)
     if (!frontmatter) throw new Error('no frontmatter')
     const next = mapSuggestions(open(), change(95, 95, 'z'), frontmatter)
     expect(idsOf(next)).toEqual(['b'])

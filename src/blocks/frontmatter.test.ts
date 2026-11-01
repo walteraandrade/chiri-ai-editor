@@ -100,6 +100,56 @@ describe('findFrontmatter', () => {
     )
   })
 
+  describe('between two plain rules', () => {
+    it('is not a frontmatter when the first line is prose', () => {
+      expect(findFrontmatter('---\n\nIntro.\n\n---\n\nRest.\n')).toBeUndefined()
+      expect(findFrontmatter('---\nJust a paragraph.\n---\n')).toBeUndefined()
+      expect(findFrontmatter('---\nNote that: it works\n---\n')).toBeUndefined()
+    })
+
+    it('is not a frontmatter when the first line is a list item or a heading', () => {
+      expect(findFrontmatter('---\n- one\n- two\n---\n')).toBeUndefined()
+      expect(findFrontmatter('---\n## Heading\ntext\n---\n')).toBeUndefined()
+    })
+
+    it('needs a space or the end of the line after the colon', () => {
+      expect(findFrontmatter('---\nhttps://example.com\n---\n')).toBeUndefined()
+      expect(findFrontmatter('---\nname:demo\n---\n')).toBeUndefined()
+      expect(findFrontmatter('---\nname:\n---\n')).toBeDefined()
+      expect(findFrontmatter('---\nname:\tdemo\n---\n')).toBeDefined()
+    })
+  })
+
+  describe('real frontmatters', () => {
+    it('opens with a comment line', () => {
+      const text = '---\n# Managed by hand\nname: demo\n---\n\nBody.\n'
+      expect(findFrontmatter(text)?.to).toBe(text.indexOf('\n\nBody.'))
+    })
+
+    it('opens with blank lines and comments', () => {
+      const text = '---\n\n  # note\n# another\n\nname: demo\n---\n'
+      expect(findFrontmatter(text)).toBeDefined()
+    })
+
+    it('has a quoted or hyphenated first key', () => {
+      expect(findFrontmatter('---\n"name": demo\n---\n')).toBeDefined()
+      expect(findFrontmatter("---\n'name': demo\n---\n")).toBeDefined()
+      expect(findFrontmatter('---\nallowed-tools: Read\n---\n')).toBeDefined()
+      expect(findFrontmatter('---\nnome-da-habilidade: x\n---\n')).toBeDefined()
+    })
+
+    it('is empty or only comments', () => {
+      expect(findFrontmatter('---\n---\n')).toBeDefined()
+      expect(findFrontmatter('---\n\n\n---\n')).toBeDefined()
+      expect(findFrontmatter('---\n# nothing yet\n---\n')).toBeDefined()
+    })
+
+    it('has a first key with a block value', () => {
+      const text = '---\ndescription: >\n  Prose: with a colon.\n---\n'
+      expect(findFrontmatter(text)).toBeDefined()
+    })
+  })
+
   it('does not treat a lone CR as a line break', () => {
     expect(findFrontmatter('---\r\nname: demo\r\n---\r\n')).toBeUndefined()
   })

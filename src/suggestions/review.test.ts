@@ -293,7 +293,7 @@ describe('placeReviewEdit', () => {
   it('drops the edit when the user turned its Block into a frontmatter', () => {
     const changes = ChangeSet.of(
       [
-        { from: 0, insert: '---\n' },
+        { from: 0, insert: '---\nname: demo\n' },
         { from: FIRST.to, insert: '\n---' },
       ],
       DOC.length,
