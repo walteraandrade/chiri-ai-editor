@@ -1,4 +1,5 @@
 import {
+  app,
   BrowserWindow,
   type IpcMainInvokeEvent,
   ipcMain,
@@ -26,7 +27,9 @@ const ownerOf = (event: IpcMainInvokeEvent): BrowserWindow | null =>
   BrowserWindow.fromWebContents(event.sender)
 
 export const registerFileHandlers = (isTrusted: Trust): void => {
-  const dialogs = resolveDevDialogs(process.env) ?? createFileDialogs()
+  const dialogs =
+    resolveDevDialogs(process.env, { packaged: app.isPackaged }) ??
+    createFileDialogs()
 
   const handle = <T>(
     channel: string,

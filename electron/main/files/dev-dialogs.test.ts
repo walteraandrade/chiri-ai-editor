@@ -2,24 +2,48 @@ import { describe, expect, it, vi } from 'vitest'
 import { resolveDevDialogs } from './dev-dialogs'
 
 const DEV = { ELECTRON_RENDERER_URL: 'http://localhost:5302' }
+const UNPACKAGED = { packaged: false }
+const PACKAGED = { packaged: true }
 
 describe('resolveDevDialogs', () => {
   it('is off in the production build, where no dev server sets the URL', () => {
     expect(
-      resolveDevDialogs({ CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' }, vi.fn()),
+      resolveDevDialogs(
+        { CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
+        UNPACKAGED,
+        vi.fn(),
+      ),
+    ).toBeUndefined()
+  })
+
+  it('is off in a packaged app, whatever the environment says', () => {
+    expect(
+      resolveDevDialogs(
+        { ...DEV, CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
+        PACKAGED,
+        vi.fn(),
+      ),
     ).toBeUndefined()
   })
 
   it('is off without the switch', () => {
-    expect(resolveDevDialogs(DEV, vi.fn())).toBeUndefined()
+    expect(resolveDevDialogs(DEV, UNPACKAGED, vi.fn())).toBeUndefined()
     expect(
-      resolveDevDialogs({ ...DEV, CHIRI_DEV_PICK_FILE: '  ' }, vi.fn()),
+      resolveDevDialogs(
+        { ...DEV, CHIRI_DEV_PICK_FILE: '  ' },
+        UNPACKAGED,
+        vi.fn(),
+      ),
     ).toBeUndefined()
   })
 
   it('refuses a relative path for the switch', () => {
     expect(
-      resolveDevDialogs({ ...DEV, CHIRI_DEV_PICK_FILE: 'pick.txt' }, vi.fn()),
+      resolveDevDialogs(
+        { ...DEV, CHIRI_DEV_PICK_FILE: 'pick.txt' },
+        UNPACKAGED,
+        vi.fn(),
+      ),
     ).toBeUndefined()
   })
 
@@ -31,6 +55,7 @@ describe('resolveDevDialogs', () => {
       .mockResolvedValueOnce('/tmp/copy.md')
     const dialogs = resolveDevDialogs(
       { ...DEV, CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
+      UNPACKAGED,
       read,
     )
     expect(await dialogs?.pickFile(null)).toBe('/skills/a/SKILL.md')
@@ -42,6 +67,7 @@ describe('resolveDevDialogs', () => {
   it('cancels the dialog when the file is empty or cannot be read', async () => {
     const dialogs = resolveDevDialogs(
       { ...DEV, CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
+      UNPACKAGED,
       vi
         .fn<(path: string) => Promise<string>>()
         .mockResolvedValueOnce('\n')
