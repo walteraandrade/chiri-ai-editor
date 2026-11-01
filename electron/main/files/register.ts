@@ -11,6 +11,7 @@ import {
   FILE_SAVE_CHANNEL,
   STORAGE_FLUSH_CHANNEL,
 } from '../../api'
+import { resolveDevDialogs } from './dev-dialogs'
 import { createFileDialogs } from './dialogs'
 import {
   openFile,
@@ -25,7 +26,7 @@ const ownerOf = (event: IpcMainInvokeEvent): BrowserWindow | null =>
   BrowserWindow.fromWebContents(event.sender)
 
 export const registerFileHandlers = (isTrusted: Trust): void => {
-  const dialogs = createFileDialogs()
+  const dialogs = resolveDevDialogs(process.env) ?? createFileDialogs()
 
   const handle = <T>(
     channel: string,

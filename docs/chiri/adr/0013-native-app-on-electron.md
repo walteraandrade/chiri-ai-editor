@@ -33,6 +33,7 @@ A skills editor reads and writes folders the browser cannot reach freely: `~/.cl
   - `CHIRI_CDP_PORT`: the Chrome DevTools port, default 9222 (dev run only).
   - `CHIRI_USER_DATA_DIR`: an absolute path for Electron's `userData`. It also applies to `pnpm preview:electron`, which is not packaged; a packaged app ignores it.
   - `CHIRI_DEV_PORT` sets the Vite port for `pnpm dev` and `pnpm dev:electron`; when set, Vite does not move to another port.
+  - `CHIRI_DEV_PICK_FILE`: an absolute path of a text file; only with `ELECTRON_RENDERER_URL` set. Open and Save as skip the native dialog and use the path in that file, read at each dialog. Added in the file slice (#30) for checks, because `agent-browser` cannot confirm a GTK dialog.
 - **Window and IPC rules from the first slice:** `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`; new windows denied; navigation away from the app origin cancelled; every IPC handler checks `event.senderFrame.origin` against the app origin ([Electron security](https://www.electronjs.org/docs/latest/tutorial/security), items 13, 14 and 17). The preload exposes `window.chiri.shellInfo()` only.
 - **Verification stays the same:** `agent-browser` attaches to the window over the Chrome DevTools Protocol (`--remote-debugging-port` in dev) and reads `window.__aiCalls` as before.
 - **Two builds.** The browser app lives on as the Web build, frozen in features ([0016](0016-web-and-electron-builds.md)). This ADR covers the Electron build.
