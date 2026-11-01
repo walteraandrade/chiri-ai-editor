@@ -2,6 +2,7 @@ import type { ChangeDesc } from '@codemirror/state'
 import type { SuggestionResult, ValidatedEdit } from '../ai/edits'
 import type { ClientError } from '../ai/errors'
 import type { Block } from '../blocks/extract-blocks'
+import { findFrontmatter, touchesFrontmatter } from '../blocks/frontmatter'
 import { describeError } from './error-message'
 import type {
   Instruction,
@@ -66,7 +67,7 @@ export type ReviewPlacement =
     }
   | {
       readonly type: 'dropped'
-      readonly reason: 'text-changed' | 'occupied'
+      readonly reason: 'text-changed' | 'frontmatter' | 'occupied'
     }
 
 export const placeReviewEdit = ({
@@ -80,6 +81,8 @@ export const placeReviewEdit = ({
   const range = mapBlockRange(edit.block, changes)
   if (range === null || doc.slice(range.from, range.to) !== edit.block.text)
     return { type: 'dropped', reason: 'text-changed' }
+  if (touchesFrontmatter(findFrontmatter(doc), range))
+    return { type: 'dropped', reason: 'frontmatter' }
   if (state.items.some((item) => overlaps(item, range)))
     return { type: 'dropped', reason: 'occupied' }
   return {

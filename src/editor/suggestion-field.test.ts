@@ -121,6 +121,49 @@ describe('suggestionsField', () => {
   })
 })
 
+describe('typing a frontmatter around Suggestions', () => {
+  const typeAround = (handle: EditorHandle, to: number) =>
+    handle.dispatch({
+      changes: [
+        { from: 0, insert: '---\n' },
+        { from: to, insert: '\n---' },
+      ],
+    })
+
+  it('discards a Suggestion that ends up inside it, with the changed-text notice', () => {
+    const handle = createHandle()
+    open(handle, 'a', 0, 21)
+    open(handle, 'b', 23, 45)
+
+    typeAround(handle, 21)
+
+    expect(suggestionsOf(handle.state).items.map((item) => item.id)).toEqual([
+      'b',
+    ])
+    expect(suggestionsOf(handle.state).notice?.kind).toBe('text-changed')
+  })
+
+  it('keeps Suggestions when the typed text is not a frontmatter', () => {
+    const handle = createHandle()
+    open(handle, 'a', 0, 21)
+
+    handle.dispatch({ changes: { from: 0, insert: '---\n' } })
+
+    expect(suggestionsOf(handle.state).items.map((item) => item.id)).toEqual([
+      'a',
+    ])
+  })
+
+  it('discards a pending Suggestion the same way', () => {
+    const handle = createHandle()
+    handle.dispatch({ effects: beginEffect.of(draft('a', 0, 21)) })
+
+    typeAround(handle, 21)
+
+    expect(suggestionsOf(handle.state).items).toEqual([])
+  })
+})
+
 describe('Accept', () => {
   it('replaces the range with the Replacement in one transaction and drops the Suggestion', () => {
     const handle = createHandle()

@@ -34,6 +34,34 @@ const apply = (
 const focused = (state: EditorState): EditorState =>
   apply(state, focusEffect.of(true))
 
+describe('selection bubble with a frontmatter', () => {
+  const FRONTMATTER_DOC = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+  const createIn = (anchor: number, head = anchor): EditorState =>
+    focused(
+      EditorState.create({
+        doc: FRONTMATTER_DOC,
+        selection: { anchor, head },
+        extensions: [suggestionsField, interactionField, askBubble],
+      }),
+    )
+  const body = FRONTMATTER_DOC.indexOf('First')
+
+  it('stays hidden for a selection inside or overlapping it', () => {
+    expect(bubbleVisible(createIn(4, 8))).toBe(false)
+    expect(bubbleVisible(createIn(4, body + 5))).toBe(false)
+  })
+
+  it('stays hidden when Ask is open with the cursor inside it', () => {
+    const asking = apply(createIn(6), openAskEffect.of(null))
+    expect(bubbleVisible(asking)).toBe(false)
+    expect(bubblePlacement(asking)).toBeUndefined()
+  })
+
+  it('shows for a selection after it', () => {
+    expect(bubbleVisible(createIn(body, body + 5))).toBe(true)
+  })
+})
+
 describe('selection bubble', () => {
   it('stays hidden without focus, with an empty selection, or on whitespace', () => {
     expect(bubbleVisible(create(2, 8))).toBe(false)

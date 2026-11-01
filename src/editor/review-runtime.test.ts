@@ -226,6 +226,32 @@ describe('start', () => {
     expect(reviewRunOf(handle.state)?.focus).toBe('tone')
   })
 
+  it('leaves a frontmatter out of the Blocks it sends', () => {
+    const { runtime, handle, streams } = setup(
+      '---\nname: demo\n---\n\n# Demo\n\nFirst paragraph here.\n',
+    )
+
+    runtime.actions.start(handle, '')
+
+    const { request } = only(streams)
+    expect(request.blocks.map((entry) => [entry.id, entry.text])).toEqual([
+      ['p1', '# Demo'],
+      ['p2', 'First paragraph here.'],
+    ])
+  })
+
+  it('makes no model call for a Document that is only a frontmatter', () => {
+    const { runtime, handle, streams, notices } = setup(
+      '---\nname: demo\ndescription: Does a thing.\n---\n',
+    )
+
+    runtime.actions.start(handle, '')
+
+    expect(streams).toEqual([])
+    expect(reviewRunOf(handle.state)).toBeNull()
+    expect(notices).toEqual([{ text: 'Review: no suggestions' }])
+  })
+
   it('makes no model call when every Block is code or occupied', () => {
     const { runtime, handle, streams, notices, ends } = setup(
       '```js\nconst a = 1\n```',
@@ -422,6 +448,23 @@ describe('edits made while the pass streams', () => {
     expect(idsOf(handle)).toEqual([])
     expect(reviewRunOf(handle.state)).toMatchObject({ added: 0, dropped: 1 })
     expect(drops).toEqual([{ blockId: SECOND.id, reason: 'text-changed' }])
+  })
+
+  it('drops an edit whose Block the user turned into a frontmatter', async () => {
+    const { runtime, handle, streams, drops } = setup()
+    runtime.actions.start(handle, '')
+    handle.dispatch({
+      changes: [
+        { from: 0, insert: '---\n' },
+        { from: FIRST.to, insert: '\n---' },
+      ],
+    })
+
+    await only(streams).push(editEvent(FIRST, 'First one.'))
+
+    expect(idsOf(handle)).toEqual([])
+    expect(reviewRunOf(handle.state)).toMatchObject({ added: 0, dropped: 1 })
+    expect(drops).toEqual([{ blockId: FIRST.id, reason: 'frontmatter' }])
   })
 
   it('still places the edits for Blocks the user did not touch', async () => {

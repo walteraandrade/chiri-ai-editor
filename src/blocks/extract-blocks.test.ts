@@ -1,6 +1,7 @@
+import { markdownLanguage } from '@codemirror/lang-markdown'
 import { describe, expect, it } from 'vitest'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
-import { extractBlocks } from './extract-blocks'
+import { extractBlocks, extractBlocksFromTree } from './extract-blocks'
 
 describe('extractBlocks', () => {
   it('returns no Blocks for an empty Document', () => {
@@ -97,6 +98,84 @@ describe('extractBlocks', () => {
       'rule',
       'other',
     ])
+  })
+
+  describe('with a frontmatter', () => {
+    const skill =
+      '---\nname: demo\ndescription: Does a thing.\n---\n\n# Demo\n\nBody.\n'
+
+    it('skips it', () => {
+      const blocks = extractBlocks(skill)
+      expect(blocks.map((block) => block.text)).toEqual(['# Demo', 'Body.'])
+    })
+
+    it('numbers Blocks from p1 after it', () => {
+      expect(extractBlocks(skill).map((block) => block.id)).toEqual([
+        'p1',
+        'p2',
+      ])
+    })
+
+    it('keeps Document offsets', () => {
+      for (const block of extractBlocks(skill)) {
+        expect(skill.slice(block.from, block.to)).toBe(block.text)
+      }
+    })
+
+    it('skips a frontmatter that is the whole Document', () => {
+      expect(extractBlocks('---\nname: demo\n---\n')).toEqual([])
+      expect(extractBlocks('---\nname: demo\n---')).toEqual([])
+    })
+
+    it('skips an empty frontmatter', () => {
+      expect(extractBlocks('---\n---\n\nBody.\n')).toMatchObject([
+        { id: 'p1', text: 'Body.' },
+      ])
+    })
+
+    it('finds the Block right after it with no blank line between', () => {
+      expect(extractBlocks('---\nname: demo\n---\n# Demo\n')).toMatchObject([
+        { id: 'p1', kind: 'heading', level: 1, text: '# Demo' },
+      ])
+    })
+
+    it('does not let YAML that looks like Markdown leak into Blocks', () => {
+      const doc =
+        '---\ndescription: |\n  # not a heading\n\n  - not a list\n---\n\nBody.\n'
+      expect(extractBlocks(doc).map((block) => block.text)).toEqual(['Body.'])
+    })
+
+    it('does not let an unclosed fence in the YAML swallow the Document', () => {
+      const doc = '---\nnote: |\n  ```\n---\n\n# Demo\n\nBody.\n'
+      expect(extractBlocks(doc).map((block) => block.text)).toEqual([
+        '# Demo',
+        'Body.',
+      ])
+    })
+
+    it('keeps Blocks when the frontmatter is not closed', () => {
+      expect(
+        extractBlocks('---\nname: demo\n\nBody.\n').map((block) => block.text),
+      ).toContain('Body.')
+    })
+
+    it('does not skip a rule that is not at the start', () => {
+      const blocks = extractBlocks('Intro.\n\n---\n\nBody.\n')
+      expect(blocks.map((block) => block.kind)).toEqual([
+        'paragraph',
+        'rule',
+        'paragraph',
+      ])
+    })
+
+    it('skips it in a tree parsed with it', () => {
+      const text = '---\nname: demo\n---\n\nBody.\n'
+      const blocks = extractBlocksFromTree(
+        markdownLanguage.parser.parse(text),
+        text,
+      )
+      expect(blocks.map((block) => block.text)).toEqual(['Body.'])
+    })
   })
 
   it('extracts the sample Document', () => {

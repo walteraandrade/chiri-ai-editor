@@ -1,4 +1,5 @@
 import { markdownLanguage } from '@codemirror/lang-markdown'
+import { blankFrontmatter, findFrontmatter } from './frontmatter'
 
 export type BlockKind =
   | 'heading'
@@ -52,11 +53,13 @@ export const extractBlocksFromTree = (
   text: string,
 ): readonly Block[] => {
   const blocks: Block[] = []
+  const start = findFrontmatter(text)?.to ?? 0
   for (
     let node = tree.topNode.firstChild;
     node !== null;
     node = node.nextSibling
   ) {
+    if (node.from < start) continue
     blocks.push({
       id: `p${blocks.length + 1}`,
       from: node.from,
@@ -69,4 +72,7 @@ export const extractBlocksFromTree = (
 }
 
 export const extractBlocks = (text: string): readonly Block[] =>
-  extractBlocksFromTree(markdownLanguage.parser.parse(text), text)
+  extractBlocksFromTree(
+    markdownLanguage.parser.parse(blankFrontmatter(text)),
+    text,
+  )

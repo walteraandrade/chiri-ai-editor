@@ -351,3 +351,89 @@ describe('targetFromRange', () => {
     ])
   })
 })
+
+describe('resolveTarget with a frontmatter', () => {
+  const doc =
+    '---\nname: demo\ndescription: Does a thing.\n---\n\n# Demo\n\nBody one.\n\nBody two.\n'
+  const docBlocks = extractBlocks(doc)
+  const end = doc.indexOf('---\n\n') + 3
+  const bodyOne = doc.indexOf('Body one.')
+  const resolve = (from: number, to = from) =>
+    resolveTarget(docBlocks, doc, { from, to })
+
+  it('refuses a cursor anywhere inside it', () => {
+    expect(resolve(0)).toBeUndefined()
+    expect(resolve(8)).toBeUndefined()
+    expect(resolve(doc.indexOf('description') + 4)).toBeUndefined()
+    expect(resolve(end)).toBeUndefined()
+  })
+
+  it('refuses a selection inside it', () => {
+    expect(resolve(6, 10)).toBeUndefined()
+    expect(resolve(0, end)).toBeUndefined()
+  })
+
+  it('refuses a selection that overlaps it', () => {
+    expect(resolve(6, bodyOne + 4)).toBeUndefined()
+    expect(resolve(0, doc.length)).toBeUndefined()
+  })
+
+  it('refuses a reversed selection that overlaps it', () => {
+    expect(resolve(bodyOne + 4, 6)).toBeUndefined()
+  })
+
+  it('allows a selection after it', () => {
+    expect(resolve(bodyOne, bodyOne + 4)).toMatchObject({
+      source: 'selection',
+      text: 'Body',
+    })
+  })
+
+  it('allows a selection that begins at the line break after it', () => {
+    expect(resolve(end, bodyOne + 9)).toMatchObject({
+      source: 'selection',
+      from: doc.indexOf('# Demo'),
+      text: '# Demo\n\nBody one.',
+    })
+  })
+
+  it('picks the first Block for a cursor on the blank line after it', () => {
+    expect(resolve(end + 1)).toMatchObject({
+      source: 'block',
+      text: '# Demo',
+    })
+  })
+
+  it('allows a cursor in a Block after it', () => {
+    expect(resolve(bodyOne + 2)).toMatchObject({
+      source: 'block',
+      text: 'Body one.',
+    })
+  })
+
+  it('refuses everything in a Document that is only a frontmatter', () => {
+    const only = '---\nname: demo\n---\n'
+    const onlyBlocks = extractBlocks(only)
+    expect(resolveTarget(onlyBlocks, only, { from: 6, to: 6 })).toBeUndefined()
+    expect(resolveTarget(onlyBlocks, only, { from: 0, to: 18 })).toBeUndefined()
+  })
+
+  it('does not refuse anything for an unclosed frontmatter', () => {
+    const open = '---\nname: demo\n\nBody.\n'
+    expect(
+      resolveTarget(extractBlocks(open), open, { from: 6, to: 6 }),
+    ).toBeDefined()
+  })
+
+  it('does not put the frontmatter in the neighbors', () => {
+    const target = resolve(doc.indexOf('# Demo'))
+    if (!target) throw new Error('no target')
+    const neighbors = getNeighbors(docBlocks, target)
+    expect(neighbors.before).toEqual([])
+    expect(neighbors.title).toBe('Demo')
+    expect(neighbors.after.map((block) => block.text)).toEqual([
+      'Body one.',
+      'Body two.',
+    ])
+  })
+})

@@ -23,9 +23,13 @@ import {
 
 const DOC = 'First paragraph here.\n\nSecond paragraph here.'
 
-const createHandle = (anchor: number, head = anchor): EditorHandle => {
+const createHandle = (
+  anchor: number,
+  head = anchor,
+  doc = DOC,
+): EditorHandle => {
   let state = EditorState.create({
-    doc: DOC,
+    doc,
     selection: { anchor, head },
     extensions: [
       suggestionsField,
@@ -170,6 +174,23 @@ describe('openAskOrRefine', () => {
     expect(openAskOrRefine(handle)).toBe(true)
 
     expect(handle.state.field(refineInputField)).toBeNull()
+    expect(askOpen(handle)).toBe(true)
+  })
+
+  it('does not open the Ask field with the cursor or selection in a frontmatter', () => {
+    const doc = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+    const inside = createHandle(6, 6, doc)
+    expect(openAskOrRefine(inside)).toBe(false)
+    expect(askOpen(inside)).toBe(false)
+    const overlapping = createHandle(2, doc.length, doc)
+    expect(openAskOrRefine(overlapping)).toBe(false)
+    expect(askOpen(overlapping)).toBe(false)
+  })
+
+  it('opens the Ask field after a frontmatter', () => {
+    const doc = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+    const handle = createHandle(doc.indexOf('First') + 2, undefined, doc)
+    expect(openAskOrRefine(handle)).toBe(true)
     expect(askOpen(handle)).toBe(true)
   })
 

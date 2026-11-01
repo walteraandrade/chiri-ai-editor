@@ -2,6 +2,7 @@ import { ChangeSet, Text } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
 import type { ValidatedEdit } from '../ai/edits'
 import { type Block, extractBlocks } from '../blocks/extract-blocks'
+import { findFrontmatter } from '../blocks/frontmatter'
 import {
   acceptAllPlan,
   DEFAULT_REVIEW_FOCUS,
@@ -287,6 +288,31 @@ describe('placeReviewEdit', () => {
     expect(
       place(editOn(SECOND), { doc: DOC.replace('Second', 'Sekond') }),
     ).toEqual({ type: 'dropped', reason: 'text-changed' })
+  })
+
+  it('drops the edit when the user turned its Block into a frontmatter', () => {
+    const changes = ChangeSet.of(
+      [
+        { from: 0, insert: '---\n' },
+        { from: FIRST.to, insert: '\n---' },
+      ],
+      DOC.length,
+    )
+    const doc = docAfter(changes)
+    expect(findFrontmatter(doc)?.to).toBeGreaterThan(FIRST.to)
+    expect(place(editOn(FIRST), { changes, doc })).toEqual({
+      type: 'dropped',
+      reason: 'frontmatter',
+    })
+  })
+
+  it('places the edit after a frontmatter the user typed above it', () => {
+    const changes = change(0, 0, '---\nname: demo\n---\n\n')
+    const placed = place(editOn(SECOND), { changes, doc: docAfter(changes) })
+    expect(placed).toMatchObject({
+      type: 'placed',
+      draft: { from: SECOND.from + 20, to: SECOND.to + 20 },
+    })
   })
 
   it('drops the edit when a Suggestion now overlaps the mapped Block', () => {

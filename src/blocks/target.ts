@@ -1,4 +1,5 @@
 import type { Block } from './extract-blocks'
+import { findFrontmatter, touchesFrontmatter } from './frontmatter'
 
 export type Selection = {
   readonly from: number
@@ -112,9 +113,15 @@ export const resolveTarget = (
 ): Target | undefined => {
   const from = Math.max(0, Math.min(selection.from, selection.to))
   const to = Math.min(text.length, Math.max(selection.from, selection.to))
-  return from === to
-    ? resolveCursorTarget(blocks, from)
-    : resolveSelectionTarget(blocks, text, { from, to })
+  const frontmatter = findFrontmatter(text)
+  if (from === to)
+    return touchesFrontmatter(frontmatter, { from, to })
+      ? undefined
+      : resolveCursorTarget(blocks, from)
+  const target = resolveSelectionTarget(blocks, text, { from, to })
+  return target !== undefined && touchesFrontmatter(frontmatter, target)
+    ? undefined
+    : target
 }
 
 const anchorRange = (target: Target): Selection => ({

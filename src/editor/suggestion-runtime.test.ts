@@ -48,9 +48,9 @@ const createClient = () => {
   }
 }
 
-const createHandle = (from: number, to = from): EditorHandle => {
+const createHandle = (from: number, to = from, doc = DOC): EditorHandle => {
   let state = EditorState.create({
-    doc: DOC,
+    doc,
     selection: { anchor: from, head: to },
     extensions: [suggestionsField],
   })
@@ -136,6 +136,38 @@ describe('ask', () => {
 
     expect(calls).toEqual([])
     expect(suggestionsOf(handle.state).items).toEqual([])
+  })
+
+  describe('with a frontmatter', () => {
+    const skill = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+    const body = skill.indexOf('First')
+
+    it('refuses a cursor or selection inside it and calls no model', () => {
+      const { client, calls } = createClient()
+      const runtime = createSuggestionRuntime({ client })
+      for (const [from, to] of [
+        [6, 6],
+        [4, 12],
+        [2, body + 5],
+        [0, skill.length],
+      ] as const) {
+        const handle = createHandle(from, to, skill)
+        runtime.actions.ask(handle, quickActionInstruction('shorter'))
+        expect(suggestionsOf(handle.state).items).toEqual([])
+      }
+      expect(calls).toEqual([])
+    })
+
+    it('asks about a Block after it', () => {
+      const { client, calls } = createClient()
+      const runtime = createSuggestionRuntime({ client })
+      const handle = createHandle(body + 2, body + 2, skill)
+
+      runtime.actions.ask(handle, quickActionInstruction('shorter'))
+
+      expect(only(calls).request.target.text).toBe('First paragraph here.')
+      expect(only(calls).request.neighbors.before).toEqual([])
+    })
   })
 
   it('turns the pending Suggestion into a ready one when the model answers', async () => {
