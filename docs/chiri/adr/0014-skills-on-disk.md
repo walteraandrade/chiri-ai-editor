@@ -11,10 +11,13 @@ Claude Code reads a skill from `<root>/<name>/SKILL.md`, plus the files beside i
 
 - **The disk holds the only copy of a skill.** The app keeps no second copy of the text, apart from History ([0015](0015-history-in-sqlite.md)) and the unsaved text of the open file.
 - **Library:** the skill roots the app lists. Defaults: `~/.claude/skills` and `~/.agents/skills`. The maintainer adds project roots (`<repo>/.claude/skills`). Plugin skills are not listed: the plugin manager replaces them on update.
+  - The project roots are kept in `library-roots.json` in the app's user data folder. If that file cannot be read, the Library says so and lists only the defaults, and Add and Remove refuse to write, so a damaged file is never replaced by a list that forgot its roots.
 - **Skill:** a folder under a root with a `SKILL.md`. The Library shows it by the frontmatter `name`, with its `description`, and lists the folder's files under it.
 - **Identity is the real path.** A skill reached through a symlink and through its target shows once. Every read, write and History key uses `realpath`.
 - **Editable files:** Markdown (`.md`) only. Other files are listed, not opened.
 - **Still one Document.** Opening a file replaces the Document as [0011](0011-open-and-save-markdown-files.md) describes. With unsaved text, it first asks Save, Discard or Cancel. Tabs are in the backlog.
+  - A Document with no file counts as having unsaved text when it differs from the text it started with; Save then asks for a file (Save as). With no edits, it is replaced with no question.
+  - The question comes after the file is picked or read, so a cancelled dialog or an unreadable file costs nothing. If the answer is Save and the file to open is the one just written, it is read again, so the editor never gets the text from before the Save.
 - **Save stays explicit.** A save is seen by every agent at once, so the app writes only when told to.
 - **Save never overwrites a change it has not seen.** Before writing, the main process compares the disk text with the text last read or written. If they differ, Save stops and shows the External change notice.
   - The renderer sends that text with every Save (the session's saved text), so the main process keeps no per-file state. Both texts are compared after decoding (no byte order mark, LF line endings). A file that is gone, or no longer valid UTF-8 text, counts as a change.
