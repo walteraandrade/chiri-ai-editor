@@ -1,4 +1,4 @@
-import { decodeMarkdown } from './markdown-file'
+import { decodeMarkdown } from './decode-markdown'
 
 type WritableText = {
   readonly write: (data: string) => Promise<void>
@@ -98,6 +98,10 @@ const readFile = async (
   text: decodeMarkdown(await file.text()),
   handle,
 })
+
+export const readHandle = async (
+  handle: MarkdownFileHandle,
+): Promise<OpenedFile> => readFile(await handle.getFile(), handle)
 
 export const openMarkdownFile = async (
   host: FileHost,
