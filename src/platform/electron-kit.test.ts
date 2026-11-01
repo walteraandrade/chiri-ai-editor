@@ -226,6 +226,22 @@ describe('createElectronKit when the last file is gone', () => {
     expect(entries()[LAST_FILE_KEY]).toBe('/skills/b/B.md')
   })
 
+  it('remembers the same path again when it comes back', async () => {
+    const { kit, entries } = setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      read: gone,
+    })
+    const ready = await kit
+    expect(entries()[LAST_FILE_KEY]).toBeUndefined()
+    ready.unsavedText.changed('# A\n', {
+      name: 'SKILL.md',
+      ref: PATH,
+      savedText: '# A\n',
+      dirty: false,
+    })
+    expect(entries()[LAST_FILE_KEY]).toBe(PATH)
+  })
+
   it.each([
     [
       'a refused read',
