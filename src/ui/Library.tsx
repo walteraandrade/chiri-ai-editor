@@ -231,6 +231,12 @@ export function Library<Ref>({
             </button>
           </p>
         ) : null}
+        {state.status === 'ready' && state.problem !== null ? (
+          <p role="alert" className="px-3 py-1 text-danger text-xs">
+            {state.problem}. Project folders are not listed, and Add and Remove
+            are off until it is fixed or deleted in the app's user data folder.
+          </p>
+        ) : null}
         {roots.map((root) => (
           <RootSection
             key={root.root}

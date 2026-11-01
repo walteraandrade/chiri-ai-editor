@@ -4,7 +4,11 @@ import type { LibraryListing } from '../skills/library'
 
 export type LibraryState =
   | { readonly status: 'loading' }
-  | { readonly status: 'ready'; readonly roots: LibraryListing }
+  | {
+      readonly status: 'ready'
+      readonly roots: LibraryListing
+      readonly problem: string | null
+    }
   | { readonly status: 'failed' }
 
 export const useLibrary = <Ref>(
@@ -21,7 +25,7 @@ export const useLibrary = <Ref>(
     if (load !== latestLoad.current) return
     setState(
       result.kind === 'listed'
-        ? { status: 'ready', roots: result.roots }
+        ? { status: 'ready', roots: result.roots, problem: result.problem }
         : { status: 'failed' },
     )
   }, [library])

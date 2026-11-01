@@ -21,15 +21,17 @@ const isStorable = (value: unknown): value is string =>
 const unique = (values: readonly string[]): readonly string[] =>
   values.filter((value, index) => values.indexOf(value) === index)
 
-export const parseStoredRoots = (text: string): readonly string[] => {
+export const parseStoredRoots = (text: string): readonly string[] | null => {
   try {
     const parsed: unknown = JSON.parse(text)
-    if (typeof parsed !== 'object' || parsed === null) return []
+    if (typeof parsed !== 'object' || parsed === null) return null
     const roots: unknown = (parsed as { readonly projectRoots?: unknown })
       .projectRoots
-    return Array.isArray(roots) ? unique(roots.filter(isStorable)) : []
+    return Array.isArray(roots) && roots.every(isStorable)
+      ? unique(roots)
+      : null
   } catch {
-    return []
+    return null
   }
 }
 

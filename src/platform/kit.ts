@@ -69,7 +69,11 @@ export type KeyStatus = {
 }
 
 export type LibraryList =
-  | { readonly kind: 'listed'; readonly roots: LibraryListing }
+  | {
+      readonly kind: 'listed'
+      readonly roots: LibraryListing
+      readonly problem: string | null
+    }
   | { readonly kind: 'failed' }
 
 export type LibraryKit<Ref> = {

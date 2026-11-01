@@ -1,6 +1,6 @@
 import type {
   AddRootResult,
-  LibraryListing,
+  LibrarySnapshot,
   RemoveRootResult,
 } from '../../../src/skills/library'
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../../src/skills/scan-skills'
 import { parsePathRequest } from '../files/requests'
 import { defaultRoots, displayPath, withoutRoot, withRoot } from './roots'
-import type { RootsStore } from './roots-store'
+import { ROOTS_FILE_NAME, type RootsStore } from './roots-store'
 
 export type LibraryDeps = {
   readonly home: string
@@ -18,6 +18,10 @@ export type LibraryDeps = {
 }
 
 const INVALID = { kind: 'failed', reason: 'Invalid request' } as const
+
+const ROOTS_PROBLEM = `Could not read ${ROOTS_FILE_NAME}`
+
+const UNREADABLE_ROOTS = { kind: 'failed', reason: ROOTS_PROBLEM } as const
 
 const attempt = async <T>(run: () => Promise<T>): Promise<T | undefined> => {
   try {
@@ -31,15 +35,19 @@ export const listLibrary = async ({
   home,
   store,
   fileSystem,
-}: LibraryDeps): Promise<LibraryListing> => {
+}: LibraryDeps): Promise<LibrarySnapshot> => {
   const defaults = defaultRoots(home)
-  const projectRoots = await store.load()
+  const loaded = await store.load()
+  const projectRoots = loaded.kind === 'loaded' ? loaded.roots : []
   const scans = await scanSkillRoots(fileSystem, [...defaults, ...projectRoots])
-  return scans.map((scan) => ({
-    ...scan,
-    label: displayPath(scan.root, home),
-    removable: !defaults.includes(scan.root),
-  }))
+  return {
+    roots: scans.map((scan) => ({
+      ...scan,
+      label: displayPath(scan.root, home),
+      removable: !defaults.includes(scan.root),
+    })),
+    problem: loaded.kind === 'loaded' ? null : ROOTS_PROBLEM,
+  }
 }
 
 const realPathOrSelf = async (
@@ -51,6 +59,7 @@ export const addLibraryRoot = async (
   { home, store, fileSystem }: LibraryDeps,
   pick: () => Promise<string | null>,
 ): Promise<AddRootResult> => {
+  if ((await store.load()).kind === 'unreadable') return UNREADABLE_ROOTS
   const picked = await pick()
   if (picked === null) return { kind: 'cancelled' }
   const chosen = parsePathRequest(picked)
@@ -62,7 +71,9 @@ export const addLibraryRoot = async (
   )
     return { kind: 'failed', reason: 'Not a readable folder' }
   const label = displayPath(real, home)
-  const projectRoots = await store.load()
+  const loaded = await store.load()
+  if (loaded.kind === 'unreadable') return UNREADABLE_ROOTS
+  const projectRoots = loaded.roots
   const listed = await Promise.all(
     [...defaultRoots(home), ...projectRoots].map((root) =>
       realPathOrSelf(fileSystem, root),
@@ -83,7 +94,9 @@ export const removeLibraryRoot = async (
 ): Promise<RemoveRootResult> => {
   const path = parsePathRequest(input)
   if (path === null) return INVALID
-  const projectRoots = await store.load()
+  const loaded = await store.load()
+  if (loaded.kind === 'unreadable') return UNREADABLE_ROOTS
+  const projectRoots = loaded.roots
   if (!projectRoots.includes(path))
     return { kind: 'failed', reason: 'Not a project root' }
   try {

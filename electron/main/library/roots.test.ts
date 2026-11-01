@@ -57,15 +57,26 @@ describe('serializeRoots and parseStoredRoots', () => {
     ['a missing field', '{}'],
     ['a field of the wrong type', '{"projectRoots":"/repo"}'],
     ['empty text', ''],
-  ])('give no roots for %s', (_name, text) => {
-    expect(parseStoredRoots(text)).toEqual([])
+    ['a relative path', '{"projectRoots":["/a","relative"]}'],
+    ['a non-string entry', '{"projectRoots":["/a",3]}'],
+    ['an empty entry', '{"projectRoots":["/a",""]}'],
+    ['a path with a NUL', '{"projectRoots":["/c\\u0000d"]}'],
+  ])(
+    'are unreadable for %s, so nothing is read as "no roots"',
+    (_name, text) => {
+      expect(parseStoredRoots(text)).toBeNull()
+    },
+  )
+
+  it('read an empty list as no roots', () => {
+    expect(parseStoredRoots('{"projectRoots":[]}')).toEqual([])
   })
 
-  it('drops entries that are not absolute paths, and duplicates', () => {
-    const text = JSON.stringify({
-      projectRoots: ['/a', 'relative', 3, '/a', '/b', '', '/c\0d'],
-    })
-    expect(parseStoredRoots(text)).toEqual(['/a', '/b'])
+  it('drop repeated roots', () => {
+    expect(parseStoredRoots('{"projectRoots":["/a","/b","/a"]}')).toEqual([
+      '/a',
+      '/b',
+    ])
   })
 })
 

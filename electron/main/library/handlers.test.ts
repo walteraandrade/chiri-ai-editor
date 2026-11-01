@@ -12,6 +12,8 @@ import {
 } from './handlers'
 import type { RootsStore } from './roots-store'
 
+const PROBLEM = 'Could not read library-roots.json'
+
 const HOME = '/home/u'
 const CLAUDE = `${HOME}/.claude/skills`
 const AGENTS = `${HOME}/.agents/skills`
@@ -23,12 +25,21 @@ const skillText = (name: string): string =>
 const memoryStore = (initial: readonly string[] = []) => {
   let roots = initial
   const store: RootsStore = {
-    load: async () => roots,
+    load: async () => ({ kind: 'loaded', roots }),
     save: async (next) => {
       roots = next
     },
   }
   return { store, current: () => roots }
+}
+
+const unreadableStore = () => {
+  const save = vi.fn(async () => undefined)
+  const store: RootsStore = {
+    load: async () => ({ kind: 'unreadable' }),
+    save,
+  }
+  return { store, save }
 }
 
 const depsFor = (tree: FakeTree, store: RootsStore): LibraryDeps => ({
@@ -48,7 +59,8 @@ const TREE: FakeTree = {
 describe('listLibrary', () => {
   it('lists the default roots first, then the project roots, with labels', async () => {
     const { store } = memoryStore([PROJECT])
-    const roots = await listLibrary(depsFor(TREE, store))
+    const { roots, problem } = await listLibrary(depsFor(TREE, store))
+    expect(problem).toBeNull()
     expect(
       roots.map(({ root, label, removable }) => ({ root, label, removable })),
     ).toEqual([
@@ -60,7 +72,7 @@ describe('listLibrary', () => {
 
   it('shows a skill once, under the first root that reaches it', async () => {
     const { store } = memoryStore()
-    const roots = await listLibrary(depsFor(TREE, store))
+    const { roots } = await listLibrary(depsFor(TREE, store))
     expect(roots[0]?.skills.map((skill) => skill.name)).toEqual([
       'pdf',
       'shared',
@@ -70,12 +82,25 @@ describe('listLibrary', () => {
 
   it('keeps an unreadable root in the list, marked', async () => {
     const { store } = memoryStore(['/work/missing'])
-    const roots = await listLibrary(depsFor(TREE, store))
+    const { roots } = await listLibrary(depsFor(TREE, store))
     expect(roots.at(-1)).toMatchObject({
       root: '/work/missing',
       readable: false,
       skills: [],
     })
+  })
+})
+
+describe('listLibrary with an unreadable root list', () => {
+  it('still lists the default roots, and says what is wrong', async () => {
+    const { store } = unreadableStore()
+    const { roots, problem } = await listLibrary(depsFor(TREE, store))
+    expect(problem).toBe(PROBLEM)
+    expect(roots.map(({ root }) => root)).toEqual([CLAUDE, AGENTS])
+    expect(roots[0]?.skills.map((skill) => skill.name)).toEqual([
+      'pdf',
+      'shared',
+    ])
   })
 })
 
@@ -147,12 +172,37 @@ describe('addLibraryRoot', () => {
 
   it('fails when the roots cannot be kept', async () => {
     const store: RootsStore = {
-      load: async () => [],
+      load: async () => ({ kind: 'loaded', roots: [] }),
       save: vi.fn().mockRejectedValue(new Error('EACCES')),
     }
     expect(
       await addLibraryRoot(depsFor(TREE, store), async () => PROJECT),
     ).toEqual({ kind: 'failed', reason: 'Could not keep the roots' })
+  })
+})
+
+describe('addLibraryRoot with an unreadable root list', () => {
+  it('refuses before asking for a folder, and writes nothing', async () => {
+    const { store, save } = unreadableStore()
+    const pick = vi.fn(async () => PROJECT)
+    expect(await addLibraryRoot(depsFor(TREE, store), pick)).toEqual({
+      kind: 'failed',
+      reason: PROBLEM,
+    })
+    expect(pick).not.toHaveBeenCalled()
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it('refuses when the file turns bad while the dialog is open', async () => {
+    const save = vi.fn(async () => undefined)
+    const load = vi
+      .fn<RootsStore['load']>()
+      .mockResolvedValueOnce({ kind: 'loaded', roots: [] })
+      .mockResolvedValueOnce({ kind: 'unreadable' })
+    expect(
+      await addLibraryRoot(depsFor(TREE, { load, save }), async () => PROJECT),
+    ).toEqual({ kind: 'failed', reason: PROBLEM })
+    expect(save).not.toHaveBeenCalled()
   })
 })
 
@@ -171,6 +221,15 @@ describe('removeLibraryRoot', () => {
       kind: 'failed',
       reason: 'Not a project root',
     })
+  })
+
+  it('refuses while the root list is unreadable, and writes nothing', async () => {
+    const { store, save } = unreadableStore()
+    expect(await removeLibraryRoot(depsFor(TREE, store), PROJECT)).toEqual({
+      kind: 'failed',
+      reason: PROBLEM,
+    })
+    expect(save).not.toHaveBeenCalled()
   })
 
   it.each([

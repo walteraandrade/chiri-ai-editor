@@ -24,7 +24,7 @@ const orFailure = async <T>(
 export const createElectronLibrary = (api: LibraryApi): LibraryKit<string> => ({
   list: async () => {
     try {
-      return { kind: 'listed', roots: await api.listLibrary() }
+      return { kind: 'listed', ...(await api.listLibrary()) }
     } catch {
       return { kind: 'failed' }
     }

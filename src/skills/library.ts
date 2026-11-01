@@ -7,6 +7,11 @@ export type LibraryRoot = RootScan & {
 
 export type LibraryListing = readonly LibraryRoot[]
 
+export type LibrarySnapshot = {
+  readonly roots: LibraryListing
+  readonly problem: string | null
+}
+
 export type AddRootResult =
   | { readonly kind: 'added'; readonly label: string }
   | { readonly kind: 'duplicate'; readonly label: string }

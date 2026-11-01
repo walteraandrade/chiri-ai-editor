@@ -13,7 +13,7 @@ const ROOTS: LibraryListing = [
 ]
 
 const api = (overrides: Partial<LibraryApi> = {}): LibraryApi => ({
-  listLibrary: vi.fn(async () => ROOTS),
+  listLibrary: vi.fn(async () => ({ roots: ROOTS, problem: null })),
   addLibraryRoot: vi.fn(async () => ({
     kind: 'added' as const,
     label: '/repo/.claude/skills',
@@ -27,6 +27,23 @@ describe('createElectronLibrary', () => {
     expect(await createElectronLibrary(api()).list()).toEqual({
       kind: 'listed',
       roots: ROOTS,
+      problem: null,
+    })
+  })
+
+  it('passes on what the main process says is wrong with the root list', async () => {
+    const library = createElectronLibrary(
+      api({
+        listLibrary: async () => ({
+          roots: ROOTS,
+          problem: 'Could not read library-roots.json',
+        }),
+      }),
+    )
+    expect(await library.list()).toEqual({
+      kind: 'listed',
+      roots: ROOTS,
+      problem: 'Could not read library-roots.json',
     })
   })
 

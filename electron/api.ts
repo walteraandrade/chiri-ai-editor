@@ -1,6 +1,6 @@
 import type {
   AddRootResult,
-  LibraryListing,
+  LibrarySnapshot,
   RemoveRootResult,
 } from '../src/skills/library'
 import type { HistoryApi } from './history-api'
@@ -59,7 +59,7 @@ export type ChiriApi = {
   readonly readFile: (path: string) => Promise<FileReadResult>
   readonly saveFile: (request: SaveFileRequest) => Promise<FileSaveResult>
   readonly saveFileAs: (request: SaveFileAsRequest) => Promise<FileSaveResult>
-  readonly listLibrary: () => Promise<LibraryListing>
+  readonly listLibrary: () => Promise<LibrarySnapshot>
   readonly addLibraryRoot: () => Promise<AddRootResult>
   readonly removeLibraryRoot: (path: string) => Promise<RemoveRootResult>
 } & HistoryApi
