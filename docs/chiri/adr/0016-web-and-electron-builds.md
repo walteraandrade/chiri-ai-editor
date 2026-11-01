@@ -15,7 +15,7 @@ The browser-only code is small and already behind seams: `src/document/browser-f
 - **Two builds, one renderer.**
   - **Web build:** a browser tab on the Vite dev server, as submitted. `pnpm dev`.
   - **Electron build:** the Electron window ([0013](0013-native-app-on-electron.md)). `pnpm dev:electron`.
-- **A platform kit per build** (Abstract Factory). Each entry, `src/main.web.tsx` and `src/main.electron.tsx`, builds one kit and passes it to `App`. A kit holds the adapters that must match each other:
+- **A platform kit per build** (Abstract Factory). Each entry, `src/main.web.tsx` and `src/main.electron.tsx`, builds one kit through an async factory (`() => Promise<PlatformKit>`, `src/platform/start.ts`) and passes it to `App` once it resolves. A kit holds the adapters that must match each other:
   - `DocumentFiles<Ref>`: open, save, save as. Web: File System Access plus fallbacks ([0011](0011-open-and-save-markdown-files.md)). Electron: the preload API, `Ref` is the real path ([0014](0014-skills-on-disk.md)).
   - History store: list Versions, append a Version, mark one saved, load a text. Web: `localStorage` as in [0012](0012-document-history.md). Electron: `history.sqlite` ([0015](0015-history-in-sqlite.md)).
   - Unsaved text: Web: the `chiri.document` autosave. Electron: per file.

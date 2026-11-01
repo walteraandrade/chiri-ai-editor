@@ -7,8 +7,8 @@ Issue [#29](https://github.com/walteraandrade/chiri-ai-editor/issues/29), stacke
 
 ```text
 before  index.html → src/main.tsx → <App initialDoc hasApiKey onDocumentChange history />
-after   index.html    → src/main.web.tsx      → createBrowserWebKit() ┐
-        electron.html → src/main.electron.tsx → createBrowserWebKit() ┴→ mountApp(kit) → <App kit />
+after   index.html    → src/main.web.tsx      → mountApp(browserWebKit) ┐  PlatformKitFactory = () => Promise<PlatformKit>
+        electron.html → src/main.electron.tsx → mountApp(browserWebKit) ┴→ await factory, then render <App kit />
         electron/main     BrowserWindow (isolated, sandboxed), IPC handler, dev switches
         electron/preload  window.chiri.shellInfo()
 ```
@@ -22,7 +22,7 @@ after   index.html    → src/main.web.tsx      → createBrowserWebKit() ┐
 | `agent-browser` attaches to the window over CDP and reads `window.__aiCalls` | Partly | `agent-browser connect 9301` attached to the window (`tab`: `Chiri - http://localhost:5301/electron.html`) and `snapshot`, `find`, `click`, `press` and `screenshot` drove it. The `Bash` guard of this isolated agent refused every command containing `eval`, so `agent-browser eval` was not run. `window.__aiCalls` was read with a small script that sends the same CDP `Runtime.evaluate` to port 9301 (table below). To be repeated with `agent-browser eval "JSON.stringify(window.__aiCalls)"` |
 | The renderer has no `require`, `process` or other Node globals | Pass | `typeof` of `require`, `process`, `module`, `exports`, `global`, `Buffer`, `__dirname`, `ipcRenderer` and `electron` is `undefined`, in the dev window and in the built app. `Object.keys(window.chiri)` is `["shellInfo"]` |
 | ADR 0013 records the build tool; `AGENTS.md` stack and commands are updated | Pass | [0013](../adr/0013-native-app-on-electron.md): electron-vite, why not Forge or vite-plugin-electron, Electron version, dev switches. `AGENTS.md`: stack row, commands, env vars, layout; the README commands |
-| `pnpm test`, `pnpm biome check` and `pnpm build` green; records and screenshots here, `ai-costs.md` updated | Pass | 898 tests in 64 files (35 new in 4 files); Biome clean; `pnpm build`: both `tsc` runs, then `dist/` and `out/` (the Web main chunk is 627.08 kB, 627.00 kB in the PR #26 record, and `browser-client` 477.18 kB, as there). No `sk-or-` string in `dist/` or `out/` |
+| `pnpm test`, `pnpm biome check` and `pnpm build` green; records and screenshots here, `ai-costs.md` updated | Pass | 898 tests in 64 files at the first check (35 new in 4 files), 911 in 65 after the review fixes (13 more); Biome clean; `pnpm build`: both `tsc` runs, then `dist/` and `out/` (the Web main chunk is 627.08 kB, 627.00 kB in the PR #26 record, and `browser-client` 477.18 kB, as there). No `sk-or-` string in `dist/` or `out/` |
 
 ## Checks beyond the criteria
 

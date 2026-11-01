@@ -64,7 +64,7 @@ Attach to the window: `CHIRI_DEV_PORT=5301 CHIRI_CDP_PORT=9301 CHIRI_USER_DATA_D
 src/
 ├── main.web.tsx       # Web build entry: builds the Web kit, mounts App
 ├── main.electron.tsx  # Electron build entry: builds the Electron kit (the Web kit for now), mounts App
-├── platform/      # PlatformKit type, Web kit, mount (ADR 0016)
+├── platform/      # PlatformKit type and async kit factory, Web kit, start.ts (mount once the factory resolves) (ADR 0016)
 ├── editor/        # CodeMirror setup, decorations, keymaps
 ├── suggestions/   # Suggestion state, lifecycle, position mapping (pure)
 ├── diff/          # adaptive diff (pure)
