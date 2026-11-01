@@ -16,7 +16,7 @@ All decisions were made in the planning session (see `ai-sessions/`), with quest
 | [0010](0010-model-bakeoff.md) | Choose the model by Bake-off | Accepted |
 | [0011](0011-open-and-save-markdown-files.md) | Open and save Markdown files | Accepted; Web build only since 0016 |
 | [0012](0012-document-history.md) | Document History: Versions, Timeline, Full history | Accepted; storage amended by 0015 in the Electron build |
-| [0013](0013-native-app-on-electron.md) | Native app on Electron | Accepted; amended by 0016 |
+| [0013](0013-native-app-on-electron.md) | Native app on Electron | Accepted; amended by 0016; build tool electron-vite (#29) |
 | [0014](0014-skills-on-disk.md) | Skills on disk are the source of truth | Accepted; Electron build |
 | [0015](0015-history-in-sqlite.md) | History in SQLite | Accepted; Electron build |
 | [0016](0016-web-and-electron-builds.md) | Web and Electron builds | Accepted |
