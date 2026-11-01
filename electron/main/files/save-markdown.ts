@@ -6,7 +6,7 @@ import { MAX_FILE_BYTES } from './limits'
 import { isMarkdownPath } from './markdown-path'
 import { decodeDisk } from './read-markdown'
 import { decideSave } from './save-decision'
-import { writeAtomic } from './write-atomic'
+import { type AtomicFs, nodeFs, writeAtomic } from './write-atomic'
 
 const NOT_MARKDOWN: FileSaveResult = {
   kind: 'failed',
@@ -32,9 +32,18 @@ const diskText = async (real: string): Promise<string | null> => {
   return info.size > MAX_FILE_BYTES ? null : decodeDisk(await readFile(real))
 }
 
+const diskTextOrGone = async (real: string): Promise<string | null> => {
+  try {
+    return await diskText(real)
+  } catch (error) {
+    if (codeIs(error, 'ENOENT')) return null
+    throw error
+  }
+}
+
 const stillHolds =
   (real: string, expected: string) => async (): Promise<boolean> =>
-    decideSave(await diskText(real).catch(() => null), expected) === 'write'
+    decideSave(await diskTextOrGone(real), expected) === 'write'
 
 const resolveExisting = async (path: string): Promise<string | null> => {
   try {
@@ -45,11 +54,10 @@ const resolveExisting = async (path: string): Promise<string | null> => {
   }
 }
 
-export const saveMarkdown = async ({
-  path,
-  text,
-  expected,
-}: SaveFileRequest): Promise<FileSaveResult> => {
+export const saveMarkdown = async (
+  { path, text, expected }: SaveFileRequest,
+  fs: AtomicFs = nodeFs,
+): Promise<FileSaveResult> => {
   try {
     if (tooLarge(text)) return TOO_LARGE
     const real = await resolveExisting(path)
@@ -57,7 +65,7 @@ export const saveMarkdown = async ({
     if (!isMarkdownPath(real)) return NOT_MARKDOWN
     const holds = stillHolds(real, expected)
     if (!(await holds())) return { kind: 'conflict' }
-    const outcome = await writeAtomic(real, text, holds)
+    const outcome = await writeAtomic(real, text, holds, fs)
     return outcome === 'rejected' ? { kind: 'conflict' } : savedAt(real)
   } catch (error) {
     return { kind: 'failed', reason: describeFailure(error) }

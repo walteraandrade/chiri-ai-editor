@@ -26,7 +26,7 @@ export type AtomicFs = {
 
 export type AtomicOutcome = 'written' | 'rejected'
 
-const nodeFs: AtomicFs = { stat, open, rename, unlink }
+export const nodeFs: AtomicFs = { stat, open, rename, unlink }
 
 const alwaysAccept = async (): Promise<boolean> => true
 

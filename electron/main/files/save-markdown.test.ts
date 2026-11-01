@@ -17,6 +17,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MAX_FILE_BYTES } from './limits'
 import { saveMarkdown, saveMarkdownAs } from './save-markdown'
+import { type AtomicFs, nodeFs } from './write-atomic'
 
 let dir = ''
 
@@ -150,6 +151,97 @@ describe('saveMarkdown', () => {
       await saveMarkdown({ path, text: 'x', expected: 'echo hi\n' }),
     ).toEqual({ kind: 'failed', reason: 'Not a Markdown file' })
     expect(await readFile(path, 'utf8')).toBe('echo hi\n')
+  })
+})
+
+const afterTemporarySync = (change: () => Promise<void>): AtomicFs => ({
+  ...nodeFs,
+  open: async (path, flags, mode) => {
+    const handle = await nodeFs.open(path, flags, mode)
+    return {
+      writeFile: (text, encoding) => handle.writeFile(text, encoding),
+      chmod: (value) => handle.chmod(value),
+      close: () => handle.close(),
+      sync: async () => {
+        await handle.sync()
+        await change()
+      },
+    }
+  },
+})
+
+describe('saveMarkdown, read errors are not conflicts', () => {
+  it('says Permission denied for a file that cannot be read', async () => {
+    const path = join(dir, 'SKILL.md')
+    await writeFile(path, '# A\n')
+    await chmod(path, 0o200)
+    const result = await saveMarkdown({
+      path,
+      text: '# B\n',
+      expected: '# A\n',
+    })
+    await chmod(path, 0o600)
+    expect(result).toEqual({ kind: 'failed', reason: 'Permission denied' })
+    expect(await readFile(path, 'utf8')).toBe('# A\n')
+    expect(await readdir(dir)).toEqual(['SKILL.md'])
+  })
+
+  it('says Not a file when a folder sits where the file was', async () => {
+    const path = join(dir, 'SKILL.md')
+    await mkdir(path)
+    expect(
+      await saveMarkdown({ path, text: '# B\n', expected: '# A\n' }),
+    ).toEqual({ kind: 'failed', reason: 'Not a file' })
+    expect(await readdir(dir)).toEqual(['SKILL.md'])
+  })
+
+  it('says Permission denied when the file turns unreadable during the write', async () => {
+    const path = join(dir, 'SKILL.md')
+    await writeFile(path, '# A\n')
+    const result = await saveMarkdown(
+      { path, text: '# B\n', expected: '# A\n' },
+      afterTemporarySync(() => chmod(path, 0o200)),
+    )
+    await chmod(path, 0o600)
+    expect(result).toEqual({ kind: 'failed', reason: 'Permission denied' })
+    expect(await readFile(path, 'utf8')).toBe('# A\n')
+    expect(await readdir(dir)).toEqual(['SKILL.md'])
+  })
+})
+
+describe('saveMarkdown, the check right before the rename', () => {
+  it('stops with a conflict when the file changes after the temporary file was written', async () => {
+    const path = join(dir, 'SKILL.md')
+    await writeFile(path, '# A\n')
+    const result = await saveMarkdown(
+      { path, text: '# B, mine\n', expected: '# A\n' },
+      afterTemporarySync(() => writeFile(path, '# A, by an agent\n')),
+    )
+    expect(result).toEqual({ kind: 'conflict' })
+    expect(await readFile(path, 'utf8')).toBe('# A, by an agent\n')
+    expect(await readdir(dir)).toEqual(['SKILL.md'])
+  })
+
+  it('stops with a conflict when the file is removed after the temporary file was written', async () => {
+    const path = join(dir, 'SKILL.md')
+    await writeFile(path, '# A\n')
+    const result = await saveMarkdown(
+      { path, text: '# B\n', expected: '# A\n' },
+      afterTemporarySync(() => rm(path)),
+    )
+    expect(result).toEqual({ kind: 'conflict' })
+    expect(await readdir(dir)).toEqual([])
+  })
+
+  it('saves when nothing changed in between', async () => {
+    const path = join(dir, 'SKILL.md')
+    await writeFile(path, '# A\n')
+    const result = await saveMarkdown(
+      { path, text: '# B\n', expected: '# A\n' },
+      afterTemporarySync(async () => undefined),
+    )
+    expect(result).toMatchObject({ kind: 'saved' })
+    expect(await readFile(path, 'utf8')).toBe('# B\n')
   })
 })
 
