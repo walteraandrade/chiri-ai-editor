@@ -1,6 +1,6 @@
 # 0014. Skills on disk are the source of truth
 
-- Status: Accepted (2026-10-31)
+- Status: Accepted (2026-10-31); Electron build only, except the frontmatter rule, which is shared code ([0016](0016-web-and-electron-builds.md)). Watcher and write details added on 2026-11-01
 - Source: maintainer request (native skills editor). The maintainer proposed Convex as the database; the review kept the files on disk as the only copy, and the maintainer chose local only.
 
 ## Context
@@ -17,10 +17,14 @@ Claude Code reads a skill from `<root>/<name>/SKILL.md`, plus the files beside i
 - **Still one Document.** Opening a file replaces the Document as [0011](0011-open-and-save-markdown-files.md) describes. With unsaved text, it first asks Save, Discard or Cancel. Tabs are in the backlog.
 - **Save stays explicit.** A save is seen by every agent at once, so the app writes only when told to.
 - **Save never overwrites a change it has not seen.** Before writing, the main process compares the disk text with the text last read or written. If they differ, Save stops and shows the External change notice.
-- **Writes are atomic:** write a temporary file next to the real path, then rename it. An agent never reads half a file, and a symlink stays a symlink.
+- **Writes are atomic:** write a temporary file next to the real path (a symlink's target), give it the old file's mode, then rename it. An agent never reads half a file, a symlink stays a symlink, and permissions stay as they were.
 - **External change:** the watcher reports a change to the open file.
   - With no unsaved text, the Document reloads and History records an External Version.
   - With unsaved text, a notice offers "Reload from disk" or "Keep mine". Keep mine leaves the dot on; the next Save asks again.
+- **What the watcher watches:**
+  - Folders, not files. A rename (the app's own Save, `git pull`, most editors) gives the path a new inode, and a watch on the old file goes quiet.
+  - Real paths. A root's symlinks can point outside every root (one points into a cloned repo), and a watch on the root does not see changes there.
+  - Not its own writes. A change whose disk text equals the text last written by the app is not an External change.
 - **Unsaved text survives a crash:** it is kept per file, debounced like today's autosave, and offered when that file opens again.
 - **Frontmatter is not a Block.** `@codemirror/lang-markdown` reads a `---` frontmatter as a rule plus a level-2 heading, so a Review pass could rewrite the YAML. Block extraction skips a frontmatter at the start of the Document, and Targets inside it are refused.
 
@@ -29,7 +33,7 @@ Claude Code reads a skill from `<root>/<name>/SKILL.md`, plus the files beside i
 - Claude Code sees every Save at once, with no sync step.
 - The app has to handle changes it did not make. The watcher and the check before Save are part of the core, not polish.
 - Two machines do not share History or unsaved text. Files move between machines the way they do today (git, dotfiles).
-- The browser's `chiri.document` and `chiri.history` do not reach Electron: another origin. Nothing migrates.
+- The browser's `chiri.document` and `chiri.history` do not reach Electron: another browser profile (and, installed, another origin). Nothing migrates.
 
 ## Alternatives considered
 

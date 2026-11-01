@@ -1,8 +1,8 @@
 # 0015. History in SQLite
 
-- Status: Accepted (2026-10-31)
+- Status: Accepted (2026-10-31); Electron build only, while the Web build keeps 0012's `localStorage` behind the same async History store ([0016](0016-web-and-electron-builds.md))
 - Source: maintainer request: History must not be capped by a browser quota now that the app is native and lives longer. Turso, JSONL files, git and Convex were weighed; the maintainer chose local only.
-- Amends: [0012](0012-document-history.md) (storage, cap, one Document)
+- Amends: [0012](0012-document-history.md) (storage, cap, one Document), in the Electron build
 
 ## Context
 
@@ -55,7 +55,7 @@
 
 - History outlives the window, the browser quota and the 50-Version cap.
 - The main process owns History, so the watcher can record External Versions with no window open on that file.
-- The Timeline and Full history move from an in-memory array to async reads. That is the largest change in the History code.
+- The Timeline and Full history move from an in-memory array to async reads, in both builds. That is the largest change in the History code.
 - `userData` is one more folder to back up. Deleting `history.sqlite` resets History and never touches a skill.
 
 ## Alternatives considered

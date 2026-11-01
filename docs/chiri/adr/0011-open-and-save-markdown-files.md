@@ -1,6 +1,6 @@
 # 0011. Open and save Markdown files
 
-- Status: Accepted (2026-10-30)
+- Status: Accepted (2026-10-30); Web build only since [0016](0016-web-and-electron-builds.md), the Electron build follows [0014](0014-skills-on-disk.md)
 - Source: maintainer request after the submission ("import `.md` files from the file system, and save"), ranked above the backlog
 
 ## Context
