@@ -1,4 +1,12 @@
-import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import {
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -102,6 +110,42 @@ describe('saveFileAsRequest', () => {
     const result = await saveFileAsRequest(
       { text: '# A\n', suggestedName: 'a.md' },
       async () => join(dir, 'notes'),
+    )
+    expect(result).toMatchObject({ kind: 'saved', name: 'notes.md' })
+    expect(await readFile(join(dir, 'notes.md'), 'utf8')).toBe('# A\n')
+  })
+
+  it('refuses to replace the file that adding .md would reach: the dialog never asked about it', async () => {
+    await writeFile(join(dir, 'notes.md'), 'precious\n')
+    const result = await saveFileAsRequest(
+      { text: '# A\n', suggestedName: 'a.md' },
+      async () => join(dir, 'notes'),
+    )
+    expect(result).toEqual({
+      kind: 'failed',
+      reason: 'notes.md already exists',
+    })
+    expect(await readFile(join(dir, 'notes.md'), 'utf8')).toBe('precious\n')
+    expect(await readdir(dir)).toEqual(['notes.md'])
+  })
+
+  it('counts a symlink at that name as existing, even a dangling one', async () => {
+    await symlink(join(dir, 'nowhere.md'), join(dir, 'notes.md'))
+    const result = await saveFileAsRequest(
+      { text: '# A\n', suggestedName: 'a.md' },
+      async () => join(dir, 'notes'),
+    )
+    expect(result).toEqual({
+      kind: 'failed',
+      reason: 'notes.md already exists',
+    })
+  })
+
+  it('still replaces a file the dialog confirmed, when the name already ends in .md', async () => {
+    await writeFile(join(dir, 'notes.md'), 'old\n')
+    const result = await saveFileAsRequest(
+      { text: '# A\n', suggestedName: 'a.md' },
+      async () => join(dir, 'notes.md'),
     )
     expect(result).toMatchObject({ kind: 'saved', name: 'notes.md' })
     expect(await readFile(join(dir, 'notes.md'), 'utf8')).toBe('# A\n')
