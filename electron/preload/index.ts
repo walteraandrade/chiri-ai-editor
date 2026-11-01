@@ -5,6 +5,9 @@ import {
   FILE_READ_CHANNEL,
   FILE_SAVE_AS_CHANNEL,
   FILE_SAVE_CHANNEL,
+  LIBRARY_ADD_ROOT_CHANNEL,
+  LIBRARY_LIST_CHANNEL,
+  LIBRARY_REMOVE_ROOT_CHANNEL,
   SHELL_INFO_CHANNEL,
 } from '../api'
 import { HISTORY_CHANNELS } from '../history-api'
@@ -25,6 +28,10 @@ const api: ChiriApi = {
   unsavedSave: (key, unsaved) =>
     ipcRenderer.invoke(HISTORY_CHANNELS.unsavedSave, key, unsaved),
   unsavedClear: (key) => ipcRenderer.invoke(HISTORY_CHANNELS.unsavedClear, key),
+  listLibrary: () => ipcRenderer.invoke(LIBRARY_LIST_CHANNEL),
+  addLibraryRoot: () => ipcRenderer.invoke(LIBRARY_ADD_ROOT_CHANNEL),
+  removeLibraryRoot: (path) =>
+    ipcRenderer.invoke(LIBRARY_REMOVE_ROOT_CHANNEL, path),
 }
 
 contextBridge.exposeInMainWorld('chiri', api)
