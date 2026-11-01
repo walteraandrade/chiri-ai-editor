@@ -1,6 +1,6 @@
 # 0014. Skills on disk are the source of truth
 
-- Status: Accepted (2026-10-31); Electron build only, except the frontmatter rule, which is shared code ([0016](0016-web-and-electron-builds.md)). Watcher and write details added on 2026-11-01
+- Status: Accepted (2026-10-31); Electron build only, except the frontmatter rule, which is shared code ([0016](0016-web-and-electron-builds.md)). Watcher and write details added on 2026-11-01; Save check, unsaved text and request rules added by the file slice (#30)
 - Source: maintainer request (native skills editor). The maintainer proposed Convex as the database; the review kept the files on disk as the only copy, and the maintainer chose local only.
 
 ## Context
@@ -17,6 +17,8 @@ Claude Code reads a skill from `<root>/<name>/SKILL.md`, plus the files beside i
 - **Still one Document.** Opening a file replaces the Document as [0011](0011-open-and-save-markdown-files.md) describes. With unsaved text, it first asks Save, Discard or Cancel. Tabs are in the backlog.
 - **Save stays explicit.** A save is seen by every agent at once, so the app writes only when told to.
 - **Save never overwrites a change it has not seen.** Before writing, the main process compares the disk text with the text last read or written. If they differ, Save stops and shows the External change notice.
+  - The renderer sends that text with every Save (the session's saved text), so the main process keeps no per-file state. Both texts are compared after decoding (no byte order mark, LF line endings). A file that is gone, or no longer valid UTF-8 text, counts as a change.
+  - "Keep mine" never forces a write: the next Save asks again. The ways out are "Reload from disk" and Save as.
 - **Writes are atomic:** write a temporary file next to the real path (a symlink's target), give it the old file's mode, then rename it. An agent never reads half a file, a symlink stays a symlink, and permissions stay as they were.
 - **External change:** the watcher reports a change to the open file.
   - With no unsaved text, the Document reloads and History records an External Version.
@@ -26,6 +28,10 @@ Claude Code reads a skill from `<root>/<name>/SKILL.md`, plus the files beside i
   - Real paths. A root's symlinks can point outside every root (one points into a cloned repo), and a watch on the root does not see changes there.
   - Not its own writes. A change whose disk text equals the text last written by the app is not an External change.
 - **Unsaved text survives a crash:** it is kept per file, debounced like today's autosave, and offered when that file opens again.
+  - It keeps the text the edits started from. After a restart, the file's saved text is that one, not the disk text, so a file changed while the app was closed ends in the External change notice instead of being overwritten.
+  - The last file reopens at start, before the first render, with its unsaved text.
+  - Until History moves into SQLite, it lives in the renderer's `localStorage`, keyed by real path, and the renderer asks the main process to write that storage to disk after each change (`session.flushStorageData()`), so a killed process keeps it.
+- **Requests are validated in the main process:** absolute paths with no NUL, strict fields, size limits; only `.md` and `.markdown` files, checked on the resolved path; text must be valid UTF-8; files over 5 MiB are refused.
 - **Frontmatter is not a Block.** `@codemirror/lang-markdown` reads a `---` frontmatter as a rule plus a level-2 heading, so a Review pass could rewrite the YAML. Block extraction skips a frontmatter at the start of the Document, and Targets inside it are refused.
 
 ## Consequences

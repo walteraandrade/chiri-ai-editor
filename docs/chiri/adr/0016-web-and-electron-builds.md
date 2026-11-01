@@ -22,6 +22,7 @@ The browser-only code is small and already behind seams: `src/document/browser-f
   - Key status: Web: `__HAS_OPENROUTER_KEY__`. Electron: asked from the main process.
   - Electron-only features (Library, watcher, key settings) are optional fields; the UI shows them only when the kit has them.
 - **The Web build is frozen in features.** It gets every change to shared code (Suggestions, diff, prompts, Blocks, the frontmatter rule, frontmatter checks). It gets no new platform feature.
+- **`DocumentFiles` has three calls:** `open`, `save` (with Save as) and `read(ref)`, which reopens a ref (Electron's last file and "Reload from disk"). The Web adapter never answers `conflict`.
 - **`DocumentFiles` returns results as values:** saved, conflict (the disk changed since the last read), cancelled or failed. `FileHost` keeps its meaning, the browser picker API, and lives inside the Web adapter. `createFileActions` becomes generic over `Ref`; the picker lock moves into the Web adapter.
 - **The History store is async in both builds.** The Web adapter answers from `localStorage` through promises, so the Timeline and Full history know one interface.
 - **Branches:** slices keep branching from `feat/open-save-markdown`. PR #22 can squash-merge into `main` when it reopens: `main` then has both builds, and `pnpm dev` still opens the browser app.
