@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { LibraryListing, LibraryRoot } from './library'
-import { isSkillOpen, skillCount, skillHoldingFile } from './library-view'
+import {
+  isSkillOpen,
+  skillCount,
+  skillFileLabel,
+  skillHoldingFile,
+} from './library-view'
 import type { Skill } from './scan-skills'
 
 const skill = (folderName: string, overrides: Partial<Skill> = {}): Skill => ({
@@ -90,5 +95,56 @@ describe('isSkillOpen', () => {
 
   it('keeps the other skills closed', () => {
     expect(isSkillOpen({}, '/skills/git', '/skills/pdf')).toBe(false)
+  })
+})
+
+describe('skillFileLabel', () => {
+  const nested = skill('pdf-tools', {
+    name: 'pdf-tools',
+    files: [
+      {
+        path: '/skills/pdf-tools/SKILL.md',
+        name: 'SKILL.md',
+        isMarkdown: true,
+      },
+      {
+        path: '/real/forms.md',
+        name: 'references/forms.md',
+        isMarkdown: true,
+      },
+    ],
+  })
+  const listing: LibraryListing = [root([skill('git'), nested])]
+  const opening = (path: string) => (candidate: string) => candidate === path
+
+  it('is the skill name and the file inside the skill', () => {
+    expect(skillFileLabel(listing, opening('/skills/pdf-tools/SKILL.md'))).toBe(
+      'pdf-tools / SKILL.md',
+    )
+  })
+
+  it('keeps the path inside the skill for a nested file', () => {
+    expect(skillFileLabel(listing, opening('/real/forms.md'))).toBe(
+      'pdf-tools / references/forms.md',
+    )
+  })
+
+  it('uses the frontmatter name, not the folder name', () => {
+    const renamed: LibraryListing = [
+      root([skill('pdf', { name: 'pdf-processing' })]),
+    ]
+    expect(skillFileLabel(renamed, opening('/skills/pdf/SKILL.md'))).toBe(
+      'pdf-processing / SKILL.md',
+    )
+  })
+
+  it('is undefined for a file outside the Library', () => {
+    expect(skillFileLabel(listing, opening('/tmp/other.md'))).toBeUndefined()
+  })
+
+  it('is undefined while the Library is not loaded', () => {
+    expect(skillFileLabel([], opening('/skills/pdf-tools/SKILL.md'))).toBe(
+      undefined,
+    )
   })
 })

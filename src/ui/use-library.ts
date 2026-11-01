@@ -8,13 +8,14 @@ export type LibraryState =
   | { readonly status: 'failed' }
 
 export const useLibrary = <Ref>(
-  library: LibraryKit<Ref>,
+  library: LibraryKit<Ref> | undefined,
   notify: (text: string) => void,
 ) => {
   const [state, setState] = useState<LibraryState>({ status: 'loading' })
   const latestLoad = useRef(0)
 
   const refresh = useCallback(async () => {
+    if (library === undefined) return
     const load = ++latestLoad.current
     const result = await library.list()
     if (load !== latestLoad.current) return
@@ -30,6 +31,7 @@ export const useLibrary = <Ref>(
   }, [refresh])
 
   const addRoot = useCallback(async () => {
+    if (library === undefined) return
     const result = await library.addRoot()
     if (result.kind === 'cancelled') return
     if (result.kind === 'failed') {
@@ -46,6 +48,7 @@ export const useLibrary = <Ref>(
 
   const removeRoot = useCallback(
     async (path: string, label: string) => {
+      if (library === undefined) return
       const result = await library.removeRoot(path)
       notify(
         result.kind === 'removed'
@@ -59,3 +62,5 @@ export const useLibrary = <Ref>(
 
   return { state, refresh, addRoot, removeRoot }
 }
+
+export type LibraryControls = ReturnType<typeof useLibrary>

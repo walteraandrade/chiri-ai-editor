@@ -8,13 +8,13 @@ import {
   skillHoldingFile,
 } from '../skills/library-view'
 import type { Skill } from '../skills/scan-skills'
-import { useLibrary } from './use-library'
+import type { LibraryControls } from './use-library'
 
 type LibraryProps<Ref> = {
   readonly library: LibraryKit<Ref>
+  readonly controls: LibraryControls
   readonly activeRef: Ref | null
   readonly onOpen: (ref: Ref) => void
-  readonly notify: (text: string) => void
 }
 
 type SkillItemProps = {
@@ -169,11 +169,10 @@ function RootSection({
 
 export function Library<Ref>({
   library,
+  controls: { state, refresh, addRoot, removeRoot },
   activeRef,
   onOpen,
-  notify,
 }: LibraryProps<Ref>) {
-  const { state, refresh, addRoot, removeRoot } = useLibrary(library, notify)
   const [choices, setChoices] = useState<SkillChoices>({})
   const isActiveFile = (path: string): boolean =>
     activeRef !== null && library.toRef(path) === activeRef

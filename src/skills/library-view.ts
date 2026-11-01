@@ -18,3 +18,16 @@ export const isSkillOpen = (
   realPath: string,
   holdingOpenFile: string | undefined,
 ): boolean => choices[realPath] ?? realPath === holdingOpenFile
+
+export const skillFileLabel = (
+  roots: LibraryListing,
+  isOpenFile: (path: string) => boolean,
+): string | undefined =>
+  roots
+    .flatMap(({ skills }) => skills)
+    .flatMap((skill) =>
+      skill.files
+        .filter(({ path }) => isOpenFile(path))
+        .map((file) => `${skill.name} / ${file.name}`),
+    )
+    .at(0)
