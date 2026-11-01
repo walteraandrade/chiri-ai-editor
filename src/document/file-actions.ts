@@ -40,6 +40,8 @@ export type FileActions<Ref> = {
   readonly reload: (conflict: Conflict<Ref>) => Promise<void>
 }
 
+const STAYED = { kind: 'cancelled' } as const
+
 const withReason = (text: string, reason: string | undefined): string =>
   reason === undefined ? text : `${text}: ${reason}`
 
@@ -65,6 +67,24 @@ export const createFileActions = <Ref>({
     }
   }
 
+  const afterLeaving = async (
+    result: OpenResult<Ref>,
+    current: EditorText,
+  ): Promise<OpenResult<Ref>> => {
+    if (result.kind !== 'opened' || leave === undefined) return result
+    const outcome = await confirmLeave({
+      session: session(),
+      text: current.text(),
+      leave,
+      save: () => save(false),
+    })
+    if (outcome === 'stay') return STAYED
+    const { ref } = result.file
+    return outcome === 'saved' && ref !== null && session()?.ref === ref
+      ? files.read(ref)
+      : result
+  }
+
   const arrive = async (
     result: OpenResult<Ref>,
     current: EditorText,
@@ -80,20 +100,13 @@ export const createFileActions = <Ref>({
       readonly done: string
     },
   ): Promise<void> => {
-    if (result.kind === 'cancelled') return
-    if (result.kind === 'failed') {
-      notify(failure(result.reason))
+    const settled = guarded ? await afterLeaving(result, current) : result
+    if (settled.kind === 'cancelled') return
+    if (settled.kind === 'failed') {
+      notify(failure(settled.reason))
       return
     }
-    if (guarded && leave !== undefined) {
-      const stay = !(await confirmLeave({
-        session: session(),
-        leave,
-        save: () => save(false),
-      }))
-      if (stay) return
-    }
-    const { name, text, ref } = result.file
+    const { name, text, ref } = settled.file
     const arrival = restoreUnsaved(
       text,
       keepUnsaved ? await unsavedFor(ref) : null,

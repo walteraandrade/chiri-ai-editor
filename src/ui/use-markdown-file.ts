@@ -107,7 +107,11 @@ export const useMarkdownFile = <Ref>({
       },
       onConflict: setConflict,
       ...(unsavedText.discard !== undefined && {
-        leave: { ask: askLeave, discard: unsavedText.discard },
+        leave: {
+          ask: askLeave,
+          discard: unsavedText.discard,
+          initialText: unsavedText.initial,
+        },
       }),
     })
   }, [files, unsavedText, dispatch, askLeave])
