@@ -9,7 +9,7 @@ import {
 import { resumeHistory } from '../history/history'
 import { createHistoryRecorder } from '../history/recorder'
 import { loadHistory, makeRoomFor, saveHistory } from '../history/storage'
-import type { PlatformKit } from './kit'
+import type { PlatformKit, PlatformKitFactory } from './kit'
 
 const AUTOSAVE_DELAY_MS = 400
 const HISTORY_IDLE_MS = 30_000
@@ -62,10 +62,14 @@ const flushWhenPageHides = (flush: () => void): void => {
   })
 }
 
-export const createBrowserWebKit = (): PlatformKit =>
-  createWebKit({
-    storage: getLocalStorage(),
-    now: Date.now,
-    hasApiKey: __HAS_OPENROUTER_KEY__,
-    onHide: flushWhenPageHides,
-  })
+export const createWebKitFactory =
+  (getDeps: () => WebKitDeps): PlatformKitFactory =>
+  async () =>
+    createWebKit(getDeps())
+
+export const browserWebKit: PlatformKitFactory = createWebKitFactory(() => ({
+  storage: getLocalStorage(),
+  now: Date.now,
+  hasApiKey: __HAS_OPENROUTER_KEY__,
+  onHide: flushWhenPageHides,
+}))

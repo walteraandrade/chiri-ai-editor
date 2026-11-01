@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import { DOCUMENT_STORAGE_KEY, type StorageLike } from '../document/storage'
 import { HISTORY_STORAGE_KEY } from '../history/storage'
-import { createWebKit } from './web-kit'
+import { createWebKit, createWebKitFactory } from './web-kit'
 
 const createFakeStorage = (
   initial: Record<string, string> = {},
@@ -87,5 +87,41 @@ describe('createWebKit', () => {
   it('reports the key status it was given', () => {
     expect(build(null, { hasApiKey: false }).kit.keyStatus.present).toBe(false)
     expect(build(null, { hasApiKey: true }).kit.keyStatus.present).toBe(true)
+  })
+})
+
+describe('createWebKitFactory', () => {
+  const deps = (storage: StorageLike | null, hasApiKey = true) => ({
+    storage,
+    now: () => 1000,
+    hasApiKey,
+    onHide: () => undefined,
+  })
+
+  it('resolves a kit with the values at the time it is called', async () => {
+    const storage = createFakeStorage()
+    const factory = createWebKitFactory(() => deps(storage))
+    storage.setItem(DOCUMENT_STORAGE_KEY, '# Stored later')
+    const kit = await factory()
+    expect(kit.unsavedText.initial).toBe('# Stored later')
+  })
+
+  it('does not read anything before it is called', () => {
+    const getDeps = vi.fn(() => deps(createFakeStorage()))
+    createWebKitFactory(getDeps)
+    expect(getDeps).not.toHaveBeenCalled()
+  })
+
+  it('resolves the key status it reads', async () => {
+    const kit = await createWebKitFactory(() => deps(null, false))()
+    expect(kit.keyStatus.present).toBe(false)
+  })
+
+  it('rejects when the values cannot be read', async () => {
+    const failure = new Error('no storage')
+    const factory = createWebKitFactory(() => {
+      throw failure
+    })
+    await expect(factory()).rejects.toBe(failure)
   })
 })

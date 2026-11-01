@@ -14,3 +14,5 @@ export type PlatformKit = {
   readonly history: HistoryRecorder
   readonly keyStatus: KeyStatus
 }
+
+export type PlatformKitFactory = () => Promise<PlatformKit>
