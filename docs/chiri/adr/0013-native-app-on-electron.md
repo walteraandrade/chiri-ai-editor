@@ -29,9 +29,9 @@ A skills editor reads and writes folders the browser cannot reach freely: `~/.cl
   - `electron-vite dev` builds main and preload, starts the renderer dev server, sets `ELECTRON_RENDERER_URL` and starts Electron with `package.json`'s `main`. Main and preload rebuild on change only with `--watch`.
   - `pnpm build` type-checks both tsconfigs, then runs the Web build (`dist/`) and the Electron build (`out/`).
 - **Electron 43** (`^43.8.6`; the scheme and key checks above ran on 43.8.3). Newer majors (45 at the time of writing) are a bump plus a re-run of those checks, in the installed-app slice. pnpm 11 needs `allowBuilds: electron: true` in `pnpm-workspace.yaml`, or every `pnpm` command fails with `ERR_PNPM_IGNORED_BUILDS` after the install; the binary then downloads into `~/.cache/electron`.
-- **Dev switches**, read in the main process when `ELECTRON_RENDERER_URL` is set (dev only; the production build opens no debugging port):
-  - `CHIRI_CDP_PORT`: the Chrome DevTools port, default 9222.
-  - `CHIRI_USER_DATA_DIR`: an absolute path for Electron's `userData`.
+- **Dev switches**, read in the main process of an unpackaged run (`pnpm dev:electron`, `pnpm preview:electron`); the debugging port only when `ELECTRON_RENDERER_URL` is set, so the built app opens none:
+  - `CHIRI_CDP_PORT`: the Chrome DevTools port, default 9222 (dev run only).
+  - `CHIRI_USER_DATA_DIR`: an absolute path for Electron's `userData`. It also applies to `pnpm preview:electron`, which is not packaged; a packaged app ignores it.
   - `CHIRI_DEV_PORT` sets the Vite port for `pnpm dev` and `pnpm dev:electron`; when set, Vite does not move to another port.
 - **Window and IPC rules from the first slice:** `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`; new windows denied; navigation away from the app origin cancelled; every IPC handler checks `event.senderFrame.origin` against the app origin ([Electron security](https://www.electronjs.org/docs/latest/tutorial/security), items 13, 14 and 17). The preload exposes `window.chiri.shellInfo()` only.
 - **Verification stays the same:** `agent-browser` attaches to the window over the Chrome DevTools Protocol (`--remote-debugging-port` in dev) and reads `window.__aiCalls` as before.

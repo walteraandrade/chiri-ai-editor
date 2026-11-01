@@ -17,9 +17,13 @@ const appUrl = (): string =>
     : new URL(RENDERER_ENTRY, devServerUrl).href
 
 const applyDevOptions = (): void => {
-  const { debugPort, userDataDir } = resolveDevOptions(process.env)
+  const { debugPort, userDataDir } = resolveDevOptions(process.env, {
+    devServer: devServerUrl !== undefined,
+    packaged: app.isPackaged,
+  })
   if (userDataDir !== undefined) app.setPath('userData', userDataDir)
-  app.commandLine.appendSwitch('remote-debugging-port', String(debugPort))
+  if (debugPort !== undefined)
+    app.commandLine.appendSwitch('remote-debugging-port', String(debugPort))
 }
 
 const registerIpc = (): void => {
@@ -63,7 +67,7 @@ const createWindow = (): BrowserWindow => {
   return window
 }
 
-if (devServerUrl !== undefined) applyDevOptions()
+applyDevOptions()
 lockNavigation()
 
 app.whenReady().then(() => {
