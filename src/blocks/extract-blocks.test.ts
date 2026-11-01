@@ -172,6 +172,16 @@ describe('extractBlocks', () => {
       )
     })
 
+    it('keeps a heading between two plain rules', () => {
+      const blocks = extractBlocks('---\n# Title\n---\n\nBody.\n')
+      expect(blocks.map((block) => block.kind)).toEqual([
+        'rule',
+        'heading',
+        'rule',
+        'paragraph',
+      ])
+    })
+
     it('does not skip a rule that is not at the start', () => {
       const blocks = extractBlocks('Intro.\n\n---\n\nBody.\n')
       expect(blocks.map((block) => block.kind)).toEqual([

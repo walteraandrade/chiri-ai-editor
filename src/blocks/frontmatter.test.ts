@@ -112,6 +112,15 @@ describe('findFrontmatter', () => {
       expect(findFrontmatter('---\n## Heading\ntext\n---\n')).toBeUndefined()
     })
 
+    it('is not a frontmatter when there are only comments', () => {
+      expect(findFrontmatter('---\n# Title\n---\n')).toBeUndefined()
+      expect(findFrontmatter('---\n# one\n\n  # two\n---\n')).toBeUndefined()
+    })
+
+    it('is not a frontmatter when comments are followed by prose', () => {
+      expect(findFrontmatter('---\n# Title\nIntro.\n---\n')).toBeUndefined()
+    })
+
     it('needs a space or the end of the line after the colon', () => {
       expect(findFrontmatter('---\nhttps://example.com\n---\n')).toBeUndefined()
       expect(findFrontmatter('---\nname:demo\n---\n')).toBeUndefined()
@@ -138,10 +147,10 @@ describe('findFrontmatter', () => {
       expect(findFrontmatter('---\nnome-da-habilidade: x\n---\n')).toBeDefined()
     })
 
-    it('is empty or only comments', () => {
+    it('is empty or only blank lines', () => {
       expect(findFrontmatter('---\n---\n')).toBeDefined()
       expect(findFrontmatter('---\n\n\n---\n')).toBeDefined()
-      expect(findFrontmatter('---\n# nothing yet\n---\n')).toBeDefined()
+      expect(findFrontmatter('---\n \t\n---\n')).toBeDefined()
     })
 
     it('has a first key with a block value', () => {

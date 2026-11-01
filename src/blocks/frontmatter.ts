@@ -15,10 +15,11 @@ const FRONTMATTER = /^---[ \t]*\n(?:([\s\S]*?)\n)?---[ \t]*(?=\n|$)/
 const MAPPING_KEY = /^(?:[\p{L}\p{N}_.-]+|"[^"]*"|'[^']*')[ \t]*:(?:[ \t]|$)/u
 
 const looksLikeYaml = (yaml: string): boolean => {
+  if (yaml.trim() === '') return true
   const first = yaml
     .split('\n')
     .find((line) => line.trim() !== '' && !line.trimStart().startsWith('#'))
-  return first === undefined || MAPPING_KEY.test(first)
+  return first !== undefined && MAPPING_KEY.test(first)
 }
 
 export const findFrontmatter = (text: string): Frontmatter | undefined => {
