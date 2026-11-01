@@ -33,11 +33,19 @@ export const createSwitchableHistory = <Ref>({
   }
   follow(current)
 
+  const retire = (history: DocumentHistory): void => {
+    left.add(history)
+    const forget = (): void => {
+      left.delete(history)
+    }
+    history.settled().then(forget, forget)
+  }
+
   const select = (ref: Ref | null): void => {
     const next = keyOf(ref)
     if (next === key) return
     current.flush()
-    left.add(current)
+    retire(current)
     key = next
     current = create(key)
     follow(current)

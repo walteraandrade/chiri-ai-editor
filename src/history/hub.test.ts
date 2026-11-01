@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSwitchableHistory } from './hub'
 import { createLocalHistoryStore } from './local-store'
-import { createDocumentHistory } from './session'
+import { createDocumentHistory, type DocumentHistory } from './session'
 import type { HistoryStore } from './store'
 
 const IDLE_MS = 30_000
@@ -209,6 +209,82 @@ describe('createSwitchableHistory', () => {
     hub.flush()
     await hub.settled()
     expect(calls).toEqual(['/notes/a.md:edited:unsaved typing'])
+  })
+
+  it('stops tracking a file it left once its writes settled', async () => {
+    const { store } = createStore()
+    const made: DocumentHistory[] = []
+    const hub = createSwitchableHistory<string>({
+      keyOf: (ref) => ref ?? 'scratch',
+      create: (key, initial) => {
+        const history = createDocumentHistory({
+          store,
+          key,
+          initial,
+          now: () => 1,
+          idleMs: IDLE_MS,
+          onError: vi.fn(),
+        })
+        made.push(history)
+        return history
+      },
+      first: { ref: null, initial: [] },
+    })
+    const first = made[0]
+    if (first === undefined) throw new Error('no first history')
+    const settled = vi.spyOn(first, 'settled')
+    hub.opened({ text: 'left behind', name: 'a.md' })
+    hub.select('/notes/a.md')
+    await vi.advanceTimersByTimeAsync(0)
+    settled.mockClear()
+    await hub.settled()
+    expect(settled).not.toHaveBeenCalled()
+  })
+
+  it('keeps waiting for a file it left while its writes are pending', async () => {
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { store } = createStore()
+    const slow: HistoryStore = {
+      ...store,
+      record: async (key, input) => {
+        if (key === 'scratch') await held
+        return store.record(key, input)
+      },
+    }
+    const made: DocumentHistory[] = []
+    const hub = createSwitchableHistory<string>({
+      keyOf: (ref) => ref ?? 'scratch',
+      create: (key, initial) => {
+        const history = createDocumentHistory({
+          store: slow,
+          key,
+          initial,
+          now: () => 1,
+          idleMs: IDLE_MS,
+          onError: vi.fn(),
+        })
+        made.push(history)
+        return history
+      },
+      first: { ref: null, initial: [] },
+    })
+    const first = made[0]
+    if (first === undefined) throw new Error('no first history')
+    const settled = vi.spyOn(first, 'settled')
+    hub.opened({ text: 'slow', name: 'a.md' })
+    hub.select('/notes/a.md')
+    await vi.advanceTimersByTimeAsync(0)
+    settled.mockClear()
+    const waiting = hub.settled()
+    expect(settled).toHaveBeenCalledTimes(1)
+    release()
+    await waiting
+    settled.mockClear()
+    await hub.settled()
+    expect(settled).not.toHaveBeenCalled()
   })
 
   it('waits for the writes of the file it left', async () => {
