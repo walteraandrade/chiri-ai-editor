@@ -1,8 +1,9 @@
 import { basename, isAbsolute } from 'node:path'
 import { z } from 'zod'
 import type { SaveFileAsRequest, SaveFileRequest } from '../../api'
+import { MAX_FILE_BYTES } from './limits'
 
-export const MAX_TEXT_CHARS = 5_000_000
+export const MAX_TEXT_CHARS = MAX_FILE_BYTES
 const MAX_PATH_CHARS = 4096
 const MAX_NAME_CHARS = 255
 

@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
+import { MAX_FILE_BYTES } from './limits'
 import {
   MAX_TEXT_CHARS,
   parsePathRequest,
   parseSaveAsRequest,
   parseSaveRequest,
 } from './requests'
+
+describe('the text limit', () => {
+  it('is the file limit, counted in characters, so the byte check in Save is the one that bites', () => {
+    expect(MAX_TEXT_CHARS).toBe(MAX_FILE_BYTES)
+  })
+})
 
 describe('parsePathRequest', () => {
   it('accepts an absolute path', () => {

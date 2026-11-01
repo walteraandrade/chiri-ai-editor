@@ -15,6 +15,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { MAX_FILE_BYTES } from './limits'
 import { saveMarkdown, saveMarkdownAs } from './save-markdown'
 
 let dir = ''
@@ -152,7 +153,40 @@ describe('saveMarkdown', () => {
   })
 })
 
+describe('saveMarkdown, size', () => {
+  it('refuses text whose UTF-8 bytes are over the limit, with a message', async () => {
+    const path = join(dir, 'SKILL.md')
+    await writeFile(path, '# A\n')
+    const text = 'あ'.repeat(2_000_000)
+    expect(text.length).toBeLessThan(MAX_FILE_BYTES)
+    expect(Buffer.byteLength(text, 'utf8')).toBeGreaterThan(MAX_FILE_BYTES)
+    expect(await saveMarkdown({ path, text, expected: '# A\n' })).toEqual({
+      kind: 'failed',
+      reason: 'Too large to save (over 5 MiB)',
+    })
+    expect(await readFile(path, 'utf8')).toBe('# A\n')
+    expect(await readdir(dir)).toEqual(['SKILL.md'])
+  })
+
+  it('accepts text of exactly the limit', async () => {
+    const path = join(dir, 'SKILL.md')
+    await writeFile(path, '# A\n')
+    const text = 'a'.repeat(MAX_FILE_BYTES)
+    expect(await saveMarkdown({ path, text, expected: '# A\n' })).toMatchObject(
+      { kind: 'saved' },
+    )
+  })
+})
+
 describe('saveMarkdownAs', () => {
+  it('refuses text over the byte limit before writing', async () => {
+    const path = join(dir, 'big.md')
+    expect(
+      await saveMarkdownAs({ path, text: 'あ'.repeat(2_000_000) }),
+    ).toEqual({ kind: 'failed', reason: 'Too large to save (over 5 MiB)' })
+    expect(await readdir(dir)).toEqual([])
+  })
+
   it('creates a new file', async () => {
     const path = join(dir, 'new.md')
     expect(await saveMarkdownAs({ path, text: '# New\n' })).toEqual({

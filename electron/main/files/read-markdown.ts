@@ -3,9 +3,8 @@ import { basename } from 'node:path'
 import { decodeMarkdown } from '../../../src/document/decode-markdown'
 import type { FileReadResult } from '../../api'
 import { describeFailure } from './fs-failure'
+import { MAX_FILE_BYTES } from './limits'
 import { isMarkdownPath } from './markdown-path'
-
-export const MAX_FILE_BYTES = 5 * 1024 * 1024
 
 type Failed = Extract<FileReadResult, { readonly kind: 'failed' }>
 

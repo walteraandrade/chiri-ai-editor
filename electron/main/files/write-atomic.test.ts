@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { writeAtomic } from './write-atomic'
+import { type AtomicFs, writeAtomic } from './write-atomic'
 
 let dir = ''
 
@@ -93,5 +93,120 @@ describe('writeAtomic', () => {
     await expect(
       writeAtomic(join(dir, 'missing', 'a.md'), 'x'),
     ).rejects.toThrow()
+  })
+})
+
+const fakeFs = (
+  log: string[],
+  options: { readonly renameFails?: boolean } = {},
+) => {
+  const fs: AtomicFs = {
+    stat: async () => {
+      log.push('stat')
+      return { mode: 0o100640 }
+    },
+    open: async () => {
+      log.push('open')
+      return {
+        writeFile: async () => {
+          log.push('write')
+        },
+        chmod: async () => {
+          log.push('chmod')
+        },
+        sync: async () => {
+          log.push('sync')
+        },
+        close: async () => {
+          log.push('close')
+        },
+      }
+    },
+    rename: async () => {
+      log.push('rename')
+      if (options.renameFails) throw new Error('EXDEV')
+    },
+    unlink: async () => {
+      log.push('unlink')
+    },
+  }
+  return fs
+}
+
+describe('writeAtomic order', () => {
+  it('writes and syncs the temporary file, then asks, then renames', async () => {
+    const log: string[] = []
+    const outcome = await writeAtomic(
+      '/skills/a/SKILL.md',
+      'new\n',
+      async () => {
+        log.push('accept')
+        return true
+      },
+      fakeFs(log),
+    )
+    expect(outcome).toBe('written')
+    expect(log).toEqual([
+      'stat',
+      'open',
+      'write',
+      'chmod',
+      'sync',
+      'close',
+      'accept',
+      'rename',
+    ])
+  })
+
+  it('removes the temporary file and never renames when the answer is no', async () => {
+    const log: string[] = []
+    const outcome = await writeAtomic(
+      '/skills/a/SKILL.md',
+      'new\n',
+      async () => {
+        log.push('accept')
+        return false
+      },
+      fakeFs(log),
+    )
+    expect(outcome).toBe('rejected')
+    expect(log.slice(-2)).toEqual(['accept', 'unlink'])
+    expect(log).not.toContain('rename')
+  })
+
+  it('removes the temporary file and lets the error through when asking fails', async () => {
+    const log: string[] = []
+    await expect(
+      writeAtomic(
+        '/skills/a/SKILL.md',
+        'new\n',
+        async () => {
+          throw new Error('read failed')
+        },
+        fakeFs(log),
+      ),
+    ).rejects.toThrow('read failed')
+    expect(log.slice(-1)).toEqual(['unlink'])
+    expect(log).not.toContain('rename')
+  })
+
+  it('removes the temporary file when the rename fails', async () => {
+    const log: string[] = []
+    await expect(
+      writeAtomic(
+        '/skills/a/SKILL.md',
+        'new\n',
+        async () => true,
+        fakeFs(log, { renameFails: true }),
+      ),
+    ).rejects.toThrow('EXDEV')
+    expect(log.slice(-2)).toEqual(['rename', 'unlink'])
+  })
+
+  it('answers written without asking anything when no check is given', async () => {
+    const log: string[] = []
+    expect(
+      await writeAtomic('/skills/a/SKILL.md', 'new\n', undefined, fakeFs(log)),
+    ).toBe('written')
   })
 })
