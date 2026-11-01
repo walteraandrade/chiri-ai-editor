@@ -1,6 +1,6 @@
 # 0012. Document History
 
-- Status: Accepted (2026-10-30)
+- Status: Accepted (2026-10-30); storage amended by [0015](0015-history-in-sqlite.md) in the Electron build ([0016](0016-web-and-electron-builds.md))
 - Source: maintainer request after the submission (change history). The layout was picked from a throwaway prototype with five variants; the maintainer chose E, a Timeline bar plus a Full history page.
 
 ## Context
