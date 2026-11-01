@@ -8,9 +8,9 @@ import { idleReviewStatus, type ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
 import type { FailureNotice } from '../editor/suggestions'
 import { applyHistoryEvent, type HistoryEvent } from '../history/events'
-import type { HistoryRecorder } from '../history/recorder'
 import { formatClock } from '../history/time'
 import type { Version } from '../history/types'
+import type { PlatformKit } from '../platform/kit'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
@@ -28,18 +28,15 @@ import { useMarkdownFile } from './use-markdown-file'
 import { VersionBar } from './VersionBar'
 
 type AppProps = {
-  readonly initialDoc: string
-  readonly hasApiKey: boolean
-  readonly onDocumentChange: (doc: string) => void
-  readonly history: HistoryRecorder
+  readonly kit: PlatformKit
 }
 
-export function App({
-  initialDoc,
-  hasApiKey,
-  onDocumentChange,
-  history,
-}: AppProps) {
+export function App({ kit }: AppProps) {
+  const {
+    unsavedText: { initial: initialDoc, changed: onDocumentChange },
+    history,
+    keyStatus,
+  } = kit
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
   const [controls, setControls] = useState<ReviewControls | null>(null)
@@ -212,7 +209,7 @@ export function App({
         </div>
       </main>
       <Toast message={toast} onDismiss={dismissToast} />
-      {hasApiKey ? null : <MissingKeyBanner />}
+      {keyStatus.present ? null : <MissingKeyBanner />}
     </div>
   )
 }
