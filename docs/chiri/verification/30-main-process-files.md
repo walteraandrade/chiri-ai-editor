@@ -44,6 +44,18 @@ So **every Open and Save as in the table below picked its file through `CHIRI_DE
 | Last file reopens at start | Pass | Every restart above reopened the last file with no Open |
 | A failed start shows something | Pass by tests | `mountApp` renders `StartError` when the kit factory rejects (`start-error.test.ts` for the message). Not forced in the window |
 
+## Review fixes (PR #37, first pass)
+
+Re-checked in the Electron window inside a headless gamescope (no window on the desktop), with the dialog stub for the picks. No model calls.
+
+| Fix | Check | Result |
+|---|---|---|
+| Save as no longer replaces a file that adding `.md` reaches | Picked `copy-of-alpha` with `copy-of-alpha.md` already there, then Save as | Toast "Could not save SKILL.md: copy-of-alpha.md already exists"; the file's SHA-256 did not change; the session stayed on `SKILL.md` |
+| Check right before the rename | Edit, Save: saved. An agent changed the file, Save again | Notice shown, file's SHA-256 equal to the agent's version, no temp file left. The order (write, sync, check, rename, and the temp file removed on a refusal) is `write-atomic.test.ts` with a fake file system |
+| Byte limit on Save | `save-markdown.test.ts`: 2,000,000 `あ` (about 6 MB) are refused with "Too large to save (over 5 MiB)", the text limit is the file limit in characters | Unit only; not forced in the window |
+| Dev stub needs an unpackaged app | `dev-dialogs.test.ts` | Unit; every pick above still went through the stub |
+| A deleted last file | Opened a file, typed unsaved text, stopped the app, deleted the file, started twice | First start: "Could not reopen gone.md: File not found" and the typed text in the Document. Second start: no notice, same text |
+
 ## For the maintainer's manual test
 
 These need a real desktop window and a human on the GTK dialog, which the automated checks could not do (the run happened in a visible window, before the headless gamescope rule; the dialog never accepted the typed path):

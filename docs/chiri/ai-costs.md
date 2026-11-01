@@ -137,3 +137,4 @@ Notes on issue #30 (Files through DocumentFiles):
 - Slice cost is US$0.0036: 2 calls, a default Review pass on the same `SKILL.md` in the Electron window and in the Web build. Neither pass touched the frontmatter. The rest of the checks (Open, Save, conflict, restart, killed process) call no model.
 - `window.__aiCalls` was not read, because the permission system refused `agent-browser eval`. The generation ids came from `agent-browser network requests` and the records from `GET /api/openrouter/generation?id=…` through the dev proxy, so client latency, time to the first Suggestion and the retry flag are missing.
 - The key's counter was not re-read.
+- The review fixes of PR #37 were re-checked without a model call.

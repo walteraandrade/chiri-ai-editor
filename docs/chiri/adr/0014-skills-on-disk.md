@@ -18,6 +18,7 @@ Claude Code reads a skill from `<root>/<name>/SKILL.md`, plus the files beside i
 - **Save stays explicit.** A save is seen by every agent at once, so the app writes only when told to.
 - **Save never overwrites a change it has not seen.** Before writing, the main process compares the disk text with the text last read or written. If they differ, Save stops and shows the External change notice.
   - The renderer sends that text with every Save (the session's saved text), so the main process keeps no per-file state. Both texts are compared after decoding (no byte order mark, LF line endings). A file that is gone, or no longer valid UTF-8 text, counts as a change.
+  - The check runs again right before the rename, after the temporary file is written and synced, so a write by an agent during that time is seen too. A temporary file that loses the check is removed.
   - "Keep mine" never forces a write: the next Save asks again. The ways out are "Reload from disk" and Save as.
 - **Writes are atomic:** write a temporary file next to the real path (a symlink's target), give it the old file's mode, then rename it. An agent never reads half a file, a symlink stays a symlink, and permissions stay as they were.
 - **External change:** the watcher reports a change to the open file.
@@ -29,9 +30,10 @@ Claude Code reads a skill from `<root>/<name>/SKILL.md`, plus the files beside i
   - Not its own writes. A change whose disk text equals the text last written by the app is not an External change.
 - **Unsaved text survives a crash:** it is kept per file, debounced like today's autosave, and offered when that file opens again.
   - It keeps the text the edits started from. After a restart, the file's saved text is that one, not the disk text, so a file changed while the app was closed ends in the External change notice instead of being overwritten.
-  - The last file reopens at start, before the first render, with its unsaved text.
+  - The last file reopens at start, before the first render, with its unsaved text. If it is gone (not found), the app says so once and forgets it; the text stays in the Document, and the per-file entry is dropped only once the Document holds it.
   - Until History moves into SQLite, it lives in the renderer's `localStorage`, keyed by real path, and the renderer asks the main process to write that storage to disk after each change (`session.flushStorageData()`), so a killed process keeps it.
-- **Requests are validated in the main process:** absolute paths with no NUL, strict fields, size limits; only `.md` and `.markdown` files, checked on the resolved path; text must be valid UTF-8; files over 5 MiB are refused.
+- **Requests are validated in the main process:** absolute paths with no NUL, strict fields, size limits; only `.md` and `.markdown` files, checked on the resolved path; text must be valid UTF-8; files over 5 MiB are refused, and so is a Save whose UTF-8 bytes are over 5 MiB (the text limit on the request counts characters, so the byte check is the one that bites).
+- **Save as never replaces a file the dialog did not ask about.** The dialog's overwrite confirmation sees the name the user typed. If adding `.md` gives a path that already exists, Save as stops with "notes.md already exists".
 - **Frontmatter is not a Block.** `@codemirror/lang-markdown` reads a `---` frontmatter as a rule plus a level-2 heading, so a Review pass could rewrite the YAML. Block extraction skips a frontmatter at the start of the Document, and Targets inside it are refused.
 
 ## Consequences
