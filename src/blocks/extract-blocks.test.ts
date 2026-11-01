@@ -2,6 +2,7 @@ import { markdownLanguage } from '@codemirror/lang-markdown'
 import { describe, expect, it } from 'vitest'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import { extractBlocks, extractBlocksFromTree } from './extract-blocks'
+import { blankFrontmatter } from './frontmatter'
 
 describe('extractBlocks', () => {
   it('returns no Blocks for an empty Document', () => {
@@ -180,13 +181,13 @@ describe('extractBlocks', () => {
       ])
     })
 
-    it('skips it in a tree parsed with it', () => {
-      const text = '---\nname: demo\n---\n\nBody.\n'
+    it('reads a tree parsed from the text with the frontmatter blanked', () => {
+      const text = '---\nnote: |\n  ```\n---\n\n# Demo\n'
       const blocks = extractBlocksFromTree(
-        markdownLanguage.parser.parse(text),
+        markdownLanguage.parser.parse(blankFrontmatter(text)),
         text,
       )
-      expect(blocks.map((block) => block.text)).toEqual(['Body.'])
+      expect(blocks.map((block) => block.text)).toEqual(['# Demo'])
     })
   })
 

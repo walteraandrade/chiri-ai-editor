@@ -1,5 +1,5 @@
 import { markdownLanguage } from '@codemirror/lang-markdown'
-import { blankFrontmatter, findFrontmatter } from './frontmatter'
+import { blankFrontmatter } from './frontmatter'
 
 export type BlockKind =
   | 'heading'
@@ -48,18 +48,17 @@ const classify = (nodeName: string): Classification => {
   return { kind: SIMPLE_KINDS[nodeName] ?? 'other' }
 }
 
+// `tree` must be parsed from `blankFrontmatter(text)`; offsets are those of `text`.
 export const extractBlocksFromTree = (
   tree: MarkdownTree,
   text: string,
 ): readonly Block[] => {
   const blocks: Block[] = []
-  const start = findFrontmatter(text)?.to ?? 0
   for (
     let node = tree.topNode.firstChild;
     node !== null;
     node = node.nextSibling
   ) {
-    if (node.from < start) continue
     blocks.push({
       id: `p${blocks.length + 1}`,
       from: node.from,
