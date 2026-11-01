@@ -14,15 +14,17 @@ import type { DocumentFiles, StartFile, UnsavedText } from '../platform/kit'
 import { fileCommandOf } from './file-commands'
 import { detectApplePlatform } from './platform'
 
+export type FileArrival<Ref> = FileEvent & { readonly ref: Ref | null }
+
 type MarkdownFileOptions<Ref> = {
   readonly files: DocumentFiles<Ref>
   readonly unsavedText: UnsavedText<Ref>
   readonly start: StartFile<Ref> | null
   readonly controls: DocumentControls | null
   readonly notify: (text: string) => void
-  readonly onOpened: (file: FileEvent) => void
+  readonly onOpened: (file: FileArrival<Ref>) => void
   readonly onSaving: (text: string) => void
-  readonly onSaved: (file: FileEvent) => void
+  readonly onSaved: (file: FileArrival<Ref>) => void
 }
 
 const startSession = <Ref>(
@@ -86,12 +88,18 @@ export const useMarkdownFile = <Ref>({
       onSaving: (text) => latest.current.onSaving(text),
       onOpened: (file) => {
         setConflict(null)
-        latest.current.onOpened(file)
+        latest.current.onOpened({
+          ...file,
+          ref: sessionRef.current?.ref ?? null,
+        })
         announce()
       },
       onSaved: (file) => {
         setConflict(null)
-        latest.current.onSaved(file)
+        latest.current.onSaved({
+          ...file,
+          ref: sessionRef.current?.ref ?? null,
+        })
         announce()
       },
       onConflict: setConflict,

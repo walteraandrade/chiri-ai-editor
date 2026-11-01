@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { startHistory } from './history'
 import { createHistoryRecorder } from './recorder'
-import type { AcceptedChange, History } from './types'
+import type { HistoryWrite } from './store'
+import type { AcceptedChange, VersionCause } from './types'
 
 const IDLE_MS = 30_000
 
@@ -11,12 +11,13 @@ const shorter: AcceptedChange = {
   rationale: 'Drops filler.',
 }
 
-const createRecorder = (initial: History = startHistory('start', 0)) => {
+const createRecorder = () => {
   let time = 1000
-  const persist = vi.fn()
+  const writes: HistoryWrite[] = []
   const recorder = createHistoryRecorder({
-    initial,
-    persist,
+    emit: (write) => {
+      writes.push(write)
+    },
     now: () => time,
     idleMs: IDLE_MS,
   })
@@ -24,11 +25,21 @@ const createRecorder = (initial: History = startHistory('start', 0)) => {
     time += ms
     vi.advanceTimersByTime(ms)
   }
-  return { recorder, persist, tick }
+  return { recorder, writes, tick }
 }
 
-const causes = (history: History) =>
-  history.map((version) => version.cause.kind)
+const recorded = (
+  text: string,
+  cause: VersionCause,
+  at = 1000,
+): HistoryWrite => ({ type: 'version-recorded', at, cause, text })
+
+const summary = (writes: readonly HistoryWrite[]) =>
+  writes.map((write) =>
+    write.type === 'version-recorded'
+      ? [write.cause.kind, write.text]
+      : ['marked-saved', write.text, write.name],
+  )
 
 describe('createHistoryRecorder', () => {
   beforeEach(() => {
@@ -40,53 +51,44 @@ describe('createHistoryRecorder', () => {
   })
 
   it('turns edits into one Edited Version after the idle delay', () => {
-    const { recorder, persist, tick } = createRecorder()
+    const { recorder, writes, tick } = createRecorder()
     recorder.edited('start a')
     tick(IDLE_MS - 1)
     recorder.edited('start ab')
     tick(IDLE_MS - 1)
-    expect(recorder.snapshot()).toHaveLength(1)
+    expect(writes).toEqual([])
 
     tick(1)
-    expect(recorder.snapshot().at(-1)).toMatchObject({
-      cause: { kind: 'edited' },
-      text: 'start ab',
-    })
-    expect(persist).toHaveBeenCalledTimes(1)
+    expect(writes).toEqual([
+      recorded('start ab', { kind: 'edited' }, 1000 + 2 * IDLE_MS - 1),
+    ])
   })
 
   it('records pending edits on their own before an Accepted Version', () => {
-    const { recorder } = createRecorder()
+    const { recorder, writes } = createRecorder()
     recorder.edited('start typed')
     recorder.accepted({
       before: 'start typed',
       text: 'typed',
       changes: [shorter],
     })
-    expect(causes(recorder.snapshot())).toEqual([
-      'started',
-      'edited',
-      'accepted',
+    expect(writes).toEqual([
+      recorded('start typed', { kind: 'edited' }),
+      recorded('typed', { kind: 'accepted', changes: [shorter] }),
     ])
-    expect(recorder.snapshot().at(-1)).toMatchObject({
-      cause: { kind: 'accepted', changes: [shorter] },
-      text: 'typed',
-    })
   })
 
   it('records the text before an Accept even without a reported edit', () => {
-    const { recorder } = createRecorder()
+    const { recorder, writes } = createRecorder()
     recorder.accepted({ before: 'unseen', text: 'after', changes: [shorter] })
-    expect(causes(recorder.snapshot())).toEqual([
-      'started',
-      'edited',
-      'accepted',
+    expect(summary(writes)).toEqual([
+      ['edited', 'unseen'],
+      ['accepted', 'after'],
     ])
-    expect(recorder.snapshot()[1]?.text).toBe('unseen')
   })
 
   it('cancels the idle timer once pending edits are recorded', () => {
-    const { recorder, tick } = createRecorder()
+    const { recorder, writes, tick } = createRecorder()
     recorder.edited('start typed')
     recorder.accepted({
       before: 'start typed',
@@ -94,61 +96,85 @@ describe('createHistoryRecorder', () => {
       changes: [shorter],
     })
     tick(IDLE_MS)
-    expect(recorder.snapshot()).toHaveLength(3)
+    expect(writes).toHaveLength(2)
   })
 
   it('records the text before a replace, then the Opened Version', () => {
-    const { recorder } = createRecorder()
+    const { recorder, writes } = createRecorder()
     recorder.edited('start edited')
     recorder.replaced('start edited')
     recorder.opened({ text: '# File', name: 'file.md' })
-    expect(recorder.snapshot().slice(1)).toMatchObject([
-      { cause: { kind: 'edited' }, text: 'start edited' },
-      { cause: { kind: 'opened', name: 'file.md' }, text: '# File' },
+    expect(writes).toEqual([
+      recorded('start edited', { kind: 'edited' }),
+      recorded('# File', { kind: 'opened', name: 'file.md' }),
     ])
   })
 
   it('records a Restored Version pointing at its source', () => {
-    const { recorder } = createRecorder()
-    recorder.edited('changed')
+    const { recorder, writes } = createRecorder()
     recorder.replaced('changed')
     recorder.restored({ text: 'start', from: 1 })
-    expect(recorder.snapshot().at(-1)).toMatchObject({
-      cause: { kind: 'restored', from: 1 },
-      text: 'start',
-    })
+    expect(writes.at(-1)).toEqual(
+      recorded('start', { kind: 'restored', from: 1 }),
+    )
   })
 
-  it('marks the saved text, recording pending edits first', () => {
-    const { recorder } = createRecorder()
+  it('records the text before a replace even with no edit waiting', () => {
+    const { recorder, writes } = createRecorder()
+    recorder.replaced('changed elsewhere')
+    expect(writes).toEqual([recorded('changed elsewhere', { kind: 'edited' })])
+  })
+
+  it('records pending edits when Save starts, then marks the saved text', () => {
+    const { recorder, writes } = createRecorder()
     recorder.edited('start more')
     recorder.saving('start more')
     recorder.saved({ text: 'start more', name: 'notes.md' })
-    expect(recorder.snapshot().at(-1)).toMatchObject({
-      cause: { kind: 'edited' },
-      text: 'start more',
-      saved: 'notes.md',
-    })
+    expect(writes).toEqual([
+      recorded('start more', { kind: 'edited' }),
+      {
+        type: 'version-marked-saved',
+        text: 'start more',
+        name: 'notes.md',
+        at: 1000,
+      },
+    ])
+  })
+
+  it('records a Version when Save starts, even with no edit waiting', () => {
+    const { recorder, writes } = createRecorder()
+    recorder.saving('start s')
+    expect(writes).toEqual([recorded('start s', { kind: 'edited' })])
+  })
+
+  it('drops the pending edits and their timer once Save starts', () => {
+    const { recorder, writes, tick } = createRecorder()
+    recorder.edited('start s')
+    recorder.saving('start s')
+    tick(IDLE_MS)
+    expect(writes).toHaveLength(1)
   })
 
   it('keeps edits typed while a Save waits after the saved Version', () => {
-    const { recorder, tick } = createRecorder()
+    const { recorder, writes, tick } = createRecorder()
     recorder.edited('start a')
     recorder.saving('start a')
     recorder.edited('start a b')
     recorder.saved({ text: 'start a', name: 'notes.md' })
-    expect(recorder.snapshot().slice(1)).toMatchObject([
-      { cause: { kind: 'edited' }, text: 'start a', saved: 'notes.md' },
+    expect(summary(writes)).toEqual([
+      ['edited', 'start a'],
+      ['marked-saved', 'start a', 'notes.md'],
     ])
     tick(IDLE_MS)
-    expect(recorder.snapshot().slice(1)).toMatchObject([
-      { text: 'start a', saved: 'notes.md' },
-      { cause: { kind: 'edited' }, text: 'start a b' },
+    expect(summary(writes)).toEqual([
+      ['edited', 'start a'],
+      ['marked-saved', 'start a', 'notes.md'],
+      ['edited', 'start a b'],
     ])
   })
 
-  it('marks the saved text in place when an Accept came during the Save', () => {
-    const { recorder } = createRecorder()
+  it('marks the saved text after an Accept that came during the Save', () => {
+    const { recorder, writes } = createRecorder()
     recorder.edited('start typed')
     recorder.saving('start typed')
     recorder.accepted({
@@ -157,109 +183,35 @@ describe('createHistoryRecorder', () => {
       changes: [shorter],
     })
     recorder.saved({ text: 'start typed', name: 'notes.md' })
-    expect(
-      recorder.snapshot().map((version) => [version.text, version.saved]),
-    ).toEqual([
-      ['start', undefined],
-      ['start typed', 'notes.md'],
-      ['typed', undefined],
+    expect(summary(writes)).toEqual([
+      ['edited', 'start typed'],
+      ['edited', 'start typed'],
+      ['accepted', 'typed'],
+      ['marked-saved', 'start typed', 'notes.md'],
     ])
-  })
-
-  it('saves edits that went back to an older text as a new Version', () => {
-    const { recorder } = createRecorder()
-    recorder.edited('start x')
-    recorder.flush()
-    recorder.edited('start')
-    recorder.saving('start')
-    recorder.saved({ text: 'start', name: 'notes.md' })
-    expect(
-      recorder.snapshot().map((version) => [version.text, version.saved]),
-    ).toEqual([
-      ['start', undefined],
-      ['start x', undefined],
-      ['start', 'notes.md'],
-    ])
-  })
-
-  it('keeps the saved text in place when typing and an Accept came during the Save', () => {
-    const { recorder } = createRecorder()
-    recorder.edited('start p')
-    recorder.saving('start p')
-    recorder.edited('start p2')
-    recorder.accepted({ before: 'start p2', text: 'B', changes: [shorter] })
-    recorder.saved({ text: 'start p', name: 'notes.md' })
-    expect(
-      recorder.snapshot().map((version) => [version.text, version.saved]),
-    ).toEqual([
-      ['start', undefined],
-      ['start p', 'notes.md'],
-      ['start p2', undefined],
-      ['B', undefined],
-    ])
-  })
-
-  it('records a Version when Save starts, even with no edit waiting', () => {
-    const { recorder } = createRecorder()
-    recorder.saving('start s')
-    expect(recorder.snapshot().at(-1)).toMatchObject({
-      cause: { kind: 'edited' },
-      text: 'start s',
-    })
-  })
-
-  it('drops the pending edits and their timer once Save starts', () => {
-    const { recorder, persist, tick } = createRecorder()
-    recorder.edited('start s')
-    recorder.saving('start s')
-    tick(IDLE_MS)
-    expect(recorder.snapshot()).toHaveLength(2)
-    expect(persist).toHaveBeenCalledTimes(1)
-  })
-
-  it('records the text before a replace even with no edit waiting', () => {
-    const { recorder } = createRecorder()
-    recorder.replaced('changed elsewhere')
-    expect(recorder.snapshot().at(-1)).toMatchObject({
-      cause: { kind: 'edited' },
-      text: 'changed elsewhere',
-    })
   })
 
   it('flush records pending edits right away, once', () => {
-    const { recorder, persist, tick } = createRecorder()
+    const { recorder, writes, tick } = createRecorder()
     recorder.edited('start x')
     recorder.flush()
     recorder.flush()
     tick(IDLE_MS)
-    expect(recorder.snapshot()).toHaveLength(2)
-    expect(persist).toHaveBeenCalledTimes(1)
+    expect(writes).toEqual([recorded('start x', { kind: 'edited' })])
   })
 
-  it('does not persist or notify when nothing changed', () => {
-    const { recorder, persist } = createRecorder()
-    const listener = vi.fn()
-    recorder.subscribe(listener)
-    recorder.edited('start')
+  it('writes nothing when there is nothing pending', () => {
+    const { recorder, writes, tick } = createRecorder()
     recorder.flush()
-    expect(persist).not.toHaveBeenCalled()
-    expect(listener).not.toHaveBeenCalled()
+    tick(IDLE_MS)
+    expect(writes).toEqual([])
   })
 
-  it('notifies subscribers until they unsubscribe', () => {
-    const { recorder } = createRecorder()
-    const listener = vi.fn()
-    const unsubscribe = recorder.subscribe(listener)
-    recorder.opened({ text: 'one', name: 'one.md' })
-    unsubscribe()
-    recorder.opened({ text: 'two', name: 'two.md' })
-    expect(listener).toHaveBeenCalledTimes(1)
-  })
-
-  it('stamps Versions with the injected clock', () => {
-    const { recorder, tick } = createRecorder()
+  it('stamps writes with the injected clock', () => {
+    const { recorder, writes, tick } = createRecorder()
     tick(500)
     recorder.opened({ text: 'file', name: 'file.md' })
-    expect(recorder.snapshot().at(-1)?.at).toBe(1500)
+    recorder.saved({ text: 'file', name: 'file.md' })
+    expect(writes.map(({ at }) => at)).toEqual([1500, 1500])
   })
 })

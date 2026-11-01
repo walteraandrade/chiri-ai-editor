@@ -1,16 +1,13 @@
-import { markSaved, recordVersion } from './history'
-import type { AcceptedChange, History, VersionCause, VersionId } from './types'
+import type { HistoryWrite } from './store'
+import type { AcceptedChange, VersionCause, VersionId } from './types'
 
 type RecorderOptions = {
-  readonly initial: History
-  readonly persist: (history: History) => void
+  readonly emit: (write: HistoryWrite) => void
   readonly now: () => number
   readonly idleMs: number
 }
 
 export type HistoryRecorder = {
-  readonly snapshot: () => History
-  readonly subscribe: (listener: () => void) => () => void
   readonly edited: (text: string) => void
   readonly accepted: (input: {
     readonly before: string
@@ -40,24 +37,14 @@ type Pending = {
 }
 
 export const createHistoryRecorder = ({
-  initial,
-  persist,
+  emit,
   now,
   idleMs,
 }: RecorderOptions): HistoryRecorder => {
-  let history = initial
   let pending: Pending | null = null
-  const listeners = new Set<() => void>()
-
-  const commit = (next: History): void => {
-    if (next === history) return
-    history = next
-    persist(history)
-    for (const listener of listeners) listener()
-  }
 
   const record = (text: string, cause: VersionCause): void =>
-    commit(recordVersion(history, { text, cause, at: now() }))
+    emit({ type: 'version-recorded', at: now(), cause, text })
 
   const takePending = (): string | null => {
     const current = pending
@@ -77,11 +64,6 @@ export const createHistoryRecorder = ({
   }
 
   return {
-    snapshot: () => history,
-    subscribe: (listener) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
     edited: (text) => {
       takePending()
       pending = { text, timer: setTimeout(flush, idleMs) }
@@ -95,7 +77,7 @@ export const createHistoryRecorder = ({
     restored: ({ text, from }) => record(text, { kind: 'restored', from }),
     saving: settle,
     saved: ({ text, name }) =>
-      commit(markSaved(history, { text, name, at: now() })),
+      emit({ type: 'version-marked-saved', at: now(), text, name }),
     flush,
   }
 }

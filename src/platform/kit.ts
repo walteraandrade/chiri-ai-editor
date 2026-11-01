@@ -1,6 +1,7 @@
 import type { FileSession } from '../document/file-session'
 import type { Unsaved } from '../document/unsaved'
-import type { HistoryRecorder } from '../history/recorder'
+import type { SwitchableHistory } from '../history/hub'
+import type { Problems } from './problems'
 
 export type FileContents<Ref> = {
   readonly name: string
@@ -66,8 +67,9 @@ export type PlatformKit<Ref = unknown> = {
   readonly unsavedText: UnsavedText<Ref>
   readonly start: StartFile<Ref> | null
   readonly notice: string | null
-  readonly history: HistoryRecorder
+  readonly history: SwitchableHistory<Ref>
   readonly keyStatus: KeyStatus
+  readonly problems: Problems
 }
 
 export type PlatformKitFactory<Ref = unknown> = () => Promise<PlatformKit<Ref>>

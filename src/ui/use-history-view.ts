@@ -6,7 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
-import type { HistoryRecorder } from '../history/recorder'
+import type { DocumentHistory } from '../history/session'
 import type { VersionId } from '../history/types'
 import { nextHistoryMode, visibleMode } from '../history/view-mode'
 
@@ -18,10 +18,10 @@ const scrollBehavior = (): ScrollBehavior =>
     : 'smooth'
 
 export const useHistoryView = (
-  recorder: HistoryRecorder,
+  history: Pick<DocumentHistory, 'snapshot' | 'subscribe'>,
   onBackToEditor: () => void,
 ) => {
-  const versions = useSyncExternalStore(recorder.subscribe, recorder.snapshot)
+  const versions = useSyncExternalStore(history.subscribe, history.snapshot)
   const [requested, dispatch] = useReducer(nextHistoryMode(versions), {
     kind: 'editing',
   })

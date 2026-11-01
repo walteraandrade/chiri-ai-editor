@@ -1,4 +1,6 @@
-import type { History, VersionId } from './types'
+import type { VersionId } from './types'
+
+type Listed = readonly { readonly id: VersionId }[]
 
 export type HistoryMode =
   | { readonly kind: 'editing' }
@@ -13,11 +15,11 @@ export type HistoryModeAction =
 
 const EDITING: HistoryMode = { kind: 'editing' }
 
-const indexOf = (history: History, id: VersionId): number =>
+const indexOf = (history: Listed, id: VersionId): number =>
   history.findIndex((version) => version.id === id)
 
 export const nextHistoryMode =
-  (history: History) =>
+  (history: Listed) =>
   (mode: HistoryMode, action: HistoryModeAction): HistoryMode => {
     switch (action.type) {
       case 'show':
@@ -41,10 +43,7 @@ export const nextHistoryMode =
     }
   }
 
-export const visibleMode = (
-  mode: HistoryMode,
-  history: History,
-): HistoryMode =>
+export const visibleMode = (mode: HistoryMode, history: Listed): HistoryMode =>
   mode.kind === 'version' && indexOf(history, mode.id) < 0 ? EDITING : mode
 
 const KEY_TARGETS: Record<string, (index: number, last: number) => number> = {
@@ -55,7 +54,7 @@ const KEY_TARGETS: Record<string, (index: number, last: number) => number> = {
 }
 
 export const dotTarget = (
-  history: History,
+  history: Listed,
   current: VersionId | null,
   key: string,
 ): VersionId | null => {

@@ -4,6 +4,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { SHELL_INFO_CHANNEL, type ShellInfo } from '../api'
 import { resolveDevOptions } from './dev-options'
 import { registerFileHandlers } from './files/register'
+import { registerHistory } from './history-main'
 import { isAppNavigation, isTrustedFrame } from './trust'
 
 const CANVAS_COLOR = '#141417'
@@ -74,6 +75,12 @@ lockNavigation()
 
 app.whenReady().then(() => {
   registerIpc()
+  registerHistory({
+    ipcMain,
+    file: () => join(app.getPath('userData'), 'history.sqlite'),
+    isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
+    onQuit: (close) => app.on('will-quit', close),
+  })
   createWindow()
 })
 

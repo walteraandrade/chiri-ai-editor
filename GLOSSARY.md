@@ -5,8 +5,8 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | Term | Meaning |
 |---|---|
 | **Document** | The Markdown text in the editor. Persisted to `localStorage` with its History, and to a `.md` file on Save. Open replaces it with a file's text ([ADR 0011](docs/chiri/adr/0011-open-and-save-markdown-files.md)). |
-| **Version** | A copy of the whole Document at one moment, with its Cause and time ([ADR 0012](docs/chiri/adr/0012-document-history.md)). Causes: Started, Edited (your edits), Accepted (the Suggestions, with Instruction and Rationale), Opened, Restored. Saved is a mark on a Version. |
-| **History** | The Document's Versions, oldest first, kept in `localStorage`. At most 50; the oldest go first. |
+| **Version** | A copy of the whole Document at one moment, with its Cause and time ([ADR 0012](docs/chiri/adr/0012-document-history.md)). Causes: Started, Edited (your edits), Accepted (the Suggestions, with Instruction and Rationale), Opened, Restored, and External (the file changed outside the app; recorded by the watcher slice). Saved is a mark on a Version. |
+| **History** | The Document's Versions, oldest first, read through the async History store. Web build: `localStorage`, one Document, at most 50 (the oldest go first). Electron build: `history.sqlite`, one History per file, no cap ([ADR 0015](docs/chiri/adr/0015-history-in-sqlite.md)). |
 | **Timeline** | The bar under the header, one dot per Version. A dot shows that Version against the current text, with Restore. |
 | **Full history** | The page "How this Document changed", opened from the Timeline: one entry per Version, newest first, with the lines it changed. |
 | **Restore** | Replace the Document with a Version's text. Drops every Suggestion, takes one undo step, and records a Restored Version. |

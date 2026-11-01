@@ -1,12 +1,12 @@
 import type { KeyboardEvent } from 'react'
 import { describeVersion, markOf } from '../history/story'
 import { formatClock } from '../history/time'
-import type { History, VersionId } from '../history/types'
+import type { VersionId, VersionList } from '../history/types'
 import { dotTarget, type HistoryMode } from '../history/view-mode'
 import { VersionMark } from './VersionMark'
 
 type TimelineProps = {
-  readonly versions: History
+  readonly versions: VersionList
   readonly mode: HistoryMode
   readonly highlighted: VersionId | null
   readonly onDot: (id: VersionId) => void

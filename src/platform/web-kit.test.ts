@@ -25,13 +25,13 @@ const createFakeStorage = (
   }
 }
 
-const build = (
+const build = async (
   storage: StorageLike | null,
   options: { readonly hasApiKey?: boolean } = {},
 ) => {
   const hide: { flush: () => void } = { flush: () => undefined }
   const files = fakeFiles()
-  const kit = createWebKit({
+  const kit = await createWebKit({
     storage,
     files,
     now: () => 1000,
@@ -52,35 +52,35 @@ describe('createWebKit', () => {
     vi.useRealTimers()
   })
 
-  it('starts from the sample Document when nothing is stored', () => {
-    const { kit } = build(createFakeStorage())
+  it('starts from the sample Document when nothing is stored', async () => {
+    const { kit } = await build(createFakeStorage())
     expect(kit.unsavedText.initial).toBe(SAMPLE_DOCUMENT)
   })
 
-  it('starts from the stored Document', () => {
-    const { kit } = build(
+  it('starts from the stored Document', async () => {
+    const { kit } = await build(
       createFakeStorage({ [DOCUMENT_STORAGE_KEY]: '# Saved' }),
     )
     expect(kit.unsavedText.initial).toBe('# Saved')
   })
 
-  it('starts without storage', () => {
-    const { kit } = build(null)
+  it('starts without storage', async () => {
+    const { kit } = await build(null)
     expect(kit.unsavedText.initial).toBe(SAMPLE_DOCUMENT)
   })
 
-  it('saves the Document after the autosave delay', () => {
+  it('saves the Document after the autosave delay', async () => {
     const storage = createFakeStorage()
-    const { kit } = build(storage)
+    const { kit } = await build(storage)
     kit.unsavedText.changed('# Changed', null)
     expect(storage.entries()[DOCUMENT_STORAGE_KEY]).toBeUndefined()
     vi.advanceTimersByTime(400)
     expect(storage.entries()[DOCUMENT_STORAGE_KEY]).toBe('# Changed')
   })
 
-  it('saves the Document and the History when the page hides', () => {
+  it('saves the Document and the History when the page hides', async () => {
     const storage = createFakeStorage()
-    const { kit, hide } = build(storage)
+    const { kit, hide } = await build(storage)
     kit.unsavedText.changed('# Changed', null)
     kit.history.edited('# Changed')
     hide.flush()
@@ -88,27 +88,68 @@ describe('createWebKit', () => {
     expect(storage.entries()[HISTORY_STORAGE_KEY]).toContain('# Changed')
   })
 
-  it('stores the first Version of a new History', () => {
+  it('stores the first Version of a new History', async () => {
     const storage = createFakeStorage()
-    build(storage)
+    const { kit } = await build(storage)
     expect(storage.entries()[HISTORY_STORAGE_KEY]).toContain('"kind":"started"')
+    expect(kit.history.snapshot()).toMatchObject([
+      { cause: { kind: 'started' } },
+    ])
   })
 
-  it('hands over the files it was given', () => {
-    const { kit, files } = build(null)
+  it('keeps the History across a reload', async () => {
+    const storage = createFakeStorage()
+    const first = await build(storage)
+    first.kit.history.opened({ text: '# Opened', name: 'a.md' })
+    await first.kit.history.settled()
+    first.kit.unsavedText.changed('# Opened', null)
+    vi.advanceTimersByTime(400)
+    const second = await build(storage)
+    expect(
+      second.kit.history.snapshot().map(({ cause }) => cause.kind),
+    ).toEqual(['started', 'opened'])
+  })
+
+  it('records an Edited Version when the Document moved on while closed', async () => {
+    const storage = createFakeStorage()
+    await build(storage)
+    storage.setItem(DOCUMENT_STORAGE_KEY, '# Written elsewhere')
+    const { kit } = await build(storage)
+    expect(kit.history.snapshot().map(({ cause }) => cause.kind)).toEqual([
+      'started',
+      'edited',
+    ])
+    expect(await kit.history.text(kit.history.snapshot()[1]?.id ?? -1)).toBe(
+      '# Written elsewhere',
+    )
+  })
+
+  it('keeps one History whichever file it is on', async () => {
+    const { kit } = await build(createFakeStorage())
+    kit.history.select({} as MarkdownFileHandle)
+    kit.history.opened({ text: '# Other file', name: 'b.md' })
+    await kit.history.settled()
+    expect(kit.history.snapshot().map(({ cause }) => cause.kind)).toEqual([
+      'started',
+      'opened',
+    ])
+  })
+
+  it('hands over the files it was given', async () => {
+    const { kit, files } = await build(null)
     expect(kit.files).toBe(files)
   })
 
   it('starts with no file, no notice and no unsaved text to offer', async () => {
-    const { kit } = build(null)
+    const { kit } = await build(null)
     expect(kit.start).toBeNull()
     expect(kit.notice).toBeNull()
     expect(await kit.unsavedText.offered({} as MarkdownFileHandle)).toBeNull()
   })
 
-  it('ignores the file when saving the Document: one autosave for the Web build', () => {
+  it('ignores the file when saving the Document: one autosave for the Web build', async () => {
     const storage = createFakeStorage()
-    const { kit } = build(storage)
+    const { kit } = await build(storage)
     kit.unsavedText.changed('# Changed', {
       name: 'a.md',
       ref: null,
@@ -123,9 +164,13 @@ describe('createWebKit', () => {
     ])
   })
 
-  it('reports the key status it was given', () => {
-    expect(build(null, { hasApiKey: false }).kit.keyStatus.present).toBe(false)
-    expect(build(null, { hasApiKey: true }).kit.keyStatus.present).toBe(true)
+  it('reports the key status it was given', async () => {
+    expect(
+      (await build(null, { hasApiKey: false })).kit.keyStatus.present,
+    ).toBe(false)
+    expect((await build(null, { hasApiKey: true })).kit.keyStatus.present).toBe(
+      true,
+    )
   })
 })
 

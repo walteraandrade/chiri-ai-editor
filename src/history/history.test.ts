@@ -4,7 +4,6 @@ import {
   markSaved,
   previousVersion,
   recordVersion,
-  resumeHistory,
   startHistory,
 } from './history'
 import type { History } from './types'
@@ -14,7 +13,14 @@ const edited = { kind: 'edited' } as const
 describe('startHistory', () => {
   it('starts with one Started Version holding the text', () => {
     expect(startHistory('# Notes', 100)).toEqual([
-      { id: 1, at: 100, cause: { kind: 'started' }, text: '# Notes' },
+      {
+        id: 1,
+        at: 100,
+        cause: { kind: 'started' },
+        text: '# Notes',
+        wordsAdded: 2,
+        wordsRemoved: 0,
+      },
     ])
   })
 })
@@ -26,7 +32,44 @@ describe('recordVersion', () => {
       cause: edited,
       at: 2,
     })
-    expect(history.at(-1)).toEqual({ id: 2, at: 2, cause: edited, text: 'ab' })
+    expect(history.at(-1)).toEqual({
+      id: 2,
+      at: 2,
+      cause: edited,
+      text: 'ab',
+      wordsAdded: 1,
+      wordsRemoved: 1,
+    })
+  })
+
+  it('counts the words against the Version before it', () => {
+    const wordsOf = (history: History) =>
+      history.map(({ wordsAdded, wordsRemoved }) => [wordsAdded, wordsRemoved])
+    const history = ['one two', 'one two three', 'one'].reduce<History>(
+      (current, text, index) =>
+        recordVersion(current, { text, cause: edited, at: index + 2 }),
+      startHistory('', 1),
+    )
+    expect(wordsOf(history)).toEqual([
+      [0, 0],
+      [2, 0],
+      [1, 0],
+      [0, 2],
+    ])
+  })
+
+  it('counts a restored old text against the last Version, not its source', () => {
+    const grown = recordVersion(startHistory('one two three', 1), {
+      text: 'one two three four',
+      cause: edited,
+      at: 2,
+    })
+    const restored = recordVersion(grown, {
+      text: 'one two three',
+      cause: { kind: 'restored', from: 1 },
+      at: 3,
+    })
+    expect(restored.at(-1)).toMatchObject({ wordsAdded: 0, wordsRemoved: 1 })
   })
 
   it('skips a Version whose text equals the last one', () => {
@@ -68,6 +111,8 @@ describe('markSaved', () => {
         cause: { kind: 'started' },
         text: 'text',
         saved: 'notes.md',
+        wordsAdded: 1,
+        wordsRemoved: 0,
       },
     ])
   })
@@ -106,32 +151,9 @@ describe('markSaved', () => {
       cause: edited,
       text: 'new',
       saved: 'notes.md',
+      wordsAdded: 1,
+      wordsRemoved: 1,
     })
-  })
-})
-
-describe('resumeHistory', () => {
-  it('starts a History when nothing was stored', () => {
-    expect(resumeHistory(null, 'doc', 9)).toEqual(startHistory('doc', 9))
-  })
-
-  it('keeps a stored History that ends with the Document text', () => {
-    const stored = startHistory('doc', 1)
-    expect(resumeHistory(stored, 'doc', 9)).toBe(stored)
-  })
-
-  it('records an Edited Version when the Document moved on', () => {
-    const resumed = resumeHistory(startHistory('old', 1), 'newer', 9)
-    expect(resumed.at(-1)).toEqual({
-      id: 2,
-      at: 9,
-      cause: edited,
-      text: 'newer',
-    })
-  })
-
-  it('starts fresh from an empty stored History', () => {
-    expect(resumeHistory([], 'doc', 9)).toEqual(startHistory('doc', 9))
   })
 })
 

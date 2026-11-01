@@ -6,8 +6,8 @@ import {
   FILE_SAVE_AS_CHANNEL,
   FILE_SAVE_CHANNEL,
   SHELL_INFO_CHANNEL,
-  STORAGE_FLUSH_CHANNEL,
 } from '../api'
+import { HISTORY_CHANNELS } from '../history-api'
 
 const api: ChiriApi = {
   shellInfo: () => ipcRenderer.invoke(SHELL_INFO_CHANNEL),
@@ -15,7 +15,16 @@ const api: ChiriApi = {
   readFile: (path) => ipcRenderer.invoke(FILE_READ_CHANNEL, path),
   saveFile: (request) => ipcRenderer.invoke(FILE_SAVE_CHANNEL, request),
   saveFileAs: (request) => ipcRenderer.invoke(FILE_SAVE_AS_CHANNEL, request),
-  flushStorage: () => ipcRenderer.invoke(STORAGE_FLUSH_CHANNEL),
+  historyList: (key) => ipcRenderer.invoke(HISTORY_CHANNELS.list, key),
+  historyText: (key, id) => ipcRenderer.invoke(HISTORY_CHANNELS.text, key, id),
+  historyRecord: (key, input) =>
+    ipcRenderer.invoke(HISTORY_CHANNELS.record, key, input),
+  historyMarkSaved: (key, input) =>
+    ipcRenderer.invoke(HISTORY_CHANNELS.markSaved, key, input),
+  unsavedLoad: (key) => ipcRenderer.invoke(HISTORY_CHANNELS.unsavedLoad, key),
+  unsavedSave: (key, unsaved) =>
+    ipcRenderer.invoke(HISTORY_CHANNELS.unsavedSave, key, unsaved),
+  unsavedClear: (key) => ipcRenderer.invoke(HISTORY_CHANNELS.unsavedClear, key),
 }
 
 contextBridge.exposeInMainWorld('chiri', api)

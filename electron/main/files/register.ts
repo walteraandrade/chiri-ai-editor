@@ -1,16 +1,9 @@
-import {
-  app,
-  BrowserWindow,
-  type IpcMainInvokeEvent,
-  ipcMain,
-  session,
-} from 'electron'
+import { app, BrowserWindow, type IpcMainInvokeEvent, ipcMain } from 'electron'
 import {
   FILE_OPEN_CHANNEL,
   FILE_READ_CHANNEL,
   FILE_SAVE_AS_CHANNEL,
   FILE_SAVE_CHANNEL,
-  STORAGE_FLUSH_CHANNEL,
 } from '../../api'
 import { resolveDevDialogs } from './dev-dialogs'
 import { createFileDialogs } from './dialogs'
@@ -51,7 +44,4 @@ export const registerFileHandlers = (isTrusted: Trust): void => {
       dialogs.pickSavePath(ownerOf(event), name),
     ),
   )
-  handle(STORAGE_FLUSH_CHANNEL, async () => {
-    session.defaultSession.flushStorageData()
-  })
 }

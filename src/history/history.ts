@@ -1,4 +1,5 @@
-import type { History, Version, VersionCause, VersionId } from './types'
+import type { History, VersionCause, VersionId } from './types'
+import { wordDelta } from './word-delta'
 
 export const MAX_VERSIONS = 50
 
@@ -8,8 +9,16 @@ type VersionInput = {
   readonly at: number
 }
 
+const deltaFields = (
+  before: string,
+  after: string,
+): { readonly wordsAdded: number; readonly wordsRemoved: number } => {
+  const { added, removed } = wordDelta(before, after)
+  return { wordsAdded: added, wordsRemoved: removed }
+}
+
 export const startHistory = (text: string, at: number): History => [
-  { id: 1, at, cause: { kind: 'started' }, text },
+  { id: 1, at, cause: { kind: 'started' }, text, ...deltaFields('', text) },
 ]
 
 export const recordVersion = (
@@ -19,7 +28,10 @@ export const recordVersion = (
   const last = history.at(-1)
   if (last === undefined) return startHistory(text, at)
   if (last.text === text) return history
-  return [...history, { id: last.id + 1, at, cause, text }].slice(-MAX_VERSIONS)
+  return [
+    ...history,
+    { id: last.id + 1, at, cause, text, ...deltaFields(last.text, text) },
+  ].slice(-MAX_VERSIONS)
 }
 
 export const markSaved = (
@@ -42,19 +54,10 @@ export const markSaved = (
   )
 }
 
-export const resumeHistory = (
-  stored: History | null,
-  text: string,
-  at: number,
-): History =>
-  stored === null || stored.length === 0
-    ? startHistory(text, at)
-    : recordVersion(stored, { text, cause: { kind: 'edited' }, at })
-
-export const previousVersion = (
-  history: History,
+export const previousVersion = <T extends { readonly id: VersionId }>(
+  versions: readonly T[],
   id: VersionId,
-): Version | undefined => {
-  const index = history.findIndex((version) => version.id === id)
-  return index > 0 ? history[index - 1] : undefined
+): T | undefined => {
+  const index = versions.findIndex((version) => version.id === id)
+  return index > 0 ? versions[index - 1] : undefined
 }

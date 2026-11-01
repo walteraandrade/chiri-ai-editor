@@ -1,19 +1,21 @@
 import { describeVersion } from '../history/story'
 import { formatClock } from '../history/time'
-import type { History, Version } from '../history/types'
+import type { VersionList, VersionSummary } from '../history/types'
 
 type VersionBarProps = {
-  readonly versions: History
-  readonly version: Version
+  readonly versions: VersionList
+  readonly version: VersionSummary
+  readonly text: string | null | undefined
   readonly currentText: string
   readonly onStep: (delta: number) => void
-  readonly onRestore: (version: Version) => void
+  readonly onRestore: (version: VersionSummary, text: string) => void
   readonly onClose: () => void
 }
 
 export function VersionBar({
   versions,
   version,
+  text,
   currentText,
   onStep,
   onRestore,
@@ -22,7 +24,15 @@ export function VersionBar({
   const now = Date.now()
   const clockOf = (at: number) => formatClock(at, now)
   const { label, headline } = describeVersion(versions, version, clockOf)
-  const same = version.text === currentText
+  const same = text === currentText
+  const note =
+    text === undefined
+      ? 'Loading the Version.'
+      : text === null
+        ? 'This Version could not be loaded.'
+        : same
+          ? 'Same text as now.'
+          : 'Marks show what Restore changes in the current text.'
   return (
     <div className="mx-auto max-w-3xl px-6 pb-3">
       <section
@@ -34,11 +44,7 @@ export function VersionBar({
             {clockOf(version.at)} · {label}
           </span>
           <span className="text-ink-muted"> · {headline}</span>
-          <span className="block text-ink-muted text-xs">
-            {same
-              ? 'Same text as now.'
-              : 'Marks show what Restore changes in the current text.'}
-          </span>
+          <span className="block text-ink-muted text-xs">{note}</span>
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -60,8 +66,8 @@ export function VersionBar({
           <button
             type="button"
             className="cm-ai-button"
-            disabled={same}
-            onClick={() => onRestore(version)}
+            disabled={typeof text !== 'string' || same}
+            onClick={() => typeof text === 'string' && onRestore(version, text)}
           >
             Restore
           </button>
