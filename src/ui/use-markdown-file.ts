@@ -1,15 +1,23 @@
-import { useEffect, useMemo, useReducer, useRef } from 'react'
-import { browserFileFallback, browserFileHost } from '../document/browser-files'
-import type { MarkdownFileHandle } from '../document/file-access'
-import { createFileActions } from '../document/file-actions'
-import { nextFileSession } from '../document/file-session'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type Conflict,
+  createFileActions,
+  type FileEvent,
+} from '../document/file-actions'
+import {
+  type FileSession,
+  type FileSessionEvent,
+  nextFileSession,
+} from '../document/file-session'
 import type { DocumentControls } from '../editor/document-controls'
+import type { DocumentFiles, StartFile, UnsavedText } from '../platform/kit'
 import { fileCommandOf } from './file-commands'
 import { detectApplePlatform } from './platform'
 
-type FileEvent = { readonly text: string; readonly name: string }
-
-type MarkdownFileOptions = {
+type MarkdownFileOptions<Ref> = {
+  readonly files: DocumentFiles<Ref>
+  readonly unsavedText: UnsavedText<Ref>
+  readonly start: StartFile<Ref> | null
   readonly controls: DocumentControls | null
   readonly notify: (text: string) => void
   readonly onOpened: (file: FileEvent) => void
@@ -17,53 +25,94 @@ type MarkdownFileOptions = {
   readonly onSaved: (file: FileEvent) => void
 }
 
-export const useMarkdownFile = ({
+const startSession = <Ref>(
+  start: StartFile<Ref> | null,
+  text: string,
+): FileSession<Ref> | null =>
+  start === null
+    ? null
+    : {
+        name: start.name,
+        ref: start.ref,
+        savedText: start.savedText,
+        dirty: text !== start.savedText,
+      }
+
+const startConflict = <Ref>(
+  start: StartFile<Ref> | null,
+): Conflict<Ref> | null =>
+  start?.diskChanged && start.ref !== null
+    ? { name: start.name, ref: start.ref }
+    : null
+
+export const useMarkdownFile = <Ref>({
+  files,
+  unsavedText,
+  start,
   controls,
   notify,
   onOpened,
   onSaving,
   onSaved,
-}: MarkdownFileOptions) => {
-  const [session, dispatch] = useReducer(
-    nextFileSession<MarkdownFileHandle>,
-    null,
+}: MarkdownFileOptions<Ref>) => {
+  const [session, setSession] = useState(() =>
+    startSession(start, unsavedText.initial),
   )
-  const inputRef = useRef<HTMLInputElement>(null)
-  const latest = useRef({
-    session,
-    controls,
-    notify,
-    onOpened,
-    onSaving,
-    onSaved,
-  })
+  const [conflict, setConflict] = useState(() => startConflict(start))
+  const sessionRef = useRef(session)
+  const latest = useRef({ controls, notify, onOpened, onSaving, onSaved })
 
   useEffect(() => {
-    latest.current = { session, controls, notify, onOpened, onSaving, onSaved }
-  }, [session, controls, notify, onOpened, onSaving, onSaved])
+    latest.current = { controls, notify, onOpened, onSaving, onSaved }
+  }, [controls, notify, onOpened, onSaving, onSaved])
 
-  const { open, save } = useMemo(
-    () =>
-      createFileActions({
-        host: browserFileHost,
-        fallback: browserFileFallback(() => inputRef.current),
-        editor: () => latest.current.controls,
-        session: () => latest.current.session,
-        dispatch: (event) => {
-          dispatch(event)
-          if (event.type === 'opened') latest.current.onOpened(event)
-          if (event.type === 'saved') latest.current.onSaved(event)
-        },
-        notify: (text) => latest.current.notify(text),
-        onSaving: (text) => latest.current.onSaving(text),
-      }),
-    [],
+  const dispatch = useCallback((event: FileSessionEvent<Ref>) => {
+    sessionRef.current = nextFileSession(sessionRef.current, event)
+    setSession(sessionRef.current)
+  }, [])
+
+  const actions = useMemo(() => {
+    const announce = (): void => {
+      const text = latest.current.controls?.text()
+      if (text !== undefined) unsavedText.changed(text, sessionRef.current)
+    }
+    return createFileActions({
+      files,
+      offered: unsavedText.offered,
+      editor: () => latest.current.controls,
+      session: () => sessionRef.current,
+      dispatch,
+      notify: (text) => latest.current.notify(text),
+      onSaving: (text) => latest.current.onSaving(text),
+      onOpened: (file) => {
+        setConflict(null)
+        latest.current.onOpened(file)
+        announce()
+      },
+      onSaved: (file) => {
+        setConflict(null)
+        latest.current.onSaved(file)
+        announce()
+      },
+      onConflict: setConflict,
+    })
+  }, [files, unsavedText, dispatch])
+
+  const { open, save, reload } = actions
+
+  const edited = useCallback(
+    (text: string) => {
+      dispatch({ type: 'edited', text })
+      unsavedText.changed(text, sessionRef.current)
+    },
+    [dispatch, unsavedText],
   )
 
-  const edited = useMemo(
-    () => (text: string) => dispatch({ type: 'edited', text }),
-    [],
-  )
+  const reloadFromDisk = useCallback(() => {
+    if (conflict !== null) void reload(conflict)
+  }, [conflict, reload])
+
+  const keepMine = useCallback(() => setConflict(null), [])
 
   useEffect(() => {
     const apple = detectApplePlatform()
@@ -87,5 +136,5 @@ export const useMarkdownFile = ({
       name === undefined ? 'Chiri' : `${dirty ? '• ' : ''}${name} · Chiri`
   }, [name, dirty])
 
-  return { session, inputRef, open, save, edited }
+  return { session, conflict, open, save, edited, reloadFromDisk, keepMine }
 }

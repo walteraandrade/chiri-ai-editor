@@ -1,21 +1,22 @@
-import { createAutosave } from '../document/autosave'
+import {
+  browserFileFallback,
+  browserFileHost,
+  createFileInput,
+} from '../document/browser-files'
+import type { MarkdownFileHandle } from '../document/file-access'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import {
   getLocalStorage,
   loadDocument,
   type StorageLike,
-  saveDocument,
 } from '../document/storage'
-import { resumeHistory } from '../history/history'
-import { createHistoryRecorder } from '../history/recorder'
-import { loadHistory, makeRoomFor, saveHistory } from '../history/storage'
-import type { PlatformKit, PlatformKitFactory } from './kit'
-
-const AUTOSAVE_DELAY_MS = 400
-const HISTORY_IDLE_MS = 30_000
+import { createWebFiles } from '../document/web-files'
+import type { DocumentFiles, PlatformKit, PlatformKitFactory } from './kit'
+import { createLocalState } from './local-state'
 
 type WebKitDeps = {
   readonly storage: StorageLike | null
+  readonly files: DocumentFiles<MarkdownFileHandle>
   readonly now: () => number
   readonly hasApiKey: boolean
   readonly onHide: (flush: () => void) => void
@@ -23,33 +24,27 @@ type WebKitDeps = {
 
 export const createWebKit = ({
   storage,
+  files,
   now,
   hasApiKey,
   onHide,
-}: WebKitDeps): PlatformKit => {
+}: WebKitDeps): PlatformKit<MarkdownFileHandle> => {
   const initialDoc = loadDocument(storage, SAMPLE_DOCUMENT)
-  const storedHistory = loadHistory(storage)
-  const initialHistory = resumeHistory(storedHistory, initialDoc, now())
-  if (initialHistory !== storedHistory) saveHistory(storage, initialHistory)
-  const history = createHistoryRecorder({
-    initial: initialHistory,
-    persist: (versions) => saveHistory(storage, versions),
+  const { history, autosave, flush } = createLocalState({
+    storage,
     now,
-    idleMs: HISTORY_IDLE_MS,
+    initialDoc,
   })
-  const autosave = createAutosave({
-    save: (text) =>
-      makeRoomFor(storage, history.snapshot(), () =>
-        saveDocument(storage, text),
-      ),
-    delayMs: AUTOSAVE_DELAY_MS,
-  })
-  onHide(() => {
-    autosave.flush()
-    history.flush()
-  })
+  onHide(flush)
   return {
-    unsavedText: { initial: initialDoc, changed: autosave.schedule },
+    files,
+    unsavedText: {
+      initial: initialDoc,
+      changed: (text) => autosave.schedule(text),
+      offered: async () => null,
+    },
+    start: null,
+    notice: null,
     history,
     keyStatus: { present: hasApiKey },
   }
@@ -63,13 +58,26 @@ const flushWhenPageHides = (flush: () => void): void => {
 }
 
 export const createWebKitFactory =
-  (getDeps: () => WebKitDeps): PlatformKitFactory =>
+  (getDeps: () => WebKitDeps): PlatformKitFactory<MarkdownFileHandle> =>
   async () =>
     createWebKit(getDeps())
 
-export const browserWebKit: PlatformKitFactory = createWebKitFactory(() => ({
-  storage: getLocalStorage(),
-  now: Date.now,
-  hasApiKey: __HAS_OPENROUTER_KEY__,
-  onHide: flushWhenPageHides,
-}))
+const browserFiles = (): DocumentFiles<MarkdownFileHandle> => {
+  let input: HTMLInputElement | null = null
+  return createWebFiles({
+    host: browserFileHost,
+    fallback: browserFileFallback(() => {
+      input ??= createFileInput()
+      return input
+    }),
+  })
+}
+
+export const browserWebKit: PlatformKitFactory<MarkdownFileHandle> =
+  createWebKitFactory(() => ({
+    storage: getLocalStorage(),
+    files: browserFiles(),
+    now: Date.now,
+    hasApiKey: __HAS_OPENROUTER_KEY__,
+    onHide: flushWhenPageHides,
+  }))

@@ -2,6 +2,7 @@ declare const __HAS_OPENROUTER_KEY__: boolean
 declare const __OPENROUTER_MODEL__: string
 
 interface Window {
+  chiri?: import('../electron/api').ChiriApi
   __aiCalls?: import('./ai/records').AiCallRecord[]
   __reviewDrops?: import('./ai/dev-log').ReviewDropEntry[]
 }
