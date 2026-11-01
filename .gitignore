@@ -8,3 +8,4 @@ out/
 .claude/worktrees/
 .claude/settings.local.json
 .export-sessions-*
+release/
