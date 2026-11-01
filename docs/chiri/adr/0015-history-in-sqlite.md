@@ -37,6 +37,7 @@
   create table drafts (
     file_id integer primary key references files(id),
     text text not null,
+    base_hash text not null references blobs(hash),
     at integer not null
   );
   ```
@@ -46,7 +47,7 @@
   - `cause` is the 0012 Cause as JSON, plus a new one: External (the file changed on disk).
   - `words` is counted on insert, so the Timeline never loads a text.
   - `words_added` and `words_removed` (#31) are counted on insert too, against the previous Version of the same file (against an empty text for the first one). They keep [0012](0012-document-history.md)'s Edited headline ("You added 2 words and removed 1") without loading a text in the Timeline, which a net change in `words` could not.
-  - `drafts` holds the open file's unsaved text.
+  - `drafts` holds a file's unsaved text and `base_hash`, the hash of the text its edits started from ([0014](0014-skills-on-disk.md): a file changed on disk while the app was closed must still raise the External change notice). The base is a blob like any other, so it is shared with the Version that holds the same text.
 - **Appends, not rewrites.** The recorder emits "Version recorded" and "Version marked saved". Each one is one transaction.
 - **Text on demand.** The Timeline lists Versions without their text and loads a text when a dot is viewed (a Virtual Proxy). The Full history loads the texts of the entries on screen, plus the Version before each one, for its line diff.
 - **No cap.** A rule that thins out old Edited Versions is in the backlog, for when the file grows.
@@ -58,8 +59,10 @@
   - #31 · The first Version of a file is always Started. A text equal to the file's last Version is not recorded (compared by SHA-256, as in 0012). "Version marked saved" marks the newest Version holding the text, and records an Edited one first when none does.
   - #31 · Versions are ordered by `id`, not by `at`, so a clock that goes backwards cannot reorder them. `versions.id` is global to the database; the Web adapter numbers its one History from 1.
   - #31 · `words_added` and `words_removed` come from the same word diff 0012 ran at render time (`wordDelta`: a line diff, then a word diff of each changed run, with an edit-distance cap), run once on insert against the Version before it. A restored old text is counted against the last Version, not against its source. The Web adapter stores the same two counts on each Version in `localStorage`; Versions stored before #31 have none, and the adapter works them out from the Version before (the first one from an empty text).
-  - #31 · The preload API calls the `drafts` table "unsaved" (`unsavedLoad`, `unsavedSave`, `unsavedClear`), because the Glossary's Draft is the streamed Replacement text.
-  - #31 · If the database cannot be opened, the Electron window shows "Chiri could not start: …" instead of a blank page.
+  - #31 · The preload API calls the `drafts` table "unsaved" (`unsavedLoad`, `unsavedSave`, `unsavedClear`), because the Glossary's Draft is the streamed Replacement text. It carries `{ text, base }`.
+  - #31 · The History key is the file's real path. A Document with no file ("Untitled") has the key `scratch:document`, for its History and for its unsaved text (empty base). The Electron kit keeps the Document there on every change, whichever file is open, as the Web build autosaves it: it is what the app starts from when the last file is gone.
+  - #31 · Switching files: pending edits become an Edited Version under the file being left, before anything is written under the new key, and the Timeline then shows the new file's own Versions. Save as to a new path starts that file's History from the saved text; the old key keeps its own.
+  - #31 · The renderer's `localStorage` no longer holds unsaved text or the Document in the Electron build, and `session.flushStorageData()` with its `flushStorage` preload function are gone. `chiri.lastFile` stays there: after a `kill -9` within about 5 s of opening a file, the next start opens the Document with no file instead of that file. Its unsaved text is still in `drafts`, and opening the file offers it again.  - #31 · If the database cannot be opened, the Electron window shows "Chiri could not start: …" instead of a blank page.
 
 ## Consequences
 
