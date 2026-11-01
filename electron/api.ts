@@ -1,9 +1,9 @@
-import type { HistoryApi } from './history-api'
 import type {
   AddRootResult,
   LibraryListing,
   RemoveRootResult,
 } from '../src/skills/library'
+import type { HistoryApi } from './history-api'
 
 export const SHELL_INFO_CHANNEL = 'shell:info'
 export const FILE_OPEN_CHANNEL = 'file:open'

@@ -99,4 +99,27 @@ describe('createUnsavedKeeper', () => {
     expect(keep).not.toHaveBeenCalled()
     expect(drop).not.toHaveBeenCalled()
   })
+
+  it('discards a pending text for good, and drops what was kept', () => {
+    const { keeper, keep, drop } = setup()
+    keeper.track('# A, edited\n', session('/a.md', '# A\n'))
+    keeper.discard('/a.md')
+    vi.advanceTimersByTime(1000)
+    keeper.flush()
+    expect(keep).not.toHaveBeenCalled()
+    expect(drop).toHaveBeenCalledWith('/a.md')
+  })
+
+  it('discards only the file asked for', () => {
+    const { keeper, keep } = setup()
+    keeper.track('# A, edited\n', session('/a.md', '# A\n'))
+    keeper.track('# B, edited\n', session('/b.md', '# B\n'))
+    keeper.discard('/a.md')
+    keeper.flush()
+    expect(keep).toHaveBeenCalledTimes(1)
+    expect(keep).toHaveBeenCalledWith('/b.md', {
+      text: '# B, edited\n',
+      base: '# B\n',
+    })
+  })
 })

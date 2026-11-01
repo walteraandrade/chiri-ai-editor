@@ -7,7 +7,7 @@ import { createLocalHistoryStore } from '../history/local-store'
 import type { HistoryStore } from '../history/store'
 import { createElectronKit, SCRATCH_KEY } from './electron-kit'
 import { LAST_FILE_KEY } from './electron-storage'
-import type { DocumentFiles, OpenResult } from './kit'
+import type { DocumentFiles, LibraryKit, OpenResult } from './kit'
 
 const PATH = '/skills/a/SKILL.md'
 const OTHER = '/skills/b/SKILL.md'
@@ -74,6 +74,13 @@ const diskFile = (text: string, path = PATH): OpenResult<string> => ({
   file: { name: 'SKILL.md', text, ref: path },
 })
 
+const fakeLibrary: LibraryKit<string> = {
+  list: async () => ({ kind: 'listed', roots: [], problem: null }),
+  addRoot: async () => ({ kind: 'cancelled' }),
+  removeRoot: async () => ({ kind: 'removed' }),
+  toRef: (path) => path,
+}
+
 const setup = (
   options: {
     readonly stored?: Record<string, string>
@@ -99,6 +106,7 @@ const setup = (
     api,
     storage,
     files,
+    library: fakeLibrary,
     now: () => 1000,
     hasApiKey: true,
     onHide: (flush) => {
@@ -445,6 +453,32 @@ describe('createElectronKit changes', () => {
       base: '# A\n',
     })
     expect(await ready.unsavedText.offered('/other.md')).toBeNull()
+  })
+
+  it('drops the unsaved text of a file on discard, pending text included', async () => {
+    const { kit, kept } = setup({
+      unsaved: { [PATH]: { text: '# A, old\n', base: '# A\n' } },
+    })
+    const ready = await kit
+    ready.unsavedText.changed('# A, newer\n', session('# A\n'))
+    ready.unsavedText.discard?.(PATH)
+    vi.advanceTimersByTime(1000)
+    expect(kept.has(PATH)).toBe(false)
+    expect(await ready.unsavedText.offered(PATH)).toBeNull()
+  })
+
+  it('leaves the unsaved text of other files alone on discard', async () => {
+    const { kit, kept } = setup({
+      unsaved: { [OTHER]: { text: '# B, unsaved\n', base: '# B\n' } },
+    })
+    const ready = await kit
+    ready.unsavedText.discard?.(PATH)
+    expect(kept.has(OTHER)).toBe(true)
+  })
+
+  it('carries the Library it was given', async () => {
+    const ready = await setup().kit
+    expect(ready.library).toBe(fakeLibrary)
   })
 
   it('reports the key status it was given', async () => {

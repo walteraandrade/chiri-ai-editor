@@ -9,6 +9,7 @@ type KeeperOptions<Ref> = {
 export type UnsavedKeeper<Ref> = {
   readonly track: (text: string, file: FileSession<Ref> | null) => void
   readonly flush: () => void
+  readonly discard: (ref: Ref) => void
 }
 
 type Pending = {
@@ -48,5 +49,12 @@ export const createUnsavedKeeper = <Ref>({
     for (const ref of [...pending.keys()]) settle(ref)
   }
 
-  return { track, flush }
+  const discard = (ref: Ref): void => {
+    const current = pending.get(ref)
+    if (current !== undefined) clearTimeout(current.timer)
+    pending.delete(ref)
+    store.drop(ref)
+  }
+
+  return { track, flush, discard }
 }

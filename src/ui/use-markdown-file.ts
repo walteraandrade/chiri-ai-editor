@@ -9,6 +9,7 @@ import {
   type FileSessionEvent,
   nextFileSession,
 } from '../document/file-session'
+import type { LeaveChoice } from '../document/leave-guard'
 import type { DocumentControls } from '../editor/document-controls'
 import type { DocumentFiles, StartFile, UnsavedText } from '../platform/kit'
 import { fileCommandOf } from './file-commands'
@@ -25,6 +26,7 @@ type MarkdownFileOptions<Ref> = {
   readonly onOpened: (file: FileArrival<Ref>) => void
   readonly onSaving: (text: string) => void
   readonly onSaved: (file: FileArrival<Ref>) => void
+  readonly askLeave: (name: string) => Promise<LeaveChoice>
 }
 
 const startSession = <Ref>(
@@ -56,6 +58,7 @@ export const useMarkdownFile = <Ref>({
   onOpened,
   onSaving,
   onSaved,
+  askLeave,
 }: MarkdownFileOptions<Ref>) => {
   const [session, setSession] = useState(() =>
     startSession(start, unsavedText.initial),
@@ -103,10 +106,13 @@ export const useMarkdownFile = <Ref>({
         announce()
       },
       onConflict: setConflict,
+      ...(unsavedText.discard !== undefined && {
+        leave: { ask: askLeave, discard: unsavedText.discard },
+      }),
     })
-  }, [files, unsavedText, dispatch])
+  }, [files, unsavedText, dispatch, askLeave])
 
-  const { open, save, reload } = actions
+  const { open, openRef, save, reload } = actions
 
   const edited = useCallback(
     (text: string) => {
@@ -144,5 +150,14 @@ export const useMarkdownFile = <Ref>({
       name === undefined ? 'Chiri' : `${dirty ? '• ' : ''}${name} · Chiri`
   }, [name, dirty])
 
-  return { session, conflict, open, save, edited, reloadFromDisk, keepMine }
+  return {
+    session,
+    conflict,
+    open,
+    openRef,
+    save,
+    edited,
+    reloadFromDisk,
+    keepMine,
+  }
 }
