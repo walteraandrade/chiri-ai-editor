@@ -195,13 +195,19 @@ describe('name', () => {
       'pdf.processing',
       'pdf/processing',
       'pdf:processing',
-      ' pdf',
-      'pdf ',
-      'pdf\n',
       'pdf🙂',
     ]) {
       expect(nameRules(name)).toEqual(['name-invalid-characters'])
     }
+  })
+
+  it('trims surrounding whitespace before checking, as the reference validator does', () => {
+    for (const name of [' pdf', 'pdf ', 'pdf\n', '\t pdf-processing \n']) {
+      expect(nameRules(name)).toEqual([])
+    }
+    expect(nameRules(' pdf processing ')).toEqual(['name-invalid-characters'])
+    expect(nameRules(` ${'a'.repeat(NAME_MAX_LENGTH)} `)).toEqual([])
+    expect(nameRules(` -pdf `)).toEqual(['name-edge-hyphen'])
   })
 
   it('must not start or end with a hyphen', () => {
@@ -250,6 +256,10 @@ describe('name and folder', () => {
         message: 'name must match its folder name, "pdf-tools"',
       },
     ])
+  })
+
+  it('compares the trimmed name', () => {
+    expect(folderRules(' pdf ', 'pdf')).toEqual([])
   })
 
   it('compares case-sensitively', () => {

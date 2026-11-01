@@ -55,7 +55,7 @@ const nameProblems = (
   name: string,
   folderName: string | undefined,
 ): readonly SkillProblem[] => {
-  const normalized = name.normalize('NFKC')
+  const normalized = name.trim().normalize('NFKC')
   const length = characterCount(normalized)
   return failed([
     length > NAME_MAX_LENGTH && tooLong('name', length, NAME_MAX_LENGTH),
