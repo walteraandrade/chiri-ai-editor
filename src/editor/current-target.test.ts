@@ -15,10 +15,21 @@ describe('currentTarget with a frontmatter', () => {
     expect(currentTarget(stateAt(10))).toBeUndefined()
   })
 
-  it('has no Target for a selection inside or overlapping it', () => {
+  it('has no Target for a selection inside it', () => {
     expect(currentTarget(stateAt(4, 12))).toBeUndefined()
-    expect(currentTarget(stateAt(4, BODY + 4))).toBeUndefined()
-    expect(currentTarget(stateAt(0, DOC.length))).toBeUndefined()
+  })
+
+  it('clips a selection that extends past it, Select All included', () => {
+    expect(currentTarget(stateAt(4, BODY + 4))).toMatchObject({
+      source: 'selection',
+      from: DOC.indexOf('# Demo'),
+      text: '# Demo\n\nBody',
+    })
+    expect(currentTarget(stateAt(0, DOC.length))).toMatchObject({
+      source: 'selection',
+      from: DOC.indexOf('# Demo'),
+      text: '# Demo\n\nBody one.',
+    })
   })
 
   it('keeps Targets after it', () => {

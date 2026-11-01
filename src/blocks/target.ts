@@ -118,10 +118,13 @@ export const resolveTarget = (
     return touchesFrontmatter(frontmatter, { from, to })
       ? undefined
       : resolveCursorTarget(blocks, from)
-  const target = resolveSelectionTarget(blocks, text, { from, to })
-  return target !== undefined && touchesFrontmatter(frontmatter, target)
+  const start =
+    frontmatter !== undefined && from < frontmatter.to
+      ? frontmatter.to + 1
+      : from
+  return start >= to
     ? undefined
-    : target
+    : resolveSelectionTarget(blocks, text, { from: start, to })
 }
 
 const anchorRange = (target: Target): Selection => ({

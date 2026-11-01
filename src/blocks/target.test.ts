@@ -373,13 +373,48 @@ describe('resolveTarget with a frontmatter', () => {
     expect(resolve(0, end)).toBeUndefined()
   })
 
-  it('refuses a selection that overlaps it', () => {
-    expect(resolve(6, bodyOne + 4)).toBeUndefined()
-    expect(resolve(0, doc.length)).toBeUndefined()
+  it('clips a selection that extends past it to start after it', () => {
+    const target = resolve(6, bodyOne + 4)
+    expect(target).toMatchObject({
+      source: 'selection',
+      from: doc.indexOf('# Demo'),
+      to: bodyOne + 4,
+      text: '# Demo\n\nBody',
+    })
+    expect(target?.blocks.map((block) => block.text)).toEqual([
+      '# Demo',
+      'Body one.',
+    ])
   })
 
-  it('refuses a reversed selection that overlaps it', () => {
-    expect(resolve(bodyOne + 4, 6)).toBeUndefined()
+  it('clips Select All to everything after it', () => {
+    const target = resolve(0, doc.length)
+    expect(target).toMatchObject({
+      source: 'selection',
+      from: doc.indexOf('# Demo'),
+      to: doc.length - 1,
+      text: '# Demo\n\nBody one.\n\nBody two.',
+    })
+    expect(target?.blocks.map((block) => block.id)).toEqual(['p1', 'p2', 'p3'])
+  })
+
+  it('clips a reversed selection the same way', () => {
+    expect(resolve(bodyOne + 4, 6)).toEqual(resolve(6, bodyOne + 4))
+  })
+
+  it('clips a selection that starts at the very beginning', () => {
+    expect(resolve(0, bodyOne + 4)).toEqual(resolve(6, bodyOne + 4))
+  })
+
+  it('keeps a clipped Target out of the frontmatter', () => {
+    const target = resolve(0, doc.length)
+    expect(target?.from).toBeGreaterThan(end)
+    expect(target?.blocks.every((block) => block.from > end)).toBe(true)
+  })
+
+  it('refuses a selection that reaches only the line breaks after it', () => {
+    expect(resolve(0, end + 1)).toBeUndefined()
+    expect(resolve(6, end + 2)).toBeUndefined()
   })
 
   it('allows a selection after it', () => {
@@ -414,8 +449,11 @@ describe('resolveTarget with a frontmatter', () => {
   it('refuses everything in a Document that is only a frontmatter', () => {
     const only = '---\nname: demo\n---\n'
     const onlyBlocks = extractBlocks(only)
-    expect(resolveTarget(onlyBlocks, only, { from: 6, to: 6 })).toBeUndefined()
-    expect(resolveTarget(onlyBlocks, only, { from: 0, to: 18 })).toBeUndefined()
+    const resolveOnly = (from: number, to: number) =>
+      resolveTarget(onlyBlocks, only, { from, to })
+    expect(resolveOnly(6, 6)).toBeUndefined()
+    expect(resolveOnly(0, 18)).toBeUndefined()
+    expect(resolveOnly(0, only.length)).toBeUndefined()
   })
 
   it('does not refuse anything for an unclosed frontmatter', () => {

@@ -148,14 +148,29 @@ describe('ask', () => {
       for (const [from, to] of [
         [6, 6],
         [4, 12],
-        [2, body + 5],
-        [0, skill.length],
+        [0, body - 1],
       ] as const) {
         const handle = createHandle(from, to, skill)
         runtime.actions.ask(handle, quickActionInstruction('shorter'))
         expect(suggestionsOf(handle.state).items).toEqual([])
       }
       expect(calls).toEqual([])
+    })
+
+    it('clips a selection that extends past it and sends only the text after it', () => {
+      const { client, calls } = createClient()
+      const runtime = createSuggestionRuntime({ client })
+      const handle = createHandle(0, skill.length, skill)
+
+      runtime.actions.ask(handle, quickActionInstruction('shorter'))
+
+      expect(suggestionsOf(handle.state).items[0]).toMatchObject({
+        status: 'pending',
+        from: body,
+        source: 'selection',
+        original: 'First paragraph here.',
+      })
+      expect(only(calls).request.target.text).toBe('First paragraph here.')
     })
 
     it('asks about a Block after it', () => {

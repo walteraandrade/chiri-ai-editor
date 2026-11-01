@@ -177,14 +177,23 @@ describe('openAskOrRefine', () => {
     expect(askOpen(handle)).toBe(true)
   })
 
-  it('does not open the Ask field with the cursor or selection in a frontmatter', () => {
+  it('does not open the Ask field with the cursor or selection inside a frontmatter', () => {
     const doc = '---\nname: demo\n---\n\nFirst paragraph here.\n'
-    const inside = createHandle(6, 6, doc)
-    expect(openAskOrRefine(inside)).toBe(false)
-    expect(askOpen(inside)).toBe(false)
-    const overlapping = createHandle(2, doc.length, doc)
-    expect(openAskOrRefine(overlapping)).toBe(false)
-    expect(askOpen(overlapping)).toBe(false)
+    for (const [anchor, head] of [
+      [6, 6],
+      [2, 10],
+    ] as const) {
+      const handle = createHandle(anchor, head, doc)
+      expect(openAskOrRefine(handle)).toBe(false)
+      expect(askOpen(handle)).toBe(false)
+    }
+  })
+
+  it('opens the Ask field for Select All on a document with a frontmatter', () => {
+    const doc = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+    const handle = createHandle(0, doc.length, doc)
+    expect(openAskOrRefine(handle)).toBe(true)
+    expect(askOpen(handle)).toBe(true)
   })
 
   it('opens the Ask field after a frontmatter', () => {

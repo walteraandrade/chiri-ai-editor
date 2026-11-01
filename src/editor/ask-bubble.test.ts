@@ -46,9 +46,14 @@ describe('selection bubble with a frontmatter', () => {
     )
   const body = FRONTMATTER_DOC.indexOf('First')
 
-  it('stays hidden for a selection inside or overlapping it', () => {
+  it('stays hidden for a selection inside it', () => {
     expect(bubbleVisible(createIn(4, 8))).toBe(false)
-    expect(bubbleVisible(createIn(4, body + 5))).toBe(false)
+    expect(bubbleVisible(createIn(0, body - 1))).toBe(false)
+  })
+
+  it('shows for a selection that extends past it, and for Select All', () => {
+    expect(bubbleVisible(createIn(4, body + 5))).toBe(true)
+    expect(bubbleVisible(createIn(0, FRONTMATTER_DOC.length))).toBe(true)
   })
 
   it('stays hidden when Ask is open with the cursor inside it', () => {
