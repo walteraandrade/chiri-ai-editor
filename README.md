@@ -35,6 +35,7 @@ pnpm dev:electron        # or the same app in an Electron window
 | `pnpm test` | Vitest. Never calls the model. |
 | `pnpm biome check` | Lint and format. |
 | `pnpm dev:electron` | The app in an Electron window on the Vite dev server, so the proxy and the key work as with `pnpm dev`. `CHIRI_DEV_PORT`, `CHIRI_CDP_PORT` and `CHIRI_USER_DATA_DIR` set its ports and data folder ([AGENTS.md](AGENTS.md)). |
+| `pnpm package` | The Electron app as a Linux package (`release/*.pacman`) that runs with no repo, no terminal and no `.env`; the key is set on the app's Key screen ([ADR 0013](docs/chiri/adr/0013-native-app-on-electron.md)). |
 | `pnpm build` | Type-check, then the production builds of the Web app (`dist/`) and the Electron app (`out/`). |
 | `pnpm bakeoff` | Calls the model: 9 models, 4 Quick actions and a Review pass each, about US$0.056. Rewrites `docs/chiri/bakeoff.md`. Needs the key. |
 | `pnpm export-sessions` | Copies the Claude Code sessions into `ai-sessions/` with OpenRouter keys masked. `--verify` compares the copy with the source. |

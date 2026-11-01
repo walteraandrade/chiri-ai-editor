@@ -34,7 +34,8 @@ Commands:
 | `pnpm test` | Vitest. |
 | `pnpm biome check` | Lint and format. |
 | `pnpm build` | Type-check (both tsconfigs), then the Web build (`dist/`) and the Electron build (`out/`). `build:web` and `build:electron` run each alone. |
-| `pnpm preview:electron` | Runs the built Electron app from `out/` (UI only; AI calls need the installed-app slice). Honors `CHIRI_USER_DATA_DIR`; opens no DevTools port. |
+| `pnpm preview:electron` | Runs the built Electron app from `out/` on the `app://` scheme, with the main-process OpenRouter forwarder and the key settings screen (no `.env`, no Vite). Honors `CHIRI_USER_DATA_DIR`; opens no DevTools port (pass `--remote-debugging-port=<port>` after the command to attach). |
+| `pnpm package` | Builds `out/`, checks that `out/main` and `out/preload` import nothing outside `electron` and Node, then packages for Linux with electron-builder (`release/chiri-ai-editor-<version>.pacman`). `package:dir` stops at the unpacked app in `release/linux-unpacked/`. |
 | `pnpm bakeoff` | Model Bake-off. Calls the model. |
 
 Dev environment variables (all optional; parallel checkouts on one machine need their own):
@@ -43,7 +44,7 @@ Dev environment variables (all optional; parallel checkouts on one machine need 
 |---|---|
 | `CHIRI_DEV_PORT` | Vite port for `pnpm dev` and `pnpm dev:electron`. When set, Vite fails instead of moving to another port. |
 | `CHIRI_CDP_PORT` | Chrome DevTools port of the dev window (default 9222). `agent-browser connect <port>` attaches to it. Dev only. |
-| `CHIRI_USER_DATA_DIR` | Absolute path for Electron's `userData` in `pnpm dev:electron` and `pnpm preview:electron` (not in a packaged app). Always set it for checks, never use the default. |
+| `CHIRI_USER_DATA_DIR` | Absolute path for Electron's `userData` in `pnpm dev:electron` and `pnpm preview:electron` (not in a packaged app, which takes Chromium's `--user-data-dir=<path>` instead). Always set it for checks, never use the default. |
 | `CHIRI_DEV_PICK_FILE` | Absolute path of a text file. In `pnpm dev:electron` only (an unpackaged app with the dev server), Open, Save as and the Library's Add skip the native dialog and use the path in that file (a folder, for Add), read at each dialog. For checks, because `agent-browser` cannot drive a GTK dialog; say in the record which checks used it. |
 
 Attach to the window: `CHIRI_DEV_PORT=5301 CHIRI_CDP_PORT=9301 CHIRI_USER_DATA_DIR=$(mktemp -d) pnpm dev:electron`, then `agent-browser connect 9301`.
@@ -75,10 +76,12 @@ src/
 └── ui/            # React components
 electron/
 ├── api.ts         # the preload API's types and channel names, shared by main and preload
-├── main/          # main process: window, IPC handlers, dev switches, trust checks
+├── main/          # main process: window, IPC handlers, dev switches, trust checks; installed app: app:// handler, OpenRouter forwarder, key store, security headers (installed-app.ts wires them)
 │   └── files/     # Markdown read, atomic save, native dialogs, request validation
 └── preload/       # contextBridge API, one function per action
 config/            # Vite proxy, shared renderer config, port parsing
+build/             # packaging resources (icon)
+electron-builder.yml  # Linux package, fuses
 index.html         # Web build page
 electron.html      # Electron build page
 electron.vite.config.ts
