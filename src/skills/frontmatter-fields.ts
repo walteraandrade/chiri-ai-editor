@@ -14,6 +14,7 @@ import type { SkillField } from './skill-frontmatter'
 
 export type FrontmatterProblemRule =
   | 'frontmatter-not-closed'
+  | 'frontmatter-not-recognized'
   | 'yaml-syntax-error'
   | 'frontmatter-not-a-mapping'
 
@@ -75,12 +76,19 @@ const NOT_CLOSED: FrontmatterProblem = {
   message: 'frontmatter not closed',
 }
 
+const NOT_RECOGNIZED: FrontmatterProblem = {
+  rule: 'frontmatter-not-recognized',
+  message: 'frontmatter not recognized',
+}
+
 const NOT_A_MAPPING: FrontmatterProblem = {
   rule: 'frontmatter-not-a-mapping',
   message: 'frontmatter must be a mapping of keys to values',
 }
 
 const OPENING_DELIMITER = /^---[ \t]*\n/
+
+const DELIMITED_BLOCK = /^---[ \t]*\n(?:[\s\S]*?\n)?---[ \t]*(?=\n|$)/
 
 const UNICODE_LINE_BREAKS = /[\u0085\u2028\u2029]/g
 
@@ -362,7 +370,9 @@ export const setSkillFields = (
   if (frontmatter === undefined)
     return isUnclosed(text)
       ? { ok: false, problem: NOT_CLOSED }
-      : createFrontmatter(text, values)
+      : DELIMITED_BLOCK.test(text)
+        ? { ok: false, problem: NOT_RECOGNIZED }
+        : createFrontmatter(text, values)
   const blockEnd = closingLineStart(text, frontmatter)
   const block = text.slice(frontmatter.yamlFrom, blockEnd)
   const parsed = parseMapping(block, lineNumberAt(text, frontmatter.yamlFrom))

@@ -938,6 +938,26 @@ describe('setSkillFields', () => {
       })
     })
 
+    it.each([
+      ['a flow mapping', '---\n{name: a, description: b}\n---\n# Demo\n'],
+      ['comments only', '---\n# name: a\n---\n# Demo\n'],
+      ['a rule, prose and another rule', '---\n\nIntro.\n\n---\n\nMore.\n'],
+    ])('refuses to create a second frontmatter above %s', (_name, original) => {
+      expect(setSkillFields(original, { name: 'x' })).toEqual({
+        ok: false,
+        problem: {
+          rule: 'frontmatter-not-recognized',
+          message: 'frontmatter not recognized',
+        },
+      })
+    })
+
+    it('refuses a Document starting with a delimited block even when nothing would change', () => {
+      expect(setSkillFields('---\n{name: a}\n---\n# Demo\n', {})).toMatchObject(
+        { ok: false },
+      )
+    })
+
     it('refuses a frontmatter with a duplicate key', () => {
       expect(
         setSkillFields(documentOf('name: a\nname: b'), { name: 'x' }),
