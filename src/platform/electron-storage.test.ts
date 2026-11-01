@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  clearLastFile,
   createLocalUnsavedStore,
   LAST_FILE_KEY,
   loadLastFile,
@@ -112,6 +113,14 @@ describe('last file', () => {
     expect(loadLastFile(storage)).toBe('/skills/a/SKILL.md')
   })
 
+  it('forgets the path', () => {
+    const storage = createFakeStorage()
+    saveLastFile(storage, '/skills/a/SKILL.md')
+    clearLastFile(storage)
+    expect(loadLastFile(storage)).toBeNull()
+    expect(storage.entries()[LAST_FILE_KEY]).toBeUndefined()
+  })
+
   it('finds nothing before one was saved', () => {
     expect(loadLastFile(createFakeStorage())).toBeNull()
   })
@@ -121,5 +130,7 @@ describe('last file', () => {
     expect(loadLastFile(null)).toBeNull()
     expect(() => saveLastFile(brokenStorage, '/a.md')).not.toThrow()
     expect(() => saveLastFile(null, '/a.md')).not.toThrow()
+    expect(() => clearLastFile(brokenStorage)).not.toThrow()
+    expect(() => clearLastFile(null)).not.toThrow()
   })
 })

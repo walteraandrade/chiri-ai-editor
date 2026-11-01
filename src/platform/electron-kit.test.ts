@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { FILE_NOT_FOUND_REASON } from '../../electron/api'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import { DOCUMENT_STORAGE_KEY } from '../document/storage'
 import { createElectronKit } from './electron-kit'
@@ -158,6 +159,91 @@ describe('createElectronKit start', () => {
     })
     const ready = await kit
     expect(ready.history.snapshot().at(-1)?.text).toBe('# A\n')
+  })
+})
+
+describe('createElectronKit when the last file is gone', () => {
+  const gone = async (): Promise<OpenResult<string>> => ({
+    kind: 'failed',
+    reason: FILE_NOT_FOUND_REASON,
+  })
+
+  it('says so once: the last file is forgotten', async () => {
+    const first = setup({
+      stored: { [LAST_FILE_KEY]: PATH, [DOCUMENT_STORAGE_KEY]: '# Stored' },
+      read: gone,
+    })
+    expect((await first.kit).notice).toBe(
+      'Could not reopen SKILL.md: File not found',
+    )
+    expect(first.entries()[LAST_FILE_KEY]).toBeUndefined()
+    const second = setup({ stored: first.entries(), read: gone })
+    const ready = await second.kit
+    expect(ready.notice).toBeNull()
+    expect(ready.start).toBeNull()
+    expect(ready.unsavedText.initial).toBe('# Stored')
+  })
+
+  it('drops the per-file unsaved text once the Document holds it', async () => {
+    const { kit, entries } = setup({
+      stored: {
+        [LAST_FILE_KEY]: PATH,
+        [DOCUMENT_STORAGE_KEY]: '# Stored, unsaved',
+        ...unsavedEntry(PATH, '# Stored, unsaved', '# Stored'),
+      },
+      read: gone,
+    })
+    const ready = await kit
+    expect(ready.unsavedText.initial).toBe('# Stored, unsaved')
+    expect(entries()[`${UNSAVED_KEY_PREFIX}${PATH}`]).toBeUndefined()
+  })
+
+  it('keeps the per-file unsaved text when the Document is not that text', async () => {
+    const { kit, entries } = setup({
+      stored: {
+        [LAST_FILE_KEY]: PATH,
+        [DOCUMENT_STORAGE_KEY]: '# Something else',
+        ...unsavedEntry(PATH, '# Stored, unsaved', '# Stored'),
+      },
+      read: gone,
+    })
+    await kit
+    expect(entries()[`${UNSAVED_KEY_PREFIX}${PATH}`]).toBeDefined()
+  })
+
+  it('remembers the next file that gets opened', async () => {
+    const { kit, entries } = setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      read: gone,
+    })
+    const ready = await kit
+    ready.unsavedText.changed('# B\n', {
+      name: 'B.md',
+      ref: '/skills/b/B.md',
+      savedText: '# B\n',
+      dirty: false,
+    })
+    expect(entries()[LAST_FILE_KEY]).toBe('/skills/b/B.md')
+  })
+
+  it.each([
+    [
+      'a refused read',
+      async (): Promise<OpenResult<string>> => ({
+        kind: 'failed',
+        reason: 'Permission denied',
+      }),
+    ],
+    [
+      'a read that throws',
+      async (): Promise<OpenResult<string>> => {
+        throw new Error('IPC closed')
+      },
+    ],
+  ])('keeps the last file after %s, which may pass', async (_label, read) => {
+    const { kit, entries } = setup({ stored: { [LAST_FILE_KEY]: PATH }, read })
+    await kit
+    expect(entries()[LAST_FILE_KEY]).toBe(PATH)
   })
 })
 

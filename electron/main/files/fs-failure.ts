@@ -1,5 +1,7 @@
+import { FILE_NOT_FOUND_REASON } from '../../api'
+
 const REASONS: Readonly<Record<string, string>> = {
-  ENOENT: 'File not found',
+  ENOENT: FILE_NOT_FOUND_REASON,
   EACCES: 'Permission denied',
   EPERM: 'Permission denied',
   EROFS: 'Read-only file system',

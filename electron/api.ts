@@ -5,6 +5,8 @@ export const FILE_SAVE_CHANNEL = 'file:save'
 export const FILE_SAVE_AS_CHANNEL = 'file:save-as'
 export const STORAGE_FLUSH_CHANNEL = 'storage:flush'
 
+export const FILE_NOT_FOUND_REASON = 'File not found'
+
 export type ShellInfo = {
   readonly electron: string
   readonly chrome: string

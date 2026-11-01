@@ -71,6 +71,14 @@ export const loadLastFile = (storage: StorageLike | null): string | null => {
   }
 }
 
+export const clearLastFile = (storage: RemovableStorage | null): void => {
+  try {
+    storage?.removeItem(LAST_FILE_KEY)
+  } catch {
+    return
+  }
+}
+
 export const saveLastFile = (
   storage: StorageLike | null,
   path: string,
