@@ -44,7 +44,7 @@ Dev environment variables (all optional; parallel checkouts on one machine need 
 | `CHIRI_DEV_PORT` | Vite port for `pnpm dev` and `pnpm dev:electron`. When set, Vite fails instead of moving to another port. |
 | `CHIRI_CDP_PORT` | Chrome DevTools port of the dev window (default 9222). `agent-browser connect <port>` attaches to it. Dev only. |
 | `CHIRI_USER_DATA_DIR` | Absolute path for Electron's `userData` in `pnpm dev:electron` and `pnpm preview:electron` (not in a packaged app). Always set it for checks, never use the default. |
-| `CHIRI_DEV_PICK_FILE` | Absolute path of a text file. In `pnpm dev:electron` only, Open and Save as skip the native dialog and use the path in that file, read at each dialog. For checks, because `agent-browser` cannot drive a GTK dialog; say in the record which checks used it. |
+| `CHIRI_DEV_PICK_FILE` | Absolute path of a text file. In `pnpm dev:electron` only (an unpackaged app with the dev server), Open and Save as skip the native dialog and use the path in that file, read at each dialog. For checks, because `agent-browser` cannot drive a GTK dialog; say in the record which checks used it. |
 
 Attach to the window: `CHIRI_DEV_PORT=5301 CHIRI_CDP_PORT=9301 CHIRI_USER_DATA_DIR=$(mktemp -d) pnpm dev:electron`, then `agent-browser connect 9301`.
 
