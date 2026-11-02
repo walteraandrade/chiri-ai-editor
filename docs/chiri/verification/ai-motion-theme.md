@@ -60,6 +60,7 @@ Found and fixed when moving the base:
 - `src/main.tsx` was split into `main.web.tsx` and `main.electron.tsx` upstream. The initial theme is applied in [src/platform/mount.tsx](../../../src/platform/mount.tsx), which both entries share.
 - The History and Library UI use `bg-surface`, `bg-accent-tint` and `text-accent-soft`, which the first version of this change had removed: the Library, the key dialog and the Timeline's selected dot lost their colors with no error. The three tokens are back, derived from the seeds.
 - The fixed bottom-left theme button sat on top of the Library's list in the Electron build. It is now sticky in the editor column and reads only "Omarchy"; the theme's name is in its tooltip.
+- From the maintainer's own check in the Electron build: the open file was not visible in the Library under Vantablack (a 12% tint of a gray accent on black), and the native scrollbar with arrow buttons clashed with the UI. The open file now has a 20% accent row, medium-weight ink and a solid accent square, and its skill an accent caret; scrollbars are thin, themed and have no arrows ([ai-motion-9](img/ai-motion-9.png), Vantablack left, Chiri right).
 - `pnpm install` in this worktree linked `electron` without its binary (`Error: Electron uninstall`); `node node_modules/electron/install.js` restored it from the local cache. Not a project change.
 
 Found and fixed during the check:
@@ -96,4 +97,5 @@ None. Every Suggestion in these checks was injected through the effects in dev m
 | [ai-motion-5](img/ai-motion-5.png) | The Omarchy Vantablack theme |
 | [ai-motion-6](img/ai-motion-6.png) | The Catppuccin Latte (light) theme |
 | [ai-motion-7](img/ai-motion-7.png) | Phone width |
+| [ai-motion-9](img/ai-motion-9.png) | The Library with an open `SKILL.md`, Vantablack and Chiri, with the themed scrollbar |
 | [ai-motion-8](img/ai-motion-8.png) | The Electron build during a Review pass, with the Library and the theme button beside it |

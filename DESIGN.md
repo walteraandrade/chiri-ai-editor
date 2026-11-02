@@ -126,6 +126,12 @@ Flat at rest. Floating surfaces (bubble, floating Card, Review popover, toast) g
 - **Pending / refining:** a 6% AI wash with a slow 1.8s sweep.
 - **Accepted:** lands in AI color, then fades to ink. **Rejected:** the original text flashes a neutral fill and settles.
 
+### Lists (Library)
+- **Open file:** the accent at 20% behind strong, medium-weight ink, with a solid 6px accent square before the name. The skill that holds it gets an accent caret. A tint alone vanishes in monochrome themes such as Vantablack; the solid square does not.
+
+### Scrollbars
+- Native scrollbars, themed: a 4px square thumb (`--color-scrollbar`, ink at 16%; 32% on hover) on a clear track, no arrow buttons. Firefox gets `scrollbar-width: thin` with the same colors.
+
 ### Bubble
 - Hairline border; when its input has focus, a 70° arc of Ember orbits the border every 3.6s ("listening"). Enters with a 6px rise, 0.98 scale and a 3px blur, 260ms.
 
