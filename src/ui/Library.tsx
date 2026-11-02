@@ -15,6 +15,7 @@ type LibraryProps<Ref> = {
   readonly controls: LibraryControls
   readonly activeRef: Ref | null
   readonly onOpen: (ref: Ref) => void
+  readonly onNewSkill: () => void
 }
 
 type SkillItemProps = {
@@ -172,6 +173,7 @@ export function Library<Ref>({
   controls: { state, refresh, addRoot, removeRoot },
   activeRef,
   onOpen,
+  onNewSkill,
 }: LibraryProps<Ref>) {
   const [choices, setChoices] = useState<SkillChoices>({})
   const isActiveFile = (path: string): boolean =>
@@ -195,6 +197,15 @@ export function Library<Ref>({
           ) : null}
         </h2>
         <div className="flex items-center gap-1 text-sm">
+          <button
+            type="button"
+            className="cm-ai-button"
+            title="Create a skill from a template"
+            disabled={state.status !== 'ready'}
+            onClick={onNewSkill}
+          >
+            New
+          </button>
           <button
             type="button"
             className="cm-ai-button"

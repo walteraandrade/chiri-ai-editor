@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LibraryKit } from '../platform/kit'
-import type { LibraryListing } from '../skills/library'
+import type {
+  CreateSkillRequest,
+  CreateSkillResult,
+  LibraryListing,
+} from '../skills/library'
 import { sameLibrary } from '../skills/library-view'
 
 export type LibraryState =
@@ -69,7 +73,18 @@ export const useLibrary = <Ref>(
     [library, notify, refresh],
   )
 
-  return { state, refresh, addRoot, removeRoot }
+  const createSkill = useCallback(
+    async (request: CreateSkillRequest): Promise<CreateSkillResult> => {
+      if (library === undefined)
+        return { kind: 'failed', reason: 'No Library here' }
+      const result = await library.createSkill(request)
+      if (result.kind === 'created') await refresh()
+      return result
+    },
+    [library, refresh],
+  )
+
+  return { state, refresh, addRoot, removeRoot, createSkill }
 }
 
 export type LibraryControls = ReturnType<typeof useLibrary>
