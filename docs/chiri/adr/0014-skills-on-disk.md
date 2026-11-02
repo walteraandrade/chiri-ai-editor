@@ -1,6 +1,6 @@
 # 0014. Skills on disk are the source of truth
 
-- Status: Accepted (2026-10-31); Electron build only, except the frontmatter rule, which is shared code ([0016](0016-web-and-electron-builds.md)). Watcher and write details added on 2026-11-01; Save check, unsaved text and request rules added by the file slice (#30)
+- Status: Accepted (2026-10-31); Electron build only, except the frontmatter rule, which is shared code ([0016](0016-web-and-electron-builds.md)). Watcher and write details added on 2026-11-01; Save check, unsaved text and request rules added by the file slice (#30); watcher built in #33 (notes marked #33)
 - Source: maintainer request (native skills editor). The maintainer proposed Convex as the database; the review kept the files on disk as the only copy, and the maintainer chose local only.
 
 ## Context
@@ -27,10 +27,15 @@ Claude Code reads a skill from `<root>/<name>/SKILL.md`, plus the files beside i
 - **External change:** the watcher reports a change to the open file.
   - With no unsaved text, the Document reloads and History records an External Version.
   - With unsaved text, a notice offers "Reload from disk" or "Keep mine". Keep mine leaves the dot on; the next Save asks again.
+  - #33 · The main process only tells the renderer which paths changed (`{ paths, library }`, one push channel, `onExternalChanges`) and which file is open (`watchFile`). The renderer decides, because it holds the session's saved text and the Document: it reads the file, then compares the disk text with what is being written (an own write in flight), with the saved text (an own write done, or a touch) and with the disk text the user already answered (Keep mine). A file that is gone or no longer valid UTF-8 shows the notice, clean or not.
+  - #33 · A clean reload keeps the cursor and the scroll: the editor gets the smallest change between the old and the new text, not the whole text. Pending Suggestions are dropped, as on Open. "Reload from disk" records an External Version too, because the text came from outside; the unsaved text it replaces is recorded as an Edited Version first.
 - **What the watcher watches:**
   - Folders, not files. A rename (the app's own Save, `git pull`, most editors) gives the path a new inode, and a watch on the old file goes quiet.
   - Real paths. A root's symlinks can point outside every root (one points into a cloned repo), and a watch on the root does not see changes there.
   - Not its own writes. A change whose disk text equals the text last written by the app is not an External change.
+  - #33 · Node's `fs.watch` on directories, not recursive (inotify on Linux), no dependency. Electron 43 ships Node 24.22.1. Node's docs say a watch follows the inode: a deleted and recreated folder is a new inode, and the old watch emits one event and then goes quiet (checked on this machine too). So each watch is keyed by the folder's `dev:ino`, and a folder whose identity changed gets a new watch at the next scan.
+  - #33 · What is watched, from the last scan of the roots: each root's real path; each skill's real folder and the folder that holds it (so a link whose target is deleted or renamed is seen); the real folder of every file the scan lists, which covers a file symlinked from elsewhere and a folder symlinked in; the open file's folder, even outside every root. For a link in a root whose target is gone, and for a root that does not exist, the nearest existing parent of the missing path is watched, so the skill or the root coming back is seen. A watch that cannot be opened (the inotify limit) is logged and tried again at the next scan.
+  - #33 · Events are batched: 250 ms after the last one, at most 1 s after the first. Hidden names (`.name`, which covers the temporary file of an atomic write) and `node_modules` are ignored, except the open file itself. A rename, a `SKILL.md` or an unknown name tells the Library to scan again; a plain write to another file only reports its path. The Library does not redraw when the new listing equals the old one.
 - **Unsaved text survives a crash:** it is kept per file, debounced like today's autosave, and offered when that file opens again.
   - It keeps the text the edits started from. After a restart, the file's saved text is that one, not the disk text, so a file changed while the app was closed ends in the External change notice instead of being overwritten.
   - The last file reopens at start, before the first render, with its unsaved text. If it is gone (not found), the app says so once and forgets it; the text stays in the Document, and the per-file entry is dropped only once the Document holds it.
