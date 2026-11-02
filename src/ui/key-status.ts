@@ -9,9 +9,11 @@ export const describeKeyState = (state: KeyState): string => {
     case 'session':
       return 'Kept for this session only. Quitting forgets it.'
     case 'none':
-      return state.unreadable
-        ? 'The stored key could not be read. Enter it again.'
-        : 'No key set.'
+      return !state.unreadable
+        ? 'No key set.'
+        : state.keyringAvailable
+          ? 'The stored key could not be read. Enter it again.'
+          : 'The system keyring is not available, so the stored key cannot be read. Unlock your keyring and restart Chiri.'
   }
 }
 

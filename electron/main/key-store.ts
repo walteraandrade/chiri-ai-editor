@@ -138,8 +138,13 @@ export const createKeyStore = ({
     }
   }
 
+  const storedFormat = async (): Promise<StoredFormat | null> => {
+    const text = await file.read().catch(() => null)
+    return (text === null ? null : parseStored(text))?.storage ?? null
+  }
+
   const keepForSession = async (key: string): Promise<Held> => {
-    await file.remove()
+    if ((await storedFormat()) !== 'keyring') await file.remove()
     return { ...NO_KEY, key, storage: 'session' }
   }
 

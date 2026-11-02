@@ -164,16 +164,91 @@ describe('forwardToOpenRouter', () => {
     expect(calls[0]?.init.redirect).toBe('error')
   })
 
-  it('passes the page abort signal upstream', async () => {
-    const { fetch, calls } = upstream()
-    const controller = new AbortController()
-    const request = new Request(`${APP}/api/openrouter/generation?id=a`, {
-      signal: controller.signal,
+  it('aborts the upstream request when the response body is cancelled', async () => {
+    let sourceCancelled = false
+    const { fetch, calls } = upstream(
+      () =>
+        new Response(
+          new ReadableStream({
+            start: (controller) => {
+              controller.enqueue(new TextEncoder().encode('data: {"n":1}\n\n'))
+            },
+            cancel: () => {
+              sourceCancelled = true
+            },
+          }),
+          { headers: { 'content-type': 'text/event-stream' } },
+        ),
+    )
+    const response = await forwardToOpenRouter({
+      request: chat(),
+      apiKey: KEY,
+      fetch,
     })
-    await forwardToOpenRouter({ request, apiKey: KEY, fetch })
-    expect(calls[0]?.init.signal).toBeInstanceOf(AbortSignal)
-    controller.abort()
+    const signal = calls[0]?.init.signal
+    expect(signal).toBeInstanceOf(AbortSignal)
+    expect(signal?.aborted).toBe(false)
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader()
+    await reader.read()
+    expect(signal?.aborted).toBe(false)
+    await reader.cancel()
+    expect(signal?.aborted).toBe(true)
+    expect(sourceCancelled).toBe(true)
+  })
+
+  it('aborts when the body is cancelled before any chunk is read', async () => {
+    const { fetch, calls } = upstream(
+      () =>
+        new Response(new ReadableStream({ pull: () => new Promise(() => {}) })),
+    )
+    const response = await forwardToOpenRouter({
+      request: chat(),
+      apiKey: KEY,
+      fetch,
+    })
+    await response.body?.cancel()
     expect(calls[0]?.init.signal?.aborted).toBe(true)
+  })
+
+  it('does not abort the upstream request once the body is read to the end', async () => {
+    const { fetch, calls } = upstream()
+    const response = await forwardToOpenRouter({
+      request: chat(),
+      apiKey: KEY,
+      fetch,
+    })
+    await response.text()
+    expect(calls[0]?.init.signal?.aborted).toBe(false)
+  })
+
+  it('passes a body that fails on to the reader', async () => {
+    const { fetch } = upstream(
+      () =>
+        new Response(
+          new ReadableStream({
+            pull: () => {
+              throw new Error('upstream reset')
+            },
+          }),
+        ),
+    )
+    const response = await forwardToOpenRouter({
+      request: chat(),
+      apiKey: KEY,
+      fetch,
+    })
+    await expect(response.text()).rejects.toThrow()
+  })
+
+  it('answers without a body when upstream sends none', async () => {
+    const { fetch } = upstream(() => new Response(null, { status: 204 }))
+    const response = await forwardToOpenRouter({
+      request: chat(),
+      apiKey: KEY,
+      fetch,
+    })
+    expect(response.status).toBe(204)
+    expect(response.body).toBeNull()
   })
 
   it('returns the upstream status, body and content type', async () => {

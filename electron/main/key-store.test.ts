@@ -174,10 +174,59 @@ describe('createKeyStore: saving', () => {
     expect(file.writes()).toBe(0)
   })
 
-  it('removes an older stored key when the new one cannot be stored', async () => {
-    const file = fakeFile('{"version":1,"storage":"keyring","data":"AAAA"}')
+  it('removes an older plain text key when the new one cannot be stored', async () => {
+    const file = fakeFile('{"version":1,"storage":"plain-text","data":"AAAA"}')
     const { store } = storeWith('basic_text', file)
     await store.save(KEY)
+    expect(file.content()).toBeNull()
+  })
+
+  it('keeps a stored keyring file when the keyring is unavailable and a key is saved', async () => {
+    const writer = storeWith('gnome_libsecret')
+    await writer.store.save(KEY)
+    const content = writer.file.content()
+    const file = fakeFile(content)
+    const { store } = storeWith('basic_text', file)
+    expect(await store.load()).toMatchObject({
+      present: false,
+      unreadable: true,
+      keyringAvailable: false,
+    })
+    const status = await store.save('sk-or-v1-second')
+    expect(status).toMatchObject({ present: true, storage: 'session' })
+    expect(store.current()).toBe('sk-or-v1-second')
+    expect(file.removals()).toBe(0)
+    expect(file.content()).toBe(content)
+  })
+
+  it('keeps a stored keyring file when encrypting fails and the key falls back to the session', async () => {
+    const writer = storeWith('gnome_libsecret')
+    await writer.store.save(KEY)
+    const content = writer.file.content()
+    const file = fakeFile(content)
+    const base = fakeSafeStorage('gnome_libsecret')
+    const store = createKeyStore({
+      safeStorage: {
+        ...base,
+        encryptString: () => {
+          throw new Error('locked')
+        },
+      },
+      file,
+    })
+    await store.load()
+    const status = await store.save('sk-or-v1-second')
+    expect(status.storage).toBe('session')
+    expect(file.content()).toBe(content)
+  })
+
+  it('still lets Remove key delete a keyring file', async () => {
+    const writer = storeWith('gnome_libsecret')
+    await writer.store.save(KEY)
+    const file = fakeFile(writer.file.content())
+    const { store } = storeWith('basic_text', file)
+    await store.load()
+    await store.clear()
     expect(file.content()).toBeNull()
   })
 

@@ -49,6 +49,14 @@ describe('describeKeyState', () => {
       'The stored key could not be read. Enter it again.',
     )
   })
+
+  it('blames the keyring when the stored one cannot be read and the keyring is not available', () => {
+    expect(
+      describeKeyState(state({ unreadable: true, keyringAvailable: false })),
+    ).toBe(
+      'The system keyring is not available, so the stored key cannot be read. Unlock your keyring and restart Chiri.',
+    )
+  })
 })
 
 describe('offersPlainText', () => {

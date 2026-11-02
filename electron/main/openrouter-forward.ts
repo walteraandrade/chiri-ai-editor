@@ -54,18 +54,41 @@ const upstreamHeaders = (request: Request, apiKey: string): Headers => {
   return headers
 }
 
-const upstreamInit = (request: Request, apiKey: string): RequestInit => ({
+const upstreamInit = (
+  request: Request,
+  apiKey: string,
+  signal: AbortSignal,
+): RequestInit => ({
   method: request.method,
   headers: upstreamHeaders(request, apiKey),
   redirect: 'error',
-  signal: request.signal,
+  signal,
   ...(request.body === null
     ? {}
     : { body: request.body, duplex: 'half' as const }),
 })
 
-const returned = (upstream: Response): Response =>
-  new Response(upstream.body, {
+const abortOnCancel = (
+  body: ReadableStream<Uint8Array> | null,
+  controller: AbortController,
+): ReadableStream<Uint8Array> | null => {
+  if (body === null) return null
+  const reader = body.getReader()
+  return new ReadableStream<Uint8Array>({
+    pull: async (stream) => {
+      const { done, value } = await reader.read()
+      if (done) stream.close()
+      else stream.enqueue(value)
+    },
+    cancel: async (reason) => {
+      controller.abort()
+      await reader.cancel(reason).catch(() => undefined)
+    },
+  })
+}
+
+const returned = (upstream: Response, controller: AbortController): Response =>
+  new Response(abortOnCancel(upstream.body, controller), {
     status: upstream.status,
     statusText: upstream.statusText,
     headers: {
@@ -88,8 +111,13 @@ export const forwardToOpenRouter = async ({
       401,
       'OpenRouter key missing. Add it with the Key button.',
     )
+  const controller = new AbortController()
   try {
-    return returned(await fetch(target, upstreamInit(request, apiKey)))
+    const upstream = await fetch(
+      target,
+      upstreamInit(request, apiKey, controller.signal),
+    )
+    return returned(upstream, controller)
   } catch {
     return errorResponse(502, 'Could not reach OpenRouter.')
   }
