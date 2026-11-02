@@ -1,11 +1,8 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
-import type {
-  CreateSkillRequest,
-  CreateSkillResult,
-  LibraryListing,
-} from '../skills/library'
+import type { CreateSkillRequest, LibraryListing } from '../skills/library'
 import {
   firstWritableRoot,
+  type NewSkillOutcome,
   newSkillDraft,
   newSkillRequest,
   writableRoots,
@@ -13,7 +10,7 @@ import {
 
 type NewSkillDialogProps = {
   readonly roots: LibraryListing
-  readonly onCreate: (request: CreateSkillRequest) => Promise<CreateSkillResult>
+  readonly onCreate: (request: CreateSkillRequest) => Promise<NewSkillOutcome>
   readonly onClose: () => void
 }
 

@@ -16,8 +16,9 @@ import {
   describeFrontmatterProblem,
   reportProblems,
 } from '../skills/frontmatter-panel'
-import type { CreateSkillRequest, CreateSkillResult } from '../skills/library'
+import type { CreateSkillRequest } from '../skills/library'
 import { openSkillFile, skillFileLabel } from '../skills/library-view'
+import type { NewSkillOutcome } from '../skills/new-skill'
 import { SKILL_FILE_NAME } from '../skills/scan-skills'
 import type { SkillField } from '../skills/skill-frontmatter'
 import { noticeMessage } from '../suggestions/notice'
@@ -188,7 +189,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   })
   const refreshFrontmatter = frontmatter.refresh
   const frontmatterPanel = useRef<HTMLElement>(null)
-  const { edited, openRef: openFileRef } = file
+  const { edited, openCreated } = file
   const onChange = useCallback(
     (text: string) => {
       edited(text)
@@ -212,16 +213,24 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const [newSkillOpen, setNewSkillOpen] = useState(false)
   const { createSkill: createLibrarySkill } = libraryControls
   const createSkill = useCallback(
-    async (request: CreateSkillRequest): Promise<CreateSkillResult> => {
-      const result = await createLibrarySkill(request)
-      if (result.kind === 'created' && library !== undefined) {
+    async (request: CreateSkillRequest): Promise<NewSkillOutcome> => {
+      if (library === undefined)
+        return { kind: 'failed', reason: 'No Library here' }
+      const outcome = await openCreated(async () => {
+        const result = await createLibrarySkill(request)
+        return {
+          ref: result.kind === 'created' ? library.toRef(result.path) : null,
+          value: result,
+        }
+      })
+      if (outcome.kind === 'stayed') return { kind: 'cancelled' }
+      if (outcome.value.kind === 'created') {
         setNewSkillOpen(false)
-        showToast(`Created ${result.name}`)
-        void openFileRef(library.toRef(result.path))
+        showToast(`Created ${outcome.value.name}`)
       }
-      return result
+      return outcome.value
     },
-    [createLibrarySkill, library, showToast, openFileRef],
+    [createLibrarySkill, library, showToast, openCreated],
   )
 
   const shown =

@@ -1,6 +1,13 @@
-import type { CreateSkillRequest, LibraryListing, LibraryRoot } from './library'
+import type {
+  CreateSkillRequest,
+  CreateSkillResult,
+  LibraryListing,
+  LibraryRoot,
+} from './library'
 import { SKILL_FILE_NAME } from './scan-skills'
 import { checkSkillName } from './skill-frontmatter'
+
+export type NewSkillOutcome = CreateSkillResult | { readonly kind: 'cancelled' }
 
 export type NewSkillDraft = {
   readonly problems: readonly string[]
