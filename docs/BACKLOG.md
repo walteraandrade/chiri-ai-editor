@@ -29,6 +29,7 @@ Context links point to where the related code, decision or evidence lives. A mer
 | Item | Why it waits | Context |
 |---|---|---|
 | Tabs | One Document at a time covers editing one skill. Tabs matter when a skill spans several files (`SKILL.md` plus references) | [0014](chiri/adr/0014-skills-on-disk.md) |
+| One window per file | A second `.md` from the desktop replaces the Document in the open window (#45). Two windows side by side need a watcher per window: `watchFile` follows one open file for the whole app | [0013](chiri/adr/0013-native-app-on-electron.md), [#45](https://github.com/walteraandrade/chiri-ai-editor/issues/45) |
 | AI on the `description` | The `description` decides when an agent loads the skill, so it is the line most worth an AI pass. It lives in YAML, so the answer must stay one valid YAML string; slice 6's panel is where it goes | [0014](chiri/adr/0014-skills-on-disk.md), [ADR 0002](chiri/adr/0002-structured-output-app-owned-anchors.md) |
 | Quick actions for skills | Shorter / Clearer / More formal / Fix grammar were picked for prose. Skills want others ("Make this an instruction", "Cut what the agent already knows"). Each one needs a Bake-off check | [ADR 0006](chiri/adr/0006-context-and-prompt-rules.md), [bakeoff.md](chiri/bakeoff.md) |
 | Thin out old Edited Versions | No cap at first. When `history.sqlite` grows, keep every Accepted, Opened, Restored, External and saved Version, and thin Edited ones by age (one per hour after 7 days, one per day after 90). A pure function, TDD | [0015](chiri/adr/0015-history-in-sqlite.md) |

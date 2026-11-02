@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { DocumentControls } from '../editor/document-controls'
 import {
   beforeReviewChanges,
@@ -64,6 +71,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     problems,
     library,
     external,
+    launches,
   } = kit
   const key = useKeyState(kit)
   const initialDoc = unsavedText.initial
@@ -161,6 +169,8 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     onSaved,
     askLeave: leavePrompt.ask,
   })
+  const openLaunched = useEffectEvent((ref: Ref) => void file.openRef(ref))
+  useEffect(() => launches?.subscribe(openLaunched), [launches])
   const libraryControls = useLibrary(library, showToast)
   const openRef = file.session?.ref ?? null
   const librarySkillFile =
@@ -394,6 +404,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           settings={key.settings}
           state={key.state}
           onState={key.setState}
+          onSaved={showToast}
           onClose={key.closeDialog}
         />
       ) : null}

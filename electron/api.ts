@@ -18,6 +18,8 @@ export const LIBRARY_REMOVE_ROOT_CHANNEL = 'library:remove-root'
 export const WATCH_FILE_CHANNEL = 'external:watch-file'
 export const EXTERNAL_CHANGES_CHANNEL = 'external:changes'
 export const LIBRARY_CREATE_SKILL_CHANNEL = 'library:create-skill'
+export const LAUNCH_TAKE_CHANNEL = 'launch:take'
+export const LAUNCH_FILE_CHANNEL = 'launch:file'
 
 export const KEY_STATE_CHANNEL = 'key:state'
 export const KEY_SAVE_CHANNEL = 'key:save'
@@ -97,6 +99,8 @@ export type ChiriApi = {
   readonly createSkill: (
     request: CreateSkillRequest,
   ) => Promise<CreateSkillResult>
+  readonly takeLaunchFile: () => Promise<string | null>
+  readonly onLaunchFile: (listener: () => void) => () => void
   readonly keyState: () => Promise<KeyState>
   readonly saveKey: (key: string) => Promise<KeyState>
   readonly keepKeyAsPlainText: () => Promise<KeyState>
