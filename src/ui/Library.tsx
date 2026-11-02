@@ -21,7 +21,7 @@ type LibraryProps<Ref> = {
 type SkillItemProps = {
   readonly skill: Skill
   readonly open: boolean
-  readonly holdsOpenFile: boolean
+  readonly hasOpenFile: boolean
   readonly isActiveFile: (path: string) => boolean
   readonly onToggle: () => void
   readonly onOpenFile: (path: string) => void
@@ -30,7 +30,7 @@ type SkillItemProps = {
 function SkillItem({
   skill,
   open,
-  holdsOpenFile,
+  hasOpenFile,
   isActiveFile,
   onToggle,
   onOpenFile,
@@ -41,13 +41,13 @@ function SkillItem({
         type="button"
         aria-expanded={open}
         title={skill.realPath}
-        className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-fill"
+        className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-fill ${hasOpenFile && !open ? 'bg-accent/10' : ''}`}
         onClick={onToggle}
       >
         <span className="flex items-baseline gap-2">
           <span
             aria-hidden="true"
-            className={`w-2 shrink-0 text-xs ${holdsOpenFile ? 'text-accent' : 'text-ink-faint'}`}
+            className={`w-2 shrink-0 text-xs ${hasOpenFile ? 'text-accent' : 'text-ink-faint'}`}
           >
             {open ? '▾' : '▸'}
           </span>
@@ -162,7 +162,7 @@ function RootSection({
                 key={skill.realPath}
                 skill={skill}
                 open={open}
-                holdsOpenFile={skill.realPath === holdingOpenFile}
+                hasOpenFile={skill.realPath === holdingOpenFile}
                 isActiveFile={isActiveFile}
                 onToggle={() => onToggle(skill.realPath, !open)}
                 onOpenFile={onOpenFile}

@@ -2,6 +2,7 @@ import type { EditorState } from '@codemirror/state'
 import { type EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import { instructionLabel } from '../suggestions/instruction'
 import type { Suggestion } from '../suggestions/types'
+import { aiFlag } from './ai-flag'
 import { el } from './dom'
 import { reviewRunField } from './review-field'
 import { suggestionsField } from './suggestion-field'
@@ -42,8 +43,8 @@ type Point = { readonly x: number; readonly y: number; readonly height: number }
 type Measured = {
   readonly caret: AiCaret | null
   readonly at: Point | null
-  readonly spawn: Point | null
-  readonly flip: boolean
+  readonly travelFrom: Point | null
+  readonly flagOnLeft: boolean
 }
 
 const pointAt = (view: EditorView, pos: number, side: -1 | 1): Point | null => {
@@ -56,19 +57,6 @@ const pointAt = (view: EditorView, pos: number, side: -1 | 1): Point | null => {
     height: (coords.bottom - coords.top) / view.scaleY,
   }
 }
-
-export const aiFlag = (
-  extraClass = '',
-  children: readonly Node[] = [],
-): HTMLSpanElement =>
-  el(
-    'span',
-    {
-      class: `cm-ai-flag ${extraClass}`.trim(),
-      attrs: { 'aria-hidden': 'true' },
-    },
-    [el('span', { class: 'cm-ai-flag-name' }, ['AI']), ...children],
-  )
 
 const createCaretView = (view: EditorView) => {
   const label = el('span', { class: 'cm-ai-caret-label' })
@@ -93,28 +81,28 @@ const createCaretView = (view: EditorView) => {
   const read = (current: EditorView): Measured => {
     const caret = aiCaretOf(current.state)
     const at = caret ? pointAt(current, caret.pos, -1) : null
-    const spawn =
+    const travelFrom =
       at && !shown
         ? pointAt(current, current.state.selection.main.head, 1)
         : null
-    const flip =
+    const flagOnLeft =
       at !== null &&
       at.x + flag.offsetWidth >
         current.scrollDOM.clientWidth + current.scrollDOM.scrollLeft
-    return { caret, at, spawn, flip }
+    return { caret, at, travelFrom, flagOnLeft }
   }
 
-  const write = ({ caret, at, spawn, flip }: Measured): void => {
+  const write = ({ caret, at, travelFrom, flagOnLeft }: Measured): void => {
     if (!caret || !at) {
       dom.classList.remove('is-visible')
       shown = false
       return
     }
     label.textContent = caret.label
-    dom.classList.toggle('is-flipped', flip)
+    dom.classList.toggle('is-flipped', flagOnLeft)
     if (!shown) {
       dom.classList.add('is-placing')
-      place(spawn ?? at)
+      place(travelFrom ?? at)
       void dom.offsetWidth
       dom.classList.remove('is-placing')
     }

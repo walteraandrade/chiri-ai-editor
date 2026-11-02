@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { StorageLike } from '../document/storage'
 import {
+  activeTheme,
   loadThemeChoice,
   saveThemeChoice,
   THEME_STORAGE_KEY,
 } from './preference'
+import type { ThemeTokens } from './tokens'
 
 const memoryStorage = (initial: Record<string, string> = {}): StorageLike => {
   const items = new Map(Object.entries(initial))
@@ -51,5 +53,29 @@ describe('saveThemeChoice', () => {
 
   it('swallows storage errors', () => {
     expect(() => saveThemeChoice(throwingStorage, 'chiri')).not.toThrow()
+  })
+})
+
+describe('activeTheme', () => {
+  const vantablack: ThemeTokens = {
+    name: 'vantablack',
+    mode: 'dark',
+    bg: '#000000',
+    raised: null,
+    ink: '#ffffff',
+    inkStrong: '#ffffff',
+    accent: '#8d8d8d',
+    ai: '#8d8d8d',
+    danger: null,
+    selection: null,
+  }
+
+  it('uses the Omarchy theme when chosen and present', () => {
+    expect(activeTheme('omarchy', vantablack)).toBe(vantablack)
+  })
+
+  it('falls back to the Chiri theme otherwise', () => {
+    expect(activeTheme('chiri', vantablack)).toBeNull()
+    expect(activeTheme('omarchy', null)).toBeNull()
   })
 })

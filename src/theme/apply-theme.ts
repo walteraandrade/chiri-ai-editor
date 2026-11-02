@@ -1,4 +1,6 @@
-import { prefersReducedMotion } from '../ui/motion'
+import { getLocalStorage } from '../document/storage'
+import { initialOmarchyTheme } from './omarchy-source'
+import { activeTheme, loadThemeChoice } from './preference'
 import {
   THEME_VARIABLE_NAMES,
   type ThemeTokens,
@@ -17,10 +19,17 @@ const setVariables = (root: HTMLElement, tokens: ThemeTokens | null): void => {
 export const applyTheme = (
   root: HTMLElement,
   tokens: ThemeTokens | null,
-  { animate }: { readonly animate: boolean },
+  { crossfade }: { readonly crossfade: boolean },
 ): void => {
   const update = () => setVariables(root, tokens)
-  if (animate && !prefersReducedMotion() && document.startViewTransition)
+  if (crossfade && document.startViewTransition)
     document.startViewTransition(update)
   else update()
 }
+
+export const applyInitialTheme = (): void =>
+  applyTheme(
+    document.documentElement,
+    activeTheme(loadThemeChoice(getLocalStorage()), initialOmarchyTheme),
+    { crossfade: false },
+  )

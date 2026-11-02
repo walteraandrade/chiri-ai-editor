@@ -74,12 +74,12 @@ Colors are not hard-coded. Every token (`--color-*`, including the older `accent
 - **Graphite Canvas** (#141417): page and editor background.
 - **Surface Graphite** (canvas + 4.5% ink): side panels and dialogs (Library, key dialog, frontmatter panel).
 - **Raised Graphite** (#28282d, derived as canvas + 9% ink): bubble, Cards, popovers, toasts.
-- **Paper White Ink** (#f1f1f3): strong ink for headings and controls; body ink is the same at 82%, muted 62%, faint 40%.
+- **Paper White Ink** (#f1f1f3): strong ink for headings and controls; body ink is the same at 82%, muted 62%, faint 40%. Anything meant to be read (deleted text, key hints, placeholders) uses muted or stronger, for WCAG AA; faint is for decoration and disabled controls.
 - **Signal Red** (#f87171): errors only.
 
 ### Named Rules
 **The One Author Color Rule.** Only AI-authored things use `--color-ai*`. Writer text, chrome and selection never borrow it.
-**The Ownership Rule.** AI text stays in Ember until accepted; on Accept it lands in Ember and fades to the writer's ink over ~1.2s.
+**The Ownership Rule.** AI text stays in Ember until accepted; on Accept it lands in Ember with a soft glow, holds for ~0.4s and fades to the writer's ink by 1.4s. Under reduced motion it shows in Ember for the same 1.5s, without the fade.
 
 ## 3. Typography
 
@@ -100,7 +100,7 @@ One family carries the product. League Spartan appears once, in the "Chiri" word
 Flat at rest. Floating surfaces (bubble, floating Card, Review popover, toast) get a 1px hairline (`--color-hairline`, ink at 9%) and one ambient shadow; margin Cards sit flat beside the text.
 
 ### Shadow Vocabulary
-- **Float** (`box-shadow: 0 10px 32px var(--color-shadow)`): anything that covers text. `--color-shadow` is black at 50% in dark themes and a soft 16% in light ones.
+- **Float** (`--shadow-float`, the Tailwind `shadow-float` utility: `0 10px 32px` of the theme shadow): anything that covers text: the bubble, floating Cards, the Review popover, toasts. `--color-shadow` is black at 50% in dark themes and a soft 16% in light ones.
 
 ## 5. Components
 
@@ -121,10 +121,10 @@ Flat at rest. Floating surfaces (bubble, floating Card, Review popover, toast) g
 - A 2px Ember bar with the flag above it, showing the Instruction ("AI · More formal ···"). It exists only while the AI works: a request, a Refine, a Review pass. It appears where the writer asked, travels (560ms, expo-out) to the end of the Target, and during a Review pass hops to each Suggestion as it streams in. It breathes while thinking and fades out when the work lands.
 
 ### Suggestions in the text
-- **Deleted text:** faint ink with a 1px strike drawn left to right in 420ms, across wrapped lines.
+- **Deleted text:** muted ink with a 1px strike drawn left to right in 420ms, across wrapped lines.
 - **Inserted text:** AI text on the AI tint; the words fade in one by one (34ms apart, 560ms budget) from a soft AI glow.
 - **Pending / refining:** a 6% AI wash with a slow 1.8s sweep.
-- **Accepted:** lands in AI color, then fades to ink. **Rejected:** the original text flashes a neutral fill and settles.
+- **Accepted:** lands in AI color, then fades to ink. **Rejected:** the original text flashes a neutral fill and settles in 420ms.
 
 ### Lists (Library)
 - **Open file:** the accent at 20% behind strong, medium-weight ink, with a solid 6px accent square before the name. The skill that holds it gets an accent caret. A tint alone vanishes in monochrome themes such as Vantablack; the solid square does not.
@@ -143,7 +143,7 @@ Flat at rest. Floating surfaces (bubble, floating Card, Review popover, toast) g
 ### Do:
 - **Do** derive every new color from the theme seeds with `color-mix()`, so Omarchy themes keep working.
 - **Do** give every animation a reduced-motion state: no travel, no loops, state shown by color alone.
-- **Do** keep feedback motion between 120ms and 420ms, expo-out or quart-out; only the landing fade runs longer.
+- **Do** keep feedback motion between 120ms and 420ms, expo-out or quart-out. Three documented exceptions: the landing fade (1.4s), the AI caret's travel (560ms) and the theme crossfade (420ms, in-out, since it is not feedback).
 - **Do** tie an entrance animation to a state change in `motionField`, not to DOM creation: CodeMirror rebuilds marks often.
 
 ### Don't:

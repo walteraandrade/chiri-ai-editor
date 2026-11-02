@@ -51,63 +51,60 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.comment, color: 'var(--color-ink-faint)' },
 ])
 
-export const editorTheme = EditorView.theme(
-  {
-    '&': {
-      color: 'var(--color-ink)',
-      backgroundColor: 'transparent',
-      fontSize: '1.0625rem',
-      minHeight: '60vh',
-    },
-    '&.cm-focused': { outline: 'none' },
-    '.cm-scroller': {
-      fontFamily: 'var(--font-sans)',
-      lineHeight: '1.75',
-    },
-    '.cm-content': {
-      padding: '0.5rem 0',
-      caretColor: 'var(--color-ink-strong)',
-    },
-    '.cm-line': { padding: '0' },
-    '.cm-cursor, .cm-dropCursor': {
-      borderLeftColor: 'var(--color-ink-strong)',
-      borderLeftWidth: '2px',
-    },
-    '.cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground':
-      { backgroundColor: 'var(--color-selection)' },
-    '.cm-codeblock-line': {
-      fontFamily: 'var(--font-mono)',
-      fontSize: '0.9em',
-      backgroundColor: 'var(--color-code-bg)',
-      borderInline: '0.75rem solid transparent',
-    },
-    '.cm-codeblock-line span': {
-      backgroundColor: 'transparent',
-      padding: '0',
-      fontSize: 'inherit',
-    },
-    '.cm-frontmatter-line': {
-      fontFamily: 'var(--font-mono)',
-      fontSize: '0.875em',
-      lineHeight: '1.65',
-      color: 'var(--color-ink-muted)',
-      backgroundColor: 'var(--color-code-bg)',
-      borderInline: '0.75rem solid transparent',
-    },
-    '.cm-frontmatter-delimiter': {
-      color: 'var(--color-ink-faint)',
-    },
-    '.cm-frontmatter-line span': {
-      fontSize: 'inherit',
-      fontWeight: 'inherit',
-      fontStyle: 'inherit',
-      color: 'inherit',
-      backgroundColor: 'transparent',
-      padding: '0',
-    },
-    '.cm-frontmatter-line .cm-frontmatter-key': {
-      color: 'var(--color-accent-soft)',
-    },
+export const editorTheme = EditorView.theme({
+  '&': {
+    color: 'var(--color-ink)',
+    backgroundColor: 'transparent',
+    fontSize: '1.0625rem',
+    minHeight: '60vh',
   },
-  { dark: true },
-)
+  '&.cm-focused': { outline: 'none' },
+  '.cm-scroller': {
+    fontFamily: 'var(--font-sans)',
+    lineHeight: '1.75',
+  },
+  '.cm-content': {
+    padding: '0.5rem 0',
+    caretColor: 'var(--color-ink-strong)',
+  },
+  '.cm-line': { padding: '0' },
+  '.cm-cursor, .cm-dropCursor': {
+    borderLeftColor: 'var(--color-ink-strong)',
+    borderLeftWidth: '2px',
+  },
+  '.cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground':
+    { backgroundColor: 'var(--color-selection)' },
+  '.cm-codeblock-line': {
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.9em',
+    backgroundColor: 'var(--color-code-bg)',
+    borderInline: '0.75rem solid transparent',
+  },
+  '.cm-codeblock-line span': {
+    backgroundColor: 'transparent',
+    padding: '0',
+    fontSize: 'inherit',
+  },
+  '.cm-frontmatter-line': {
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.875em',
+    lineHeight: '1.65',
+    color: 'var(--color-ink-muted)',
+    backgroundColor: 'var(--color-code-bg)',
+    borderInline: '0.75rem solid transparent',
+  },
+  '.cm-frontmatter-delimiter': {
+    color: 'var(--color-ink-faint)',
+  },
+  '.cm-frontmatter-line span': {
+    fontSize: 'inherit',
+    fontWeight: 'inherit',
+    fontStyle: 'inherit',
+    color: 'inherit',
+    backgroundColor: 'transparent',
+    padding: '0',
+  },
+  '.cm-frontmatter-line .cm-frontmatter-key': {
+    color: 'var(--color-accent-soft)',
+  },
+})

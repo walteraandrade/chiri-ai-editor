@@ -26,7 +26,7 @@ import {
   formatCtrlShortcut,
   formatShortcut,
 } from '../ui/platform'
-import { aiFlag } from './ai-caret'
+import { aiFlag } from './ai-flag'
 import {
   type CardPlacement,
   cardPlacementOf,

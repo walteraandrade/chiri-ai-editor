@@ -1,5 +1,13 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { omarchyTokens, parseColorsToml } from './omarchy-theme'
+import {
+  omarchyTheme,
+  omarchyTokens,
+  parseColorsToml,
+  readOmarchyTheme,
+} from './omarchy-theme'
 
 const TOKYO_NIGHT = `mode = "dark"
 
@@ -84,6 +92,34 @@ describe('omarchyTokens', () => {
     })
   })
 
+  it('trusts an explicit mode over the background', () => {
+    expect(
+      omarchyTokens(
+        {
+          mode: 'light',
+          background: '#101010',
+          foreground: '#888888',
+          accent: '#ff0000',
+        },
+        'x',
+      )?.mode,
+    ).toBe('light')
+  })
+
+  it('reads short hex and ignores an unknown mode', () => {
+    expect(
+      omarchyTokens(
+        {
+          mode: 'dim',
+          background: '#fff',
+          foreground: '#333',
+          accent: '#f00',
+        },
+        'x',
+      )?.mode,
+    ).toBe('light')
+  })
+
   it('infers the mode from the background when mode is missing', () => {
     const base = { foreground: '#888888', accent: '#ff0000' }
     expect(omarchyTokens({ ...base, background: '#101010' }, 'x')?.mode).toBe(
@@ -92,5 +128,62 @@ describe('omarchyTokens', () => {
     expect(omarchyTokens({ ...base, background: '#fafafa' }, 'x')?.mode).toBe(
       'light',
     )
+  })
+})
+
+const stateDir = (files: Readonly<Record<string, string>>): string => {
+  const dir = mkdtempSync(join(tmpdir(), 'omarchy-'))
+  mkdirSync(join(dir, 'theme'))
+  for (const [path, text] of Object.entries(files))
+    writeFileSync(join(dir, path), text)
+  return dir
+}
+
+describe('readOmarchyTheme', () => {
+  it('reads the current theme and its name', () => {
+    const dir = stateDir({
+      'theme/colors.toml': TOKYO_NIGHT,
+      'theme.name': 'tokyo-night\n',
+    })
+    expect(readOmarchyTheme(dir)).toMatchObject({
+      name: 'tokyo-night',
+      bg: '#1a1b26',
+    })
+  })
+
+  it('falls back to a generic name without theme.name', () => {
+    const dir = stateDir({ 'theme/colors.toml': TOKYO_NIGHT })
+    expect(readOmarchyTheme(dir)?.name).toBe('omarchy')
+  })
+
+  it('is null without colors.toml', () => {
+    expect(readOmarchyTheme(stateDir({}))).toBeNull()
+  })
+})
+
+type Hooks = {
+  readonly configResolved: (config: { readonly command: string }) => void
+  readonly resolveId: (id: string) => string | null
+  readonly load: (id: string) => string | null
+}
+
+const themeModule = (command: 'serve' | 'build', dir: string) => {
+  const plugin = omarchyTheme(dir) as unknown as Hooks
+  plugin.configResolved({ command })
+  return plugin.load(plugin.resolveId('virtual:omarchy-theme') ?? '')
+}
+
+describe('omarchyTheme plugin', () => {
+  const dir = stateDir({
+    'theme/colors.toml': TOKYO_NIGHT,
+    'theme.name': 'tokyo-night',
+  })
+
+  it('serves the current theme to the dev server', () => {
+    expect(themeModule('serve', dir)).toContain('"name":"tokyo-night"')
+  })
+
+  it('never bakes the machine theme into a build', () => {
+    expect(themeModule('build', dir)).toBe('export default null')
   })
 })

@@ -6,7 +6,7 @@ import {
   type Transaction,
 } from '@codemirror/state'
 import { type EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
-import { revealedIds } from '../suggestions/moments'
+import { newlyRevealedIds } from '../suggestions/moments'
 import { findSuggestion } from '../suggestions/state'
 import type { SuggestionId, SuggestionsState } from '../suggestions/types'
 import {
@@ -19,19 +19,6 @@ import {
 
 export type RangeMomentKind = 'land' | 'settle'
 
-type Moment =
-  | {
-      readonly serial: number
-      readonly kind: 'reveal'
-      readonly id: SuggestionId
-    }
-  | {
-      readonly serial: number
-      readonly kind: RangeMomentKind
-      readonly from: number
-      readonly to: number
-    }
-
 type MomentDraft =
   | { readonly kind: 'reveal'; readonly id: SuggestionId }
   | {
@@ -39,6 +26,8 @@ type MomentDraft =
       readonly from: number
       readonly to: number
     }
+
+export type Moment = MomentDraft & { readonly serial: number }
 
 type MotionState = {
   readonly moments: readonly Moment[]
@@ -48,7 +37,7 @@ type MotionState = {
 const MOMENT_DURATION_MS: Readonly<Record<Moment['kind'], number>> = {
   reveal: 1100,
   land: 1500,
-  settle: 700,
+  settle: 500,
 }
 
 export const expireMomentEffect = StateEffect.define<number>()
@@ -105,7 +94,7 @@ const newMoments = (transaction: Transaction): readonly MomentDraft[] => {
   const after = suggestionsOf(transaction.state)
   if (before === after) return []
   return [
-    ...revealedIds(before, after).map((id) => ({
+    ...newlyRevealedIds(before, after).map((id) => ({
       kind: 'reveal' as const,
       id,
     })),
@@ -124,7 +113,7 @@ const newMoments = (transaction: Transaction): readonly MomentDraft[] => {
   ]
 }
 
-const keepMoment =
+const carryOver =
   (transaction: Transaction, expired: ReadonlySet<number>) =>
   (moment: Moment): readonly Moment[] => {
     if (expired.has(moment.serial)) return []
@@ -143,7 +132,7 @@ export const motionField = StateField.define<MotionState>({
         effect.is(expireMomentEffect) ? [effect.value] : [],
       ),
     )
-    const kept = value.moments.flatMap(keepMoment(transaction, expired))
+    const kept = value.moments.flatMap(carryOver(transaction, expired))
     const added = newMoments(transaction).map(
       (draft, index): Moment => ({
         ...draft,
@@ -173,30 +162,40 @@ export const revealingIds = (state: EditorState): ReadonlySet<SuggestionId> =>
     ),
   )
 
-const scheduleExpiry = (view: EditorView) => {
+export const createExpiryScheduler = (expire: (serial: number) => void) => {
   const timers = new Map<number, ReturnType<typeof setTimeout>>()
-  const schedule = (moments: readonly Moment[]): void => {
-    for (const moment of moments) {
-      if (timers.has(moment.serial)) continue
-      timers.set(
-        moment.serial,
-        setTimeout(() => {
-          timers.delete(moment.serial)
-          view.dispatch({ effects: expireMomentEffect.of(moment.serial) })
-        }, MOMENT_DURATION_MS[moment.kind]),
-      )
-    }
+  return {
+    schedule: (moments: readonly Moment[]): void => {
+      for (const moment of moments) {
+        if (timers.has(moment.serial)) continue
+        timers.set(
+          moment.serial,
+          setTimeout(() => {
+            timers.delete(moment.serial)
+            expire(moment.serial)
+          }, MOMENT_DURATION_MS[moment.kind]),
+        )
+      }
+    },
+    destroy: (): void => {
+      for (const timer of timers.values()) clearTimeout(timer)
+      timers.clear()
+    },
   }
+}
+
+const scheduleExpiry = (view: EditorView) => {
+  const scheduler = createExpiryScheduler((serial) =>
+    view.dispatch({ effects: expireMomentEffect.of(serial) }),
+  )
   return {
     update: (update: ViewUpdate) => {
       if (
         update.state.field(motionField) !== update.startState.field(motionField)
       )
-        schedule(momentsOf(update.state))
+        scheduler.schedule(momentsOf(update.state))
     },
-    destroy: () => {
-      for (const timer of timers.values()) clearTimeout(timer)
-    },
+    destroy: scheduler.destroy,
   }
 }
 

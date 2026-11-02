@@ -1,4 +1,5 @@
 import type { StorageLike } from '../document/storage'
+import type { ThemeTokens } from './tokens'
 
 export const THEME_STORAGE_KEY = 'chiri.theme'
 
@@ -20,3 +21,8 @@ export const saveThemeChoice = (
     storage?.setItem(THEME_STORAGE_KEY, choice)
   } catch {}
 }
+
+export const activeTheme = (
+  choice: ThemeChoice,
+  omarchy: ThemeTokens | null,
+): ThemeTokens | null => (choice === 'omarchy' ? omarchy : null)

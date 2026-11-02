@@ -22,47 +22,26 @@ import {
 import { rejectSuggestionById } from './suggestion-commands'
 import { activeOf, suggestionsField, suggestionsOf } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
-
-const WORD_STEP_MS = 34
-const WORD_BUDGET_MS = 560
+import { revealParts } from './word-reveal'
 
 const idAttributes = (id: SuggestionId) => ({ 'data-suggestion-id': id })
 
 const classNames = (...names: readonly (string | false)[]): string =>
   names.filter((name) => name !== false).join(' ')
 
-const isSpace = (part: string): boolean => /^\s+$/.test(part)
-
-const revealedWords = (text: string): readonly (Node | string)[] => {
-  const parts = text.split(/(\s+)/).filter((part) => part !== '')
-  const count = parts.filter((part) => !isSpace(part)).length
-  const step = Math.min(WORD_STEP_MS, WORD_BUDGET_MS / Math.max(count, 1))
-  return parts.reduce<{
-    readonly nodes: (Node | string)[]
-    readonly index: number
-  }>(
-    ({ nodes, index }, part) =>
-      isSpace(part)
-        ? { nodes: [...nodes, part], index }
-        : {
-            nodes: [
-              ...nodes,
-              el(
-                'span',
-                {
-                  class: 'cm-ai-word',
-                  attrs: {
-                    style: `--word-delay: ${Math.round(index * step)}ms`,
-                  },
-                },
-                [part],
-              ),
-            ],
-            index: index + 1,
+const revealedWords = (text: string): readonly (Node | string)[] =>
+  revealParts(text).map(({ text: part, delayMs }) =>
+    delayMs === null
+      ? part
+      : el(
+          'span',
+          {
+            class: 'cm-ai-word',
+            attrs: { style: `--word-delay: ${delayMs}ms` },
           },
-    { nodes: [], index: 0 },
-  ).nodes
-}
+          [part],
+        ),
+  )
 
 const textChildren = (text: string, entering: boolean) =>
   entering ? revealedWords(text) : [text]

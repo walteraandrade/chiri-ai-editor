@@ -16,7 +16,7 @@ import {
   freeTextInstruction,
   quickActionInstruction,
 } from '../suggestions/instruction'
-import { aiFlag } from './ai-caret'
+import { aiFlag } from './ai-flag'
 import { currentTarget } from './current-target'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
@@ -109,7 +109,7 @@ const buildBubble = (view: EditorView) => {
     class: 'cm-ai-bubble-input',
     attrs: {
       type: 'text',
-      placeholder: 'Ask for a change…',
+      placeholder: 'Ask AI…',
       'aria-label': 'Ask AI',
       autocomplete: 'off',
       spellcheck: 'false',

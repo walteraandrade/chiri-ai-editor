@@ -73,12 +73,32 @@ Not checked:
 - A check with real model calls. The motion reads the same state the model fills, so injected Suggestions exercise the same code; a maintainer check with the model is still open.
 
 ```text
-On feat/open-save-markdown:
+On feat/open-save-markdown, after the review:
 tsc (web and Electron)  no errors
-pnpm test               152 files, 2576 tests passed
-pnpm biome check        390 files, no diagnostics
+pnpm test               154 files, 2598 tests passed
+pnpm biome check        395 files, no diagnostics
 pnpm build              green (Web and Electron)
 ```
+
+## Review
+
+One pass with three parallel reviewers (Standards, Spec, TDD), against `origin/feat/open-save-markdown`.
+
+Fixed:
+- **CodeMirror stayed in dark mode under a light theme** (`{ dark: true }` in the editor theme). [src/editor/theme-mode.ts](../../../src/editor/theme-mode.ts) now follows `data-theme-mode`: checked in the page, `darkTheme` true → false under Latte → true again.
+- **Reduced motion hid the hand-over.** Landed text now shows in the AI color, still, for the moment's 1.5 s; rejected text shows a still neutral fill. Checked: AI text color at 300 ms, gone at 1.7 s.
+- **Contrast:** deleted text and key hints move from faint (about 3.5:1) to muted ink, for WCAG AA.
+- **DESIGN.md kept:** the toast gets the float hairline and shadow (one `--shadow-float` token for every floating surface); the settle runs 420 ms; the target preview goes back to the accent tint, since the text is still the writer's; the landing gets the soft glow the request asked for.
+- **ADR 0004:** the bubble's field says "Ask AI…" again.
+- **Library:** a collapsed skill that holds the open file gets a light accent row too.
+- **Structure:** `aiFlag` in its own module; the theme no longer imports from `ui/` (`activeTheme` and `applyInitialTheme` live in `src/theme/`); `revealParts` is a pure, linear, tested function; the expiry timers are a tested `createExpiryScheduler`; clearer names (`newlyRevealedIds`, `travelFrom`, `flagOnLeft`, `hasOpenFile`); one pair of shared entrance keyframes instead of five near-copies.
+- **Tests added:** the plugin serves the theme in dev and `null` to a build; `readOmarchyTheme` on real files; explicit `mode` against the background, short hex; `activeTheme`; the decorations' entering, landed and settled classes; the scheduler with fake timers; an empty Replacement lands nothing; the newest Review Suggestion above the last one; a request over a Review pass; the caret leaving when the pass ends.
+
+Kept, with the reason:
+- The extras the request did not name (the theme button, the primary Accept, the Review pulse and count, the AI tag, the theme crossfade) were all seen and kept by the maintainer during the check.
+- The caret hides when its position is outside CodeMirror's rendered range; following it there would mean scrolling for the writer.
+- In Omarchy themes the AI color is the theme's accent, as DESIGN.md says; a theme whose `red` is gray (Vantablack) shows errors in gray.
+- TS durations (`MOMENT_DURATION_MS`) still mirror the CSS ones, with a margin; the unused `--motion-word-budget` token is gone.
 
 ## AI calls
 

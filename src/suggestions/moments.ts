@@ -14,7 +14,7 @@ const showsNewText = (
   previous.replacement !== next.replacement ||
   previous.shown !== next.shown
 
-export const revealedIds = (
+export const newlyRevealedIds = (
   before: SuggestionsState,
   after: SuggestionsState,
 ): readonly SuggestionId[] =>

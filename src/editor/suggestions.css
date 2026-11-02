@@ -31,7 +31,7 @@
 }
 
 .cm-ai-deleted {
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
   text-decoration: none;
   background-image: var(--cm-ai-strike);
   background-repeat: no-repeat;
@@ -81,7 +81,7 @@
 }
 
 .cm-ai-target-preview {
-  background: var(--color-ai-tint);
+  background: var(--color-accent-tint);
   animation: cm-ai-tint-in var(--motion-enter) var(--ease-out-quart);
 }
 
@@ -107,7 +107,7 @@
 }
 
 .cm-ai-settled {
-  animation: cm-ai-settle 600ms var(--ease-out-quart) backwards;
+  animation: cm-ai-settle var(--motion-settle) var(--ease-out-quart) backwards;
 }
 
 .cm-ai-failed {
@@ -239,7 +239,7 @@
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.4;
-  box-shadow: 0 10px 32px var(--color-shadow);
+  box-shadow: var(--shadow-float);
 }
 
 .cm-editor .cm-tooltip.cm-ai-bubble {
@@ -248,18 +248,18 @@
   gap: 0.5rem;
   width: min(26rem, 90vw);
   padding: 0.5rem;
-  animation: cm-ai-surface-in var(--motion-enter) var(--ease-out-expo);
+  animation: surface-in var(--motion-enter) var(--ease-out-expo);
 }
 
 .cm-editor .cm-tooltip-above.cm-ai-bubble,
 .cm-editor .cm-tooltip-above.cm-ai-card {
-  --cm-ai-rise: 6px;
+  --enter-rise: 6px;
   transform-origin: bottom left;
 }
 
 .cm-editor .cm-tooltip-below.cm-ai-bubble,
 .cm-editor .cm-tooltip-below.cm-ai-card {
-  --cm-ai-rise: -6px;
+  --enter-rise: -6px;
   transform-origin: top left;
 }
 
@@ -276,7 +276,7 @@
     )
     border-box;
   animation:
-    cm-ai-surface-in var(--motion-enter) var(--ease-out-expo),
+    surface-in var(--motion-enter) var(--ease-out-expo),
     cm-ai-orbit 3.6s linear infinite;
 }
 
@@ -286,12 +286,12 @@
   gap: 0.4rem;
   max-width: min(28rem, 90vw);
   padding: 0.4rem;
-  animation: cm-ai-surface-in var(--motion-enter) var(--ease-out-expo);
+  animation: surface-in var(--motion-enter) var(--ease-out-expo);
 }
 
 .cm-editor .cm-tooltip.cm-ai-card-margin {
-  --cm-ai-rise: 0px;
-  --cm-ai-slide: -8px;
+  --enter-rise: 0px;
+  --enter-slide: -8px;
   box-shadow: none;
 }
 
@@ -351,7 +351,7 @@
 }
 
 .cm-ai-chip {
-  animation: cm-ai-chip-in var(--motion-enter) var(--ease-out-expo) backwards;
+  animation: rise-in var(--motion-enter) var(--ease-out-expo) backwards;
   animation-delay: calc(40ms + var(--i, 0) * 35ms);
 }
 
@@ -409,7 +409,7 @@
 
 .cm-ai-refine {
   display: flex;
-  animation: cm-ai-chip-in var(--motion-enter) var(--ease-out-expo);
+  animation: rise-in var(--motion-enter) var(--ease-out-expo);
 }
 
 .cm-ai-version {
@@ -462,18 +462,14 @@
   padding: 0.35rem 0.5rem;
   background: var(--color-danger-tint);
   color: var(--color-danger);
-  animation: cm-ai-chip-in var(--motion-enter) var(--ease-out-expo);
+  animation: rise-in var(--motion-enter) var(--ease-out-expo);
 }
 
 .cm-ai-kbd {
   margin-left: 0.5rem;
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
   font: inherit;
   font-size: 0.75rem;
-}
-
-.cm-ai-button-primary .cm-ai-kbd {
-  color: var(--color-ink-muted);
 }
 
 .cm-ai-rationale {
@@ -500,7 +496,7 @@
 .cm-ai-count {
   display: inline-block;
   font-variant-numeric: tabular-nums;
-  animation: cm-ai-chip-in var(--motion-enter) var(--ease-out-expo);
+  animation: rise-in var(--motion-enter) var(--ease-out-expo);
 }
 
 @keyframes cm-ai-shimmer {
@@ -557,28 +553,13 @@
   30% {
     color: var(--color-ai-text);
     background-color: var(--color-ai-tint);
+    text-shadow: 0 0 12px var(--color-ai-glow);
   }
 }
 
 @keyframes cm-ai-settle {
   from {
     background-color: var(--color-fill-hover);
-  }
-}
-
-@keyframes cm-ai-surface-in {
-  from {
-    opacity: 0;
-    transform: translate(var(--cm-ai-slide, 0px), var(--cm-ai-rise, 6px))
-      scale(0.98);
-    filter: blur(3px);
-  }
-}
-
-@keyframes cm-ai-chip-in {
-  from {
-    opacity: 0;
-    transform: translateY(3px);
   }
 }
 
@@ -626,5 +607,14 @@
   .cm-editor .cm-tooltip.cm-ai-bubble:focus-within {
     border-color: var(--color-ai);
     background: var(--color-raised);
+  }
+
+  .cm-ai-landed {
+    color: var(--color-ai-text);
+    background-color: var(--color-ai-tint);
+  }
+
+  .cm-ai-settled {
+    background-color: var(--color-fill-hover);
   }
 }

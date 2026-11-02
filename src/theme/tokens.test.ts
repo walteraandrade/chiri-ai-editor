@@ -30,27 +30,25 @@ describe('themeVariables', () => {
 
   it('leaves missing colors to the stylesheet defaults', () => {
     expect(
-      Object.keys(
-        themeVariables({
-          name: 'latte',
-          mode: 'light',
-          bg: '#eff1f5',
-          raised: null,
-          ink: '#4c4f69',
-          inkStrong: '#4c4f69',
-          accent: '#1e66f5',
-          ai: '#1e66f5',
-          danger: null,
-          selection: null,
-        }),
-      ),
-    ).toEqual([
-      '--theme-bg',
-      '--theme-ink',
-      '--theme-ink-strong',
-      '--theme-accent',
-      '--theme-ai',
-    ])
+      themeVariables({
+        name: 'latte',
+        mode: 'light',
+        bg: '#eff1f5',
+        raised: null,
+        ink: '#4c4f69',
+        inkStrong: '#4c4f69',
+        accent: '#1e66f5',
+        ai: '#1e66f5',
+        danger: null,
+        selection: null,
+      }),
+    ).toEqual({
+      '--theme-bg': '#eff1f5',
+      '--theme-ink': '#4c4f69',
+      '--theme-ink-strong': '#4c4f69',
+      '--theme-accent': '#1e66f5',
+      '--theme-ai': '#1e66f5',
+    })
   })
 })
 
@@ -58,5 +56,6 @@ describe('themeLabel', () => {
   it('title-cases a theme directory name', () => {
     expect(themeLabel('tokyo-night')).toBe('Tokyo Night')
     expect(themeLabel('vantablack')).toBe('Vantablack')
+    expect(themeLabel('rose_pine  moon')).toBe('Rose Pine Moon')
   })
 })

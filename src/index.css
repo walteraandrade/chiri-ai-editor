@@ -24,7 +24,7 @@
   --motion-travel: 560ms;
   --motion-reveal: 420ms;
   --motion-land: 1400ms;
-  --motion-word-budget: 560ms;
+  --motion-settle: 420ms;
 }
 
 :root[data-theme-mode="light"] {
@@ -110,6 +110,8 @@
   --font-mono:
     ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
 
+  --shadow-float: 0 10px 32px var(--theme-shadow);
+
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-sine: cubic-bezier(0.37, 0, 0.63, 1);
@@ -176,38 +178,33 @@
 }
 
 .popover-in {
-  animation: chiri-pop-in var(--motion-enter) var(--ease-out-expo);
+  --enter-rise: -4px;
+  animation: surface-in var(--motion-enter) var(--ease-out-expo);
   transform-origin: top right;
 }
 
 .rise-in {
-  animation: chiri-rise-in var(--motion-enter) var(--ease-out-expo) backwards;
+  animation: rise-in var(--motion-enter) var(--ease-out-expo) backwards;
 }
 
 .toast-in {
-  animation: chiri-toast-in 320ms var(--ease-out-expo);
+  --enter-rise: 10px;
+  animation: surface-in 320ms var(--ease-out-expo);
 }
 
-@keyframes chiri-pop-in {
+@keyframes surface-in {
   from {
     opacity: 0;
-    transform: translateY(-4px) scale(0.97);
+    transform: translate(var(--enter-slide, 0px), var(--enter-rise, 6px))
+      scale(0.98);
     filter: blur(3px);
   }
 }
 
-@keyframes chiri-rise-in {
+@keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
-@keyframes chiri-toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-    filter: blur(4px);
+    transform: translateY(3px);
   }
 }
 

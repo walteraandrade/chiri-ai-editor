@@ -6,7 +6,11 @@ import {
 } from '../suggestions/instruction'
 import type { SuggestionDraft } from '../suggestions/types'
 import { aiCaretOf } from './ai-caret'
-import { reviewRunField, startReviewEffect } from './review-field'
+import {
+  endReviewEffect,
+  reviewRunField,
+  startReviewEffect,
+} from './review-field'
 import {
   beginEffect,
   beginRefineEffect,
@@ -107,24 +111,46 @@ describe('aiCaretOf', () => {
     )
   })
 
-  it('hops to the newest Review Suggestion', () => {
+  it('hops to the newest Review Suggestion, even above the last one', () => {
     expect(
       aiCaretOf(
         stateWith(
           [startReviewEffect.of({ focus: 'tone' })],
           [
-            beginEffect.of(draft('r1', 'First', { origin: 'review' })),
+            beginEffect.of(
+              draft('r1', 'Second paragraph', { origin: 'review' }),
+            ),
             resolved('r1'),
           ],
           [
-            beginEffect.of(
-              draft('r2', 'Second paragraph', { origin: 'review' }),
-            ),
+            beginEffect.of(draft('r2', 'First', { origin: 'review' })),
             resolved('r2'),
           ],
         ),
       ),
-    ).toEqual({ pos: endOf('Second paragraph'), label: 'Reviewing' })
+    ).toEqual({ pos: endOf('First'), label: 'Reviewing' })
+  })
+
+  it('shows a pending request over a running Review pass', () => {
+    expect(
+      aiCaretOf(
+        stateWith(
+          [startReviewEffect.of({ focus: '' })],
+          [beginEffect.of(draft('a', 'Second'))],
+        ),
+      ),
+    ).toEqual({ pos: endOf('Second'), label: 'Shorter' })
+  })
+
+  it('leaves when the Review pass ends', () => {
+    expect(
+      aiCaretOf(
+        stateWith(
+          [startReviewEffect.of({ focus: '' })],
+          [endReviewEffect.of(null)],
+        ),
+      ),
+    ).toBeNull()
   })
 
   it('reads as absent without the suggestion fields', () => {
