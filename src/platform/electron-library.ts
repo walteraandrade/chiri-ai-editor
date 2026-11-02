@@ -3,7 +3,7 @@ import type { LibraryKit } from './kit'
 
 export type LibraryApi = Pick<
   ChiriApi,
-  'listLibrary' | 'addLibraryRoot' | 'removeLibraryRoot'
+  'listLibrary' | 'addLibraryRoot' | 'removeLibraryRoot' | 'onExternalChanges'
 >
 
 const UNREACHABLE = {
@@ -32,4 +32,8 @@ export const createElectronLibrary = (api: LibraryApi): LibraryKit<string> => ({
   addRoot: () => orFailure(api.addLibraryRoot),
   removeRoot: (path) => orFailure(() => api.removeLibraryRoot(path)),
   toRef: (path) => path,
+  subscribe: (listener) =>
+    api.onExternalChanges(({ library }) => {
+      if (library) listener()
+    }),
 })

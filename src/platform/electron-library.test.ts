@@ -19,6 +19,7 @@ const api = (overrides: Partial<LibraryApi> = {}): LibraryApi => ({
     label: '/repo/.claude/skills',
   })),
   removeLibraryRoot: vi.fn(async () => ({ kind: 'removed' as const })),
+  onExternalChanges: vi.fn(() => () => undefined),
   ...overrides,
 })
 
@@ -105,5 +106,33 @@ describe('createElectronLibrary', () => {
     expect(createElectronLibrary(api()).toRef('/skills/a/SKILL.md')).toBe(
       '/skills/a/SKILL.md',
     )
+  })
+
+  it('tells listeners when a push says the Library may have changed, and not for other pushes', () => {
+    let push: (changes: { paths: string[]; library: boolean }) => void = () =>
+      undefined
+    const library = createElectronLibrary(
+      api({
+        onExternalChanges: (listener) => {
+          push = listener
+          return () => undefined
+        },
+      }),
+    )
+    const listener = vi.fn()
+    library.subscribe(listener)
+    push({ paths: ['/skills/a/guide.md'], library: false })
+    expect(listener).not.toHaveBeenCalled()
+    push({ paths: ['/skills/b'], library: true })
+    expect(listener).toHaveBeenCalledOnce()
+  })
+
+  it('hands back the way to stop listening', () => {
+    const stop = vi.fn()
+    const library = createElectronLibrary(
+      api({ onExternalChanges: () => stop }),
+    )
+    library.subscribe(() => undefined)()
+    expect(stop).toHaveBeenCalledOnce()
   })
 })

@@ -79,6 +79,7 @@ const fakeLibrary: LibraryKit<string> = {
   addRoot: async () => ({ kind: 'cancelled' }),
   removeRoot: async () => ({ kind: 'removed' }),
   toRef: (path) => path,
+  subscribe: () => () => undefined,
 }
 
 const setup = (

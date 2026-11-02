@@ -1,10 +1,11 @@
 import type { EditorView } from '@codemirror/view'
 import { textOf } from './current-target'
-import { replaceDocument } from './document-commands'
+import { refreshDocument, replaceDocument } from './document-commands'
 
 export type DocumentControls = {
   readonly text: () => string
   readonly replace: (text: string) => void
+  readonly refresh: (text: string) => void
   readonly restore: (text: string) => void
   readonly focus: () => void
 }
@@ -15,6 +16,7 @@ export const bindDocumentControls = (view: EditorView): DocumentControls => ({
     replaceDocument(view, text)
     view.focus()
   },
+  refresh: (text) => refreshDocument(view, text),
   restore: (text) => replaceDocument(view, text, 'input.restore'),
   focus: () => view.focus(),
 })

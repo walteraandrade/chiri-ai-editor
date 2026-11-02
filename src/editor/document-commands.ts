@@ -1,4 +1,5 @@
 import { isolateHistory } from '@codemirror/commands'
+import { minimalChange } from './minimal-change'
 import { reviewActionsFacet } from './review-runtime'
 import type { EditorHandle } from './suggestion-commands'
 import { clearSuggestionsEffect } from './suggestion-field'
@@ -16,5 +17,15 @@ export const replaceDocument = (
     annotations: isolateHistory.of('full'),
     userEvent,
     scrollIntoView: true,
+  })
+}
+
+export const refreshDocument = (handle: EditorHandle, text: string): void => {
+  handle.state.facet(reviewActionsFacet)?.stop(handle)
+  handle.dispatch({ effects: clearSuggestionsEffect.of(null) })
+  handle.dispatch({
+    changes: minimalChange(handle.state.doc.toString(), text),
+    annotations: isolateHistory.of('full'),
+    userEvent: 'input.open',
   })
 }
