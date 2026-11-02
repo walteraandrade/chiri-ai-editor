@@ -19,8 +19,12 @@ const baseKit = {
   keyStatus: { present: true },
 } as unknown as PlatformKit
 
-const api = (initial: KeyState): ChiriApi => ({
-  shellInfo: vi.fn(),
+type KeyApi = Pick<
+  ChiriApi,
+  'keyState' | 'saveKey' | 'keepKeyAsPlainText' | 'clearKey'
+>
+
+const api = (initial: KeyState): KeyApi => ({
   keyState: vi.fn(async () => initial),
   saveKey: vi.fn(async () => state({ present: true, storage: 'keyring' })),
   keepKeyAsPlainText: vi.fn(async () =>
