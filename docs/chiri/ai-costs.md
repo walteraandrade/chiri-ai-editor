@@ -154,3 +154,6 @@ Notes on issue #33 (External changes):
 
 Notes on issue #34 (Skill checks):
 - Slice cost is US$0: no check called the model (the frontmatter panel, the checks, the editor styling and New skill do not use it). The running total is unchanged from issue #33.
+
+Notes on issue #45 (Open from the desktop):
+- Slice cost is US$0: no check called the model (file arguments, second launches, the Save / Discard / Cancel question, the missing file, the Key dialog with a dummy key). The running total is unchanged.
