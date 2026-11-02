@@ -13,9 +13,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { WatchEvent } from './classify-changes'
 import { createFolderWatcher } from './folder-watcher'
 import {
-  danglingLinkTargets,
   directoryIdentity,
   nodeDirectoryWatch,
+  rootEntries,
 } from './node-watch'
 
 let dir = ''
@@ -100,21 +100,37 @@ describe('directoryIdentity', () => {
   })
 })
 
-describe('danglingLinkTargets', () => {
-  it('lists where each broken link in a folder points, resolved against the folder', async () => {
+describe('rootEntries', () => {
+  it('lists the real folder behind every folder and link, skill or not', async () => {
+    await mkdir(join(dir, 'plain'))
+    await mkdir(join(dir, 'real'))
+    await symlink(join(dir, 'real'), join(dir, 'linked'))
+    const { folders } = await rootEntries(dir)
+    expect(folders.toSorted()).toEqual(
+      [join(dir, 'plain'), join(dir, 'real'), join(dir, 'real')].toSorted(),
+    )
+  })
+
+  it('leaves out files and links to files', async () => {
+    await writeFile(join(dir, 'a.md'), 'x')
+    await symlink(join(dir, 'a.md'), join(dir, 'link.md'))
+    expect(await rootEntries(dir)).toEqual({ folders: [], dangling: [] })
+  })
+
+  it('lists where each broken link points, resolved against the folder', async () => {
     await mkdir(join(dir, 'real'))
     await symlink(join(dir, 'real'), join(dir, 'fine'))
     await symlink(join(dir, 'elsewhere', 'gone'), join(dir, 'absolute'))
     await symlink('../sibling/gone', join(dir, 'relative'))
-    expect((await danglingLinkTargets(dir)).toSorted()).toEqual(
+    const { dangling } = await rootEntries(dir)
+    expect(dangling.toSorted()).toEqual(
       [join(dir, 'elsewhere', 'gone'), join(dir, '..', 'sibling', 'gone')]
         .map((path) => resolve(path))
         .toSorted(),
     )
   })
 
-  it('has nothing to list for a folder without links', async () => {
-    await mkdir(join(dir, 'real'))
-    expect(await danglingLinkTargets(dir)).toEqual([])
+  it('has nothing to list for an empty folder', async () => {
+    expect(await rootEntries(dir)).toEqual({ folders: [], dangling: [] })
   })
 })

@@ -100,6 +100,24 @@ describe('watchDirectories', () => {
     ).toEqual([CLAUDE, `${CLAUDE}/pdf`, '/notes/drafts'])
   })
 
+  it('watches every folder under a root, skill or not, and where a link to it points', () => {
+    expect(
+      watchDirectories({
+        roots: [CLAUDE],
+        skills: [],
+        openFile: null,
+        folders: [`${CLAUDE}/docx`, '/work/repo/skills/shared'],
+      }),
+    ).toEqual(
+      [
+        CLAUDE,
+        `${CLAUDE}/docx`,
+        '/work/repo/skills',
+        '/work/repo/skills/shared',
+      ].toSorted(),
+    )
+  })
+
   it('adds the anchors it is given, once', () => {
     expect(
       watchDirectories({

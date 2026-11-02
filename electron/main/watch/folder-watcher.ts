@@ -20,7 +20,7 @@ type FolderWatcherOptions = {
 }
 
 export type FolderWatcher = {
-  readonly sync: (wanted: ReadonlyMap<string, string>) => void
+  readonly sync: (wanted: ReadonlyMap<string, string>) => number
   readonly close: () => void
 }
 
@@ -48,7 +48,7 @@ export const createFolderWatcher = ({
   const identities = (): ReadonlyMap<string, string> =>
     new Map([...active].map(([dir, { identity }]) => [dir, identity]))
 
-  const open = (dir: string, identity: string): void => {
+  const open = (dir: string, identity: string): boolean => {
     let handle: WatchHandle | undefined
     const isCurrent = (): boolean =>
       handle !== undefined && active.get(dir)?.handle === handle
@@ -67,9 +67,10 @@ export const createFolderWatcher = ({
       })
     } catch (error) {
       onFailure(dir, error)
-      return
+      return false
     }
     active.set(dir, { identity, handle })
+    return true
   }
 
   const shut = (dir: string): void => {
@@ -80,13 +81,13 @@ export const createFolderWatcher = ({
 
   return {
     sync: (wanted) => {
-      if (closed) return
+      if (closed) return 0
       const { open: toOpen, close: toClose } = diffWatches(identities(), wanted)
       for (const dir of toClose) shut(dir)
-      for (const dir of toOpen) {
+      return toOpen.filter((dir) => {
         const identity = wanted.get(dir)
-        if (identity !== undefined) open(dir, identity)
-      }
+        return identity !== undefined && open(dir, identity)
+      }).length
     },
     close: () => {
       closed = true

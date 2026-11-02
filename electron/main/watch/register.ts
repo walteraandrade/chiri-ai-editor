@@ -5,9 +5,9 @@ import { listLibrary } from '../library/handlers'
 import type { LibraryHandle } from '../library/register'
 import { createExternalChanges } from './external-changes'
 import {
-  danglingLinkTargets,
   directoryIdentity,
   nodeDirectoryWatch,
+  rootEntries,
 } from './node-watch'
 import { parseWatchRequest } from './requests'
 
@@ -22,7 +22,7 @@ export const registerExternalChanges = (
     realPath: (path) => realpath(path),
     identityOf: directoryIdentity,
     watch: nodeDirectoryWatch,
-    danglingTargets: danglingLinkTargets,
+    rootEntries,
     emit: (changes) => {
       for (const window of BrowserWindow.getAllWindows())
         if (!window.isDestroyed() && !window.webContents.isDestroyed())

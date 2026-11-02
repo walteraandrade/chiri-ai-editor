@@ -65,6 +65,33 @@ describe('classifyEvents', () => {
     ).toEqual(['/skills/pdf/a.md', '/skills/pdf/b.md'])
   })
 
+  it('keeps a hidden name that a missing path is waiting for, and only in its folder', () => {
+    const awaited = new Map([['/home/u', new Set(['.agents'])]])
+    expect(
+      classifyEvents(
+        [
+          event('.agents', 'rename', '/home/u'),
+          event('.cache', 'rename', '/home/u'),
+        ],
+        null,
+        { awaited },
+      ),
+    ).toEqual({ paths: ['/home/u/.agents'], library: true })
+    expect(
+      classifyEvents([event('.agents', 'rename', '/elsewhere')], null, {
+        awaited,
+      }),
+    ).toEqual({ paths: [], library: false })
+  })
+
+  it('still ignores the hidden name when nothing waits for it', () => {
+    expect(
+      classifyEvents([event('.agents', 'rename', '/home/u')], null, {
+        awaited: new Map(),
+      }),
+    ).toEqual({ paths: [], library: false })
+  })
+
   it('has nothing to say about no events', () => {
     expect(classifyEvents([], null)).toEqual({ paths: [], library: false })
   })
@@ -73,7 +100,7 @@ describe('classifyEvents', () => {
     const burst = Array.from({ length: 250 }, (_, index) =>
       event(`f${index}.md`, 'change', index % 2 === 0 ? '/a' : '/b'),
     )
-    const { paths } = classifyEvents(burst, null, 200)
+    const { paths } = classifyEvents(burst, null, { limit: 200 })
     expect(paths).toEqual(['/a', '/b'])
   })
 })

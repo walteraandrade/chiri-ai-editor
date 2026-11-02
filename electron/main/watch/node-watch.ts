@@ -22,26 +22,53 @@ export const directoryIdentity = async (
   }
 }
 
-export const danglingLinkTargets = async (
+export type RootEntries = {
+  readonly folders: readonly string[]
+  readonly dangling: readonly string[]
+}
+
+const isFolder = async (path: string): Promise<boolean> => {
+  try {
+    return (await stat(path)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+const describeEntry = async (
   root: string,
-): Promise<readonly string[]> => {
-  const entries = await readdir(root, { withFileTypes: true })
-  const targets = await Promise.all(
-    entries
-      .filter((entry) => entry.isSymbolicLink())
-      .map(async (entry): Promise<readonly string[]> => {
-        const link = join(root, entry.name)
-        try {
-          await realpath(link)
-          return []
-        } catch {
-          try {
-            return [resolve(root, await readlink(link))]
-          } catch {
-            return []
-          }
-        }
-      }),
+  entry: {
+    readonly name: string
+    isDirectory(): boolean
+    isSymbolicLink(): boolean
+  },
+): Promise<RootEntries> => {
+  const path = join(root, entry.name)
+  if (entry.isDirectory()) return { folders: [path], dangling: [] }
+  if (!entry.isSymbolicLink()) return { folders: [], dangling: [] }
+  try {
+    const real = await realpath(path)
+    return {
+      folders: (await isFolder(real)) ? [real] : [],
+      dangling: [],
+    }
+  } catch {
+    try {
+      return { folders: [], dangling: [resolve(root, await readlink(path))] }
+    } catch {
+      return { folders: [], dangling: [] }
+    }
+  }
+}
+
+export const rootEntries = async (root: string): Promise<RootEntries> => {
+  const entries = await Promise.all(
+    (await readdir(root, { withFileTypes: true })).map((entry) =>
+      describeEntry(root, entry),
+    ),
   )
-  return targets.flat()
+  return {
+    folders: entries.flatMap((entry) => entry.folders),
+    dangling: entries.flatMap((entry) => entry.dangling),
+  }
 }

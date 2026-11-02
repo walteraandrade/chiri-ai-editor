@@ -44,6 +44,18 @@ describe('createFolderWatcher', () => {
     expect(live()).toEqual(['/a', '/b'])
   })
 
+  it('says how many watches it opened, none for a folder it already holds', () => {
+    const { watcher, ids } = setup()
+    expect(watcher.sync(ids({ '/a': '1:1', '/b': '1:2' }))).toBe(2)
+    expect(watcher.sync(ids({ '/a': '1:1', '/b': '1:2' }))).toBe(0)
+    expect(watcher.sync(ids({ '/a': '1:1', '/b': '1:3', '/c': '1:4' }))).toBe(2)
+  })
+
+  it('does not count a watch it could not open', () => {
+    const { watcher, ids } = setup(['/b'])
+    expect(watcher.sync(ids({ '/a': '1:1', '/b': '1:2' }))).toBe(1)
+  })
+
   it('reports each event with the folder it came from', () => {
     const { watcher, ids, opened, events } = setup()
     watcher.sync(ids({ '/a': '1:1' }))
