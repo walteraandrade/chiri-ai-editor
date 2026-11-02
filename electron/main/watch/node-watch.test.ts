@@ -111,6 +111,21 @@ describe('rootEntries', () => {
     )
   })
 
+  it('leaves out hidden folders and node_modules, which a repository root holds', async () => {
+    await mkdir(join(dir, '.git'))
+    await mkdir(join(dir, 'node_modules'))
+    await mkdir(join(dir, 'real'))
+    await symlink(join(dir, 'real'), join(dir, '.hidden-link'))
+    expect((await rootEntries(dir)).folders).toEqual([join(dir, 'real')])
+  })
+
+  it('still reports where a hidden link that points at nothing would come back', async () => {
+    await symlink(join(dir, 'elsewhere', 'gone'), join(dir, '.gone'))
+    expect((await rootEntries(dir)).dangling).toEqual([
+      join(dir, 'elsewhere', 'gone'),
+    ])
+  })
+
   it('leaves out files and links to files', async () => {
     await writeFile(join(dir, 'a.md'), 'x')
     await symlink(join(dir, 'a.md'), join(dir, 'link.md'))

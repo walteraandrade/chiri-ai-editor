@@ -1,6 +1,7 @@
 import { watch } from 'node:fs'
 import { readdir, readlink, realpath, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { isIgnoredName } from './classify-changes'
 import type { DirectoryWatch } from './folder-watcher'
 
 export const nodeDirectoryWatch: DirectoryWatch = (dir, listener) => {
@@ -44,12 +45,14 @@ const describeEntry = async (
   },
 ): Promise<RootEntries> => {
   const path = join(root, entry.name)
-  if (entry.isDirectory()) return { folders: [path], dangling: [] }
+  const watchable = !isIgnoredName(entry.name)
+  if (entry.isDirectory())
+    return { folders: watchable ? [path] : [], dangling: [] }
   if (!entry.isSymbolicLink()) return { folders: [], dangling: [] }
   try {
     const real = await realpath(path)
     return {
-      folders: (await isFolder(real)) ? [real] : [],
+      folders: watchable && (await isFolder(real)) ? [real] : [],
       dangling: [],
     }
   } catch {

@@ -18,7 +18,7 @@ export const MAX_REPORTED_PATHS = 200
 
 const SKILL_FILE = 'SKILL.md'
 
-const isIgnoredName = (name: string): boolean =>
+export const isIgnoredName = (name: string): boolean =>
   name.startsWith('.') || name === 'node_modules'
 
 const pathOf = ({ dir, filename }: WatchEvent): string =>

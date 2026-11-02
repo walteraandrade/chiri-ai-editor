@@ -192,18 +192,24 @@ describe('createExternalChanges', () => {
     expect(opened.has('/work/repo/skills')).toBe(true)
   })
 
-  it('tells the Library when the scan after opening watches finds a different listing', async () => {
-    const { controller, emitted, exist, edit, list } = setup(BASE)
-    exist(...PDF_FOLDERS)
+  it('tells the Library when the scan after opening watches finds a different listing, and watches what it found', async () => {
+    const { controller, emitted, exist, edit, list, opened } = setup(BASE)
+    exist(...PDF_FOLDERS, `${CLAUDE}/docx`, `${CLAUDE}/docx/references`)
     const original = list.getMockImplementation()
     list.mockImplementationOnce(async () => {
       const snapshot = await original?.()
-      edit({ ...BASE, [`${CLAUDE}/docx/SKILL.md`]: skillText('docx') })
+      edit({
+        ...BASE,
+        [`${CLAUDE}/docx/SKILL.md`]: skillText('docx'),
+        [`${CLAUDE}/docx/references/guide.md`]: '# Guide\n',
+      })
       return snapshot as LibrarySnapshot
     })
     await controller.start()
     await vi.advanceTimersByTimeAsync(0)
     expect(emitted).toEqual([{ paths: [], library: true }])
+    expect(opened.has(`${CLAUDE}/docx`)).toBe(true)
+    expect(opened.has(`${CLAUDE}/docx/references`)).toBe(true)
   })
 
   it('does not scan in a loop when nothing changed after opening the watches', async () => {
