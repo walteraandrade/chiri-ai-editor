@@ -187,6 +187,7 @@ export const createElectronKit = async ({
     files,
     unsavedText: {
       initial: initialDoc,
+      untitledBaseline: SAMPLE_DOCUMENT,
       changed: (text, file) => {
         keeper.track(text, SCRATCH_SESSION)
         keeper.track(text, file)

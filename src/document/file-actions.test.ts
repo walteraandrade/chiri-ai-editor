@@ -61,7 +61,7 @@ type Options = {
   readonly session?: FileSession<Ref> | null
   readonly calls?: string[]
   readonly choice?: LeaveChoice
-  readonly initialText?: string
+  readonly untitledBaseline?: string
 }
 
 const setup = ({
@@ -73,7 +73,7 @@ const setup = ({
   session: initialSession = null,
   calls = [],
   choice,
-  initialText = '',
+  untitledBaseline = '',
 }: Options = {}) => {
   let session = initialSession
   const events: FileSessionEvent<Ref>[] = []
@@ -91,7 +91,7 @@ const setup = ({
   const discard = vi.fn()
   const actions = createFileActions({
     files,
-    ...(choice !== undefined && { leave: { ask, discard, initialText } }),
+    ...(choice !== undefined && { leave: { ask, discard, untitledBaseline } }),
     offered: vi.fn(offered),
     editor: () => (editor === undefined ? fakeEditor('').editor : editor),
     session: () => session,
@@ -651,7 +651,7 @@ describe('leaving a file with unsaved changes', () => {
         },
         editor: fake.editor,
         choice: 'save',
-        initialText: '# Sample\n',
+        untitledBaseline: '# Sample\n',
       })
       await actions.open()
       expect(files.read).toHaveBeenCalledTimes(1)
@@ -689,7 +689,7 @@ describe('leaving a file with unsaved changes', () => {
         read: toB,
         editor,
         choice: 'cancel',
-        initialText: STARTED,
+        untitledBaseline: STARTED,
       })
       await actions.openRef(OTHER)
       expect(ask).toHaveBeenCalledWith('Untitled')
@@ -703,7 +703,7 @@ describe('leaving a file with unsaved changes', () => {
         read: toB,
         editor,
         choice: 'cancel',
-        initialText: STARTED,
+        untitledBaseline: STARTED,
       })
       await actions.openRef(OTHER)
       expect(ask).not.toHaveBeenCalled()
@@ -716,7 +716,7 @@ describe('leaving a file with unsaved changes', () => {
         read: toB,
         editor,
         choice: 'discard',
-        initialText: STARTED,
+        untitledBaseline: STARTED,
       })
       await actions.openRef(OTHER)
       expect(discard).not.toHaveBeenCalled()
@@ -734,7 +734,7 @@ describe('leaving a file with unsaved changes', () => {
         save,
         editor,
         choice: 'save',
-        initialText: STARTED,
+        untitledBaseline: STARTED,
       })
       await actions.openRef(OTHER)
       expect(save).toHaveBeenCalledWith(
@@ -751,7 +751,7 @@ describe('leaving a file with unsaved changes', () => {
         save: async () => ({ kind: 'cancelled' }),
         editor,
         choice: 'save',
-        initialText: STARTED,
+        untitledBaseline: STARTED,
       })
       await actions.openRef(OTHER)
       expect(editor.replace).not.toHaveBeenCalled()

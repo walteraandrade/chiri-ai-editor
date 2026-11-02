@@ -7,7 +7,7 @@ export type LeaveOutcome = 'stay' | 'leave' | 'saved'
 export type LeaveOptions<Ref> = {
   readonly ask: (name: string) => Promise<LeaveChoice>
   readonly discard: (ref: Ref) => void
-  readonly initialText: string
+  readonly untitledBaseline: string
 }
 
 type ConfirmLeave<Ref> = {
@@ -35,7 +35,7 @@ const hasUnsavedChanges = <Ref>({
   text,
   leave,
 }: ConfirmLeave<Ref>): boolean =>
-  session === null ? text !== leave.initialText : session.dirty
+  session === null ? text !== leave.untitledBaseline : session.dirty
 
 export const confirmLeave = async <Ref>(
   options: ConfirmLeave<Ref>,

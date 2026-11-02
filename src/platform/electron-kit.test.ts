@@ -188,6 +188,18 @@ describe('createElectronKit start', () => {
     expect(ready.start).toBeNull()
   })
 
+  it('measures an untitled Document against the sample, not against a restored draft', async () => {
+    const restored = await setup({
+      unsaved: { [SCRATCH_KEY]: { text: '# Typed, no file\n', base: '' } },
+    }).kit
+    expect(restored.unsavedText.untitledBaseline).toBe(SAMPLE_DOCUMENT)
+    expect(restored.unsavedText.untitledBaseline).not.toBe(
+      restored.unsavedText.initial,
+    )
+    const fresh = await setup().kit
+    expect(fresh.unsavedText.untitledBaseline).toBe(fresh.unsavedText.initial)
+  })
+
   it('falls back to the unsaved Document and says so when the last file is gone', async () => {
     const ready = await setup({
       stored: { [LAST_FILE_KEY]: PATH },

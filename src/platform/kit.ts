@@ -52,6 +52,7 @@ export type UnsavedStore<Ref> = {
 
 export type UnsavedText<Ref> = {
   readonly initial: string
+  readonly untitledBaseline: string
   readonly changed: (text: string, file: FileSession<Ref> | null) => void
   readonly offered: (ref: Ref) => Promise<Unsaved | null>
   readonly discard?: (ref: Ref) => void

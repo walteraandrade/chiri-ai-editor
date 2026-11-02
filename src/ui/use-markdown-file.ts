@@ -110,7 +110,7 @@ export const useMarkdownFile = <Ref>({
         leave: {
           ask: askLeave,
           discard: unsavedText.discard,
-          initialText: unsavedText.initial,
+          untitledBaseline: unsavedText.untitledBaseline,
         },
       }),
     })

@@ -33,7 +33,7 @@ const setup = (choice: LeaveChoice | Error, saved = true) => {
     confirmLeave({
       session: file,
       text,
-      leave: { ask, discard, initialText: STARTED },
+      leave: { ask, discard, untitledBaseline: STARTED },
       save,
     })
   return { ask, discard, save, leave }
