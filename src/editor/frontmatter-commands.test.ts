@@ -1,9 +1,14 @@
 import { history, undo } from '@codemirror/commands'
 import { EditorState, type TransactionSpec } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
+import { quickActionInstruction } from '../suggestions/instruction'
 import { applySkillFields } from './frontmatter-commands'
 import { historyEventOf } from './history-events'
-import { suggestionsField } from './suggestion-field'
+import {
+  beginEffect,
+  suggestionsField,
+  suggestionsOf,
+} from './suggestion-field'
 
 const BODY = '\n# Demo\n\nBody text.\n'
 const SKILL = `---\nname: demo\ndescription: Does a thing.\n---\n${BODY}`
@@ -103,6 +108,57 @@ describe('applySkillFields', () => {
     expect(transaction && historyEventOf(transaction)).toEqual({
       type: 'edited',
       text: SKILL.replace('name: demo', 'name: renamed'),
+    })
+  })
+
+  describe('on a document with no frontmatter, whose body starts with a dash', () => {
+    const DASH = '- item\n- other\n\nText.\n'
+    const asked = (editor: ReturnType<typeof editorOver>, to: number) =>
+      editor.handle.dispatch({
+        effects: beginEffect.of({
+          id: 's1',
+          from: 0,
+          to,
+          source: 'block',
+          original: DASH.slice(0, to),
+          instruction: quickActionInstruction('shorter'),
+        }),
+      })
+
+    it('puts the frontmatter above the body, keeping the first dash in the body', () => {
+      const editor = editorOver(DASH)
+      applySkillFields(editor.handle, { name: 'x' })
+      expect(editor.text()).toBe(`---\nname: x\n---\n\n${DASH}`)
+    })
+
+    it('moves a Suggestion on the first Block with the text, off the frontmatter', () => {
+      const editor = editorOver(DASH)
+      asked(editor, '- item\n- other'.length)
+      applySkillFields(editor.handle, { name: 'x' })
+      const [item] = suggestionsOf(editor.handle.state).items
+      expect(suggestionsOf(editor.handle.state).items).toHaveLength(1)
+      expect(editor.text().slice(item?.from, item?.to)).toBe('- item\n- other')
+    })
+
+    it('moves a Suggestion that starts at the first character, with the body', () => {
+      const editor = editorOver(DASH)
+      asked(editor, '- item'.length)
+      applySkillFields(editor.handle, { name: 'x', description: 'Y.' })
+      const [item] = suggestionsOf(editor.handle.state).items
+      expect(editor.text().slice(item?.from, item?.to)).toBe('- item')
+      expect(item?.from).toBe(editor.text().indexOf('- item'))
+    })
+
+    it('keeps the cursor with the body when it was at the start', () => {
+      const editor = editorOver(DASH, 0)
+      applySkillFields(editor.handle, { name: 'x' })
+      expect(editor.selection()).toBe(editor.text().indexOf('- item'))
+    })
+
+    it('keeps the cursor where it was in the text', () => {
+      const editor = editorOver(DASH, 4)
+      applySkillFields(editor.handle, { name: 'x' })
+      expect(editor.selection()).toBe(editor.text().indexOf('- item') + 4)
     })
   })
 

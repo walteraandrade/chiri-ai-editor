@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { findFrontmatter } from '../blocks/frontmatter'
 import {
-  applyChange,
-  changeBetween,
+  applyChanges,
   type FieldEditPlan,
   planFieldEdit,
   type TextChange,
@@ -15,10 +14,15 @@ const AFTER_CLOSING = `\n${BODY}`
 
 const SKILL = `---\nname: demo\ndescription: Does a thing.\nlicense: MIT\n---\n${BODY}`
 
-const changeOf = (plan: FieldEditPlan): TextChange => {
+const changesOf = (plan: FieldEditPlan): readonly TextChange[] => {
   if (plan.kind !== 'change') throw new Error(plan.kind)
-  return plan.change
+  return plan.changes
 }
+
+const edited = (
+  text: string,
+  values: Parameters<typeof planFieldEdit>[1],
+): string => applyChanges(text, changesOf(planFieldEdit(text, values)))
 
 const fieldsOf = (text: string): Readonly<Record<string, unknown>> => {
   const reading = readFrontmatter(text)
@@ -26,56 +30,36 @@ const fieldsOf = (text: string): Readonly<Record<string, unknown>> => {
   return reading.fields
 }
 
-describe('changeBetween', () => {
-  it.each([
-    ['', 'abc'],
-    ['abc', ''],
-    ['abc', 'abc!'],
-    ['abc', '!abc'],
-    ['abcd', 'abXd'],
-    ['aaa', 'aa'],
-    ['aa', 'aaa'],
-    ['abab', 'ab'],
-    ['name: a\n', 'name: ab\n'],
-    ['x😀y', 'x😁y'],
-  ])('describes %j → %j so applying it gives the new text', (before, after) => {
-    const change = changeBetween(before, after)
-    expect(change).not.toBeNull()
-    expect(applyChange(before, change as TextChange)).toBe(after)
+describe('applyChanges', () => {
+  it('applies changes given in the coordinates of the original text', () => {
+    expect(
+      applyChanges('abcdef', [
+        { from: 4, to: 5, insert: 'X' },
+        { from: 1, to: 2, insert: 'YY' },
+      ]),
+    ).toBe('aYYcdXf')
   })
 
-  it('is null when nothing differs', () => {
-    expect(changeBetween('same', 'same')).toBeNull()
-    expect(changeBetween('', '')).toBeNull()
-  })
-
-  it('covers only the differing middle', () => {
-    expect(changeBetween('name: abc\n', 'name: aXc\n')).toEqual({
-      from: 7,
-      to: 8,
-      insert: 'X',
-    })
-  })
-
-  it('never overlaps the shared prefix and suffix', () => {
-    expect(changeBetween('aaa', 'aa')).toEqual({ from: 2, to: 3, insert: '' })
+  it('returns the text when there is nothing to apply', () => {
+    expect(applyChanges('abc', [])).toBe('abc')
   })
 })
 
 describe('planFieldEdit', () => {
   it('changes only the value of the field', () => {
-    const change = changeOf(planFieldEdit(SKILL, { name: 'renamed' }))
-    expect(applyChange(SKILL, change)).toBe(
+    const changes = changesOf(planFieldEdit(SKILL, { name: 'renamed' }))
+    expect(changes).toHaveLength(1)
+    expect(applyChanges(SKILL, changes)).toBe(
       SKILL.replace('name: demo', 'name: renamed'),
     )
-    expect(SKILL.slice(change.from, change.to)).toBe('demo')
+    expect(SKILL.slice(changes[0]?.from, changes[0]?.to)).toContain('demo')
+    expect(SKILL.slice(changes[0]?.from, changes[0]?.to)).not.toContain(
+      'description',
+    )
   })
 
   it('leaves the other keys, their order and the body byte-identical', () => {
-    const next = applyChange(
-      SKILL,
-      changeOf(planFieldEdit(SKILL, { description: 'Does another thing.' })),
-    )
+    const next = edited(SKILL, { description: 'Does another thing.' })
     expect(next).toBe(SKILL.replace('Does a thing.', 'Does another thing.'))
     expect(next.slice(findFrontmatter(next)?.to)).toBe(
       SKILL.slice(findFrontmatter(SKILL)?.to),
@@ -83,19 +67,25 @@ describe('planFieldEdit', () => {
   })
 
   it('keeps every change inside the frontmatter', () => {
-    const frontmatter = findFrontmatter(SKILL)
-    const { from, to } = changeOf(
+    for (const { from, to } of changesOf(
       planFieldEdit(SKILL, { name: 'a', description: 'b' }),
-    )
-    expect(from).toBeGreaterThanOrEqual(frontmatter?.yamlFrom ?? Number.NaN)
-    expect(to).toBeLessThanOrEqual(frontmatter?.yamlTo ?? Number.NaN)
+    )) {
+      expect(from).toBeGreaterThanOrEqual(
+        findFrontmatter(SKILL)?.yamlFrom ?? Number.NaN,
+      )
+      expect(to).toBeLessThanOrEqual(
+        SKILL.indexOf('\n---', findFrontmatter(SKILL)?.yamlFrom) + 1,
+      )
+    }
   })
 
-  it('edits both fields in one change', () => {
-    const next = applyChange(
-      SKILL,
-      changeOf(planFieldEdit(SKILL, { name: 'x', description: 'Y.' })),
+  it('edits both fields in one plan, in the coordinates of the original', () => {
+    const changes = changesOf(
+      planFieldEdit(SKILL, { name: 'x', description: 'Y.' }),
     )
+    expect(changes).toHaveLength(2)
+    expect(changes[0]?.to).toBeLessThanOrEqual(changes[1]?.from ?? Number.NaN)
+    const next = applyChanges(SKILL, changes)
     expect(fieldsOf(next)).toMatchObject({ name: 'x', description: 'Y.' })
     expect(next.slice(findFrontmatter(next)?.to)).toBe(AFTER_CLOSING)
   })
@@ -110,10 +100,7 @@ describe('planFieldEdit', () => {
       '1',
     ]
     for (const value of tricky) {
-      const next = applyChange(
-        SKILL,
-        changeOf(planFieldEdit(SKILL, { description: value })),
-      )
+      const next = edited(SKILL, { description: value })
       expect(fieldsOf(next).description).toBe(value)
       expect(fieldsOf(next).name).toBe('demo')
     }
@@ -121,19 +108,13 @@ describe('planFieldEdit', () => {
 
   it('keeps the YAML valid for a multi-line description', () => {
     const value = 'First line.\nSecond line.'
-    const next = applyChange(
-      SKILL,
-      changeOf(planFieldEdit(SKILL, { description: value })),
-    )
+    const next = edited(SKILL, { description: value })
     expect(fieldsOf(next).description).toBe(value)
     expect(next.slice(findFrontmatter(next)?.to)).toBe(AFTER_CLOSING)
   })
 
   it('keeps the YAML valid for an empty value', () => {
-    const next = applyChange(
-      SKILL,
-      changeOf(planFieldEdit(SKILL, { name: '' })),
-    )
+    const next = edited(SKILL, { name: '' })
     expect(fieldsOf(next).name).toBe('')
     expect(fieldsOf(next).license).toBe('MIT')
   })
@@ -145,27 +126,41 @@ describe('planFieldEdit', () => {
     expect(planFieldEdit(SKILL, {})).toEqual({ kind: 'unchanged' })
   })
 
-  it('adds frontmatter above a document that has none', () => {
-    const plain = '# Title\n\nText.\n'
-    const plan = planFieldEdit(plain, { name: 'demo' })
-    const change = changeOf(plan)
-    expect(change.from).toBe(0)
-    expect(change.to).toBe(0)
-    const next = applyChange(plain, change)
-    expect(fieldsOf(next)).toEqual({ name: 'demo' })
-    expect(next.endsWith(plain)).toBe(true)
+  describe('a document with no frontmatter', () => {
+    it('adds it with one insertion at the start', () => {
+      const plain = '# Title\n\nText.\n'
+      expect(changesOf(planFieldEdit(plain, { name: 'demo' }))).toEqual([
+        { from: 0, to: 0, insert: '---\nname: demo\n---\n\n' },
+      ])
+      expect(edited(plain, { name: 'demo' })).toBe(
+        '---\nname: demo\n---\n\n# Title\n\nText.\n',
+      )
+    })
+
+    it('does not reuse the first character of a body that starts with a dash', () => {
+      const body = '- item\n'
+      expect(changesOf(planFieldEdit(body, { name: 'x' }))).toEqual([
+        { from: 0, to: 0, insert: '---\nname: x\n---\n\n' },
+      ])
+      expect(edited(body, { name: 'x' })).toBe('---\nname: x\n---\n\n- item\n')
+    })
+
+    it('does not reuse the start of a body that opens with three dashes or a key', () => {
+      for (const body of ['---x\n', 'name: y\n', '> quote\n']) {
+        const next = edited(body, { name: 'x' })
+        expect(next).toBe(`---\nname: x\n---\n\n${body}`)
+        expect(fieldsOf(next)).toEqual({ name: 'x' })
+      }
+    })
   })
 
-  it('adds a missing field next to the others', () => {
+  it('adds a missing field next to the others, with a pure insertion', () => {
     const text = `---\nname: demo\n---\n${BODY}`
-    const next = applyChange(
-      text,
-      changeOf(planFieldEdit(text, { description: 'Does a thing.' })),
-    )
-    expect(fieldsOf(next)).toEqual({
-      name: 'demo',
-      description: 'Does a thing.',
-    })
+    const changes = changesOf(planFieldEdit(text, { description: 'Does it.' }))
+    expect(changes).toHaveLength(1)
+    expect(changes[0]?.from).toBe(changes[0]?.to)
+    const next = applyChanges(text, changes)
+    expect(fieldsOf(next)).toEqual({ name: 'demo', description: 'Does it.' })
     expect(next.slice(findFrontmatter(next)?.to)).toBe(AFTER_CLOSING)
   })
 
@@ -174,8 +169,7 @@ describe('planFieldEdit', () => {
     ['frontmatter not recognized', '---\nthis is prose\n---\n\nText.\n'],
     ['yaml error', '---\nname: [unclosed\n---\n\nText.\n'],
   ])('refuses a document with %s', (_label, text) => {
-    const plan = planFieldEdit(text, { name: 'demo' })
-    expect(plan.kind).toBe('refused')
+    expect(planFieldEdit(text, { name: 'demo' }).kind).toBe('refused')
   })
 
   it('names the reason it refused', () => {

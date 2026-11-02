@@ -42,6 +42,10 @@ export type FrontmatterEdit =
   | { readonly ok: true; readonly text: string }
   | { readonly ok: false; readonly problem: FrontmatterProblem }
 
+export type FrontmatterEditPlan =
+  | { readonly ok: true; readonly edits: readonly TextEdit[] }
+  | { readonly ok: false; readonly problem: FrontmatterProblem }
+
 type ParsedMapping =
   | {
       readonly ok: true
@@ -58,11 +62,13 @@ type Located = {
   readonly valueEnd: number
 }
 
-type Edit = {
+export type TextEdit = {
   readonly from: number
   readonly to: number
   readonly insert: string
 }
+
+type Edit = TextEdit
 
 type Carried = {
   readonly type?: Scalar.Type
@@ -335,54 +341,70 @@ const applyEdits = (block: string, edits: readonly Edit[]): string =>
       block,
     )
 
+const blockEdits = (
+  block: string,
+  map: YAMLMap | null,
+  values: SkillFieldValues,
+): readonly Edit[] =>
+  planEdits(
+    block,
+    map,
+    FIELDS.flatMap((field): readonly FieldValue[] => {
+      const value = values[field]
+      return value === undefined ? [] : [[field, value]]
+    }),
+  )
+
 const rewriteBlock = (
   block: string,
   map: YAMLMap | null,
   values: SkillFieldValues,
-): string =>
-  applyEdits(
-    block,
-    planEdits(
-      block,
-      map,
-      FIELDS.flatMap((field): readonly FieldValue[] => {
-        const value = values[field]
-        return value === undefined ? [] : [[field, value]]
-      }),
-    ),
-  )
+): string => applyEdits(block, blockEdits(block, map, values))
 
-const createFrontmatter = (
+const creationEdits = (
   text: string,
   values: SkillFieldValues,
-): FrontmatterEdit => {
+): readonly TextEdit[] => {
   const block = rewriteBlock('', null, values)
-  if (block === '') return { ok: true, text }
+  if (block === '') return []
   const separator = text === '' || text.startsWith('\n') ? '' : '\n'
-  return { ok: true, text: `---\n${block}---\n${separator}${text}` }
+  return [{ from: 0, to: 0, insert: `---\n${block}---\n${separator}` }]
 }
 
-export const setSkillFields = (
+export const planSkillFieldEdits = (
   text: string,
   values: SkillFieldValues,
-): FrontmatterEdit => {
+): FrontmatterEditPlan => {
   const frontmatter = findFrontmatter(text)
   if (frontmatter === undefined)
     return isUnclosed(text)
       ? { ok: false, problem: NOT_CLOSED }
       : DELIMITED_BLOCK.test(text)
         ? { ok: false, problem: NOT_RECOGNIZED }
-        : createFrontmatter(text, values)
-  const blockEnd = closingLineStart(text, frontmatter)
-  const block = text.slice(frontmatter.yamlFrom, blockEnd)
+        : { ok: true, edits: creationEdits(text, values) }
+  const block = text.slice(
+    frontmatter.yamlFrom,
+    closingLineStart(text, frontmatter),
+  )
   const parsed = parseMapping(block, lineNumberAt(text, frontmatter.yamlFrom))
   return parsed.ok
     ? {
         ok: true,
-        text:
-          text.slice(0, frontmatter.yamlFrom) +
-          rewriteBlock(block, parsed.map, values) +
-          text.slice(blockEnd),
+        edits: blockEdits(block, parsed.map, values)
+          .map(({ from, to, insert }) => ({
+            from: from + frontmatter.yamlFrom,
+            to: to + frontmatter.yamlFrom,
+            insert,
+          }))
+          .toSorted((a, b) => a.from - b.from),
       }
     : parsed
+}
+
+export const setSkillFields = (
+  text: string,
+  values: SkillFieldValues,
+): FrontmatterEdit => {
+  const plan = planSkillFieldEdits(text, values)
+  return plan.ok ? { ok: true, text: applyEdits(text, plan.edits) } : plan
 }
