@@ -11,6 +11,8 @@ import {
   KEY_KEEP_AS_PLAIN_TEXT_CHANNEL,
   KEY_SAVE_CHANNEL,
   KEY_STATE_CHANNEL,
+  LAUNCH_FILE_CHANNEL,
+  LAUNCH_TAKE_CHANNEL,
   LIBRARY_ADD_ROOT_CHANNEL,
   LIBRARY_CREATE_SKILL_CHANNEL,
   LIBRARY_LIST_CHANNEL,
@@ -51,6 +53,14 @@ const api: ChiriApi = {
   },
   createSkill: (request) =>
     ipcRenderer.invoke(LIBRARY_CREATE_SKILL_CHANNEL, request),
+  takeLaunchFile: () => ipcRenderer.invoke(LAUNCH_TAKE_CHANNEL),
+  onLaunchFile: (listener) => {
+    const relay = (): void => listener()
+    ipcRenderer.on(LAUNCH_FILE_CHANNEL, relay)
+    return () => {
+      ipcRenderer.removeListener(LAUNCH_FILE_CHANNEL, relay)
+    }
+  },
   keyState: () => ipcRenderer.invoke(KEY_STATE_CHANNEL),
   saveKey: (key) => ipcRenderer.invoke(KEY_SAVE_CHANNEL, key),
   keepKeyAsPlainText: () => ipcRenderer.invoke(KEY_KEEP_AS_PLAIN_TEXT_CHANNEL),

@@ -6,6 +6,7 @@ import { resolveDevOptions } from './dev-options'
 import { registerFileHandlers } from './files/register'
 import { registerHistory } from './history-main'
 import { prepareInstalledApp, startInstalledApp } from './installed-app'
+import { registerLaunches } from './launch/register'
 import { registerLibraryHandlers } from './library/register'
 import { isAppNavigation, isTrustedFrame } from './trust'
 import { registerExternalChanges } from './watch/register'
@@ -73,24 +74,30 @@ const createWindow = (): BrowserWindow => {
   return window
 }
 
-applyDevOptions()
-prepareInstalledApp()
-lockNavigation()
+const start = (): void => {
+  prepareInstalledApp()
+  lockNavigation()
+  registerLaunches((event) => isTrustedFrame(event.senderFrame, appUrl()))
 
-app.whenReady().then(async () => {
-  await startInstalledApp({
-    appUrl: appUrl(),
-    isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
+  app.whenReady().then(async () => {
+    await startInstalledApp({
+      appUrl: appUrl(),
+      isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
+    })
+    registerIpc()
+    registerHistory({
+      ipcMain,
+      file: () => join(app.getPath('userData'), 'history.sqlite'),
+      isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
+      onQuit: (close) => app.on('will-quit', close),
+    })
+    createWindow()
   })
-  registerIpc()
-  registerHistory({
-    ipcMain,
-    file: () => join(app.getPath('userData'), 'history.sqlite'),
-    isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
-    onQuit: (close) => app.on('will-quit', close),
-  })
-  createWindow()
-})
+}
+
+applyDevOptions()
+if (app.requestSingleInstanceLock()) start()
+else app.quit()
 
 app.on('window-all-closed', () => {
   app.quit()

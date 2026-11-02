@@ -120,6 +120,11 @@ export type ExternalKit<Ref> = {
   readonly readDisk: (ref: Ref) => Promise<DiskRead>
 }
 
+export type LaunchKit<Ref> = {
+  readonly take: () => Promise<Ref | null>
+  readonly subscribe: (listener: (ref: Ref) => void) => () => void
+}
+
 export type PlatformKit<Ref = unknown> = {
   readonly files: DocumentFiles<Ref>
   readonly unsavedText: UnsavedText<Ref>
@@ -131,6 +136,7 @@ export type PlatformKit<Ref = unknown> = {
   readonly problems: Problems
   readonly library?: LibraryKit<Ref>
   readonly external?: ExternalKit<Ref>
+  readonly launches?: LaunchKit<Ref>
 }
 
 export type PlatformKitFactory<Ref = unknown> = () => Promise<PlatformKit<Ref>>

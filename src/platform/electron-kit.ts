@@ -8,6 +8,7 @@ import { createSwitchableHistory } from '../history/hub'
 import { createDocumentHistory } from '../history/session'
 import { createElectronExternal } from './electron-external'
 import { createElectronFiles } from './electron-files'
+import { createElectronLaunches } from './electron-launches'
 import { createElectronLibrary } from './electron-library'
 import {
   clearLastFile,
@@ -20,6 +21,7 @@ import { createElectronUnsavedStore } from './electron-unsaved'
 import type {
   DocumentFiles,
   ExternalKit,
+  LaunchKit,
   LibraryKit,
   PlatformKit,
   PlatformKitFactory,
@@ -48,6 +50,7 @@ type ElectronKitDeps = {
   readonly files: DocumentFiles<string>
   readonly library: LibraryKit<string>
   readonly external: ExternalKit<string>
+  readonly launches: LaunchKit<string>
   readonly now: () => number
   readonly hasApiKey: boolean
   readonly onHide: (flush: () => void) => void
@@ -85,10 +88,11 @@ const reopen = async (
   files: DocumentFiles<string>,
   store: UnsavedStore<string>,
   path: string,
+  failureText = 'Could not reopen',
 ): Promise<Reopened> => {
   const failure = (reason?: string): Reopened => ({
     ...NOTHING_TO_REOPEN,
-    notice: withReason(`Could not reopen ${nameOf(path)}`, reason),
+    notice: withReason(`${failureText} ${nameOf(path)}`, reason),
     gone: reason === FILE_NOT_FOUND_REASON,
   })
   try {
@@ -130,6 +134,7 @@ export const createElectronKit = async ({
   files,
   library,
   external,
+  launches,
   now,
   hasApiKey,
   onHide,
@@ -142,11 +147,21 @@ export const createElectronKit = async ({
     },
     worked: () => problems.worked('unsaved'),
   })
-  const lastFile = loadLastFile(storage)
-  const reopened =
-    lastFile === null
+  const launched = await launches.take()
+  const fromLaunch =
+    launched === null
       ? NOTHING_TO_REOPEN
-      : await reopen(files, unsaved, lastFile)
+      : await reopen(files, unsaved, launched, 'Could not open')
+  const launchedRef = fromLaunch.start?.ref ?? null
+  if (launchedRef !== null) saveLastFile(storage, launchedRef)
+  const lastFile = launchedRef ?? loadLastFile(storage)
+  const reopened =
+    launchedRef !== null
+      ? fromLaunch
+      : lastFile === null
+        ? NOTHING_TO_REOPEN
+        : await reopen(files, unsaved, lastFile)
+  const startNotice = fromLaunch.notice ?? reopened.notice
   const initialDoc =
     reopened.text ?? (await unsaved.load(SCRATCH_KEY))?.text ?? SAMPLE_DOCUMENT
   if (reopened.gone && lastFile !== null)
@@ -207,12 +222,13 @@ export const createElectronKit = async ({
       discard: keeper.discard,
     },
     start: reopened.start,
-    notice: reopened.notice,
+    notice: startNotice,
     history,
     keyStatus: { present: hasApiKey },
     problems,
     library,
     external,
+    launches,
   }
 }
 
@@ -236,6 +252,7 @@ export const browserElectronKit: PlatformKitFactory<string> =
       files: createElectronFiles(api),
       library: createElectronLibrary(api),
       external: createElectronExternal(api),
+      launches: createElectronLaunches(api),
       now: Date.now,
       hasApiKey: __HAS_OPENROUTER_KEY__,
       onHide: flushWhenPageHides,

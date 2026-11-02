@@ -22,6 +22,9 @@ linux:
   icon: icons
   category: Utility;TextEditor
   synopsis: Markdown editor with an AI co-author
+  mimeTypes:
+    - text/markdown
+    - text/x-markdown
   maintainer: Walter Andrade
   desktop:
     entry:

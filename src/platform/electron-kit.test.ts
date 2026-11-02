@@ -7,7 +7,13 @@ import { createLocalHistoryStore } from '../history/local-store'
 import type { HistoryStore } from '../history/store'
 import { createElectronKit, SCRATCH_KEY } from './electron-kit'
 import { LAST_FILE_KEY } from './electron-storage'
-import type { DocumentFiles, ExternalKit, LibraryKit, OpenResult } from './kit'
+import type {
+  DocumentFiles,
+  ExternalKit,
+  LaunchKit,
+  LibraryKit,
+  OpenResult,
+} from './kit'
 
 const PATH = '/skills/a/SKILL.md'
 const OTHER = '/skills/b/SKILL.md'
@@ -101,6 +107,7 @@ const setup = (
     readonly history?: Record<string, string>
     readonly failUnsavedLoad?: Error
     readonly read?: DocumentFiles<string>['read']
+    readonly launched?: string
   } = {},
 ) => {
   const { storage, entries } = createFakeStorage(options.stored)
@@ -115,19 +122,24 @@ const setup = (
     read: options.read ?? (async () => ({ kind: 'cancelled' })),
     save: async () => ({ kind: 'cancelled' }),
   }
+  const launches: LaunchKit<string> = {
+    take: async () => options.launched ?? null,
+    subscribe: () => () => undefined,
+  }
   const kit = createElectronKit({
     api,
     storage,
     files,
     library: fakeLibrary,
     external: fakeExternal,
+    launches,
     now: () => 1000,
     hasApiKey: true,
     onHide: (flush) => {
       hide.flush = flush
     },
   })
-  return { kit, api, kept, entries, hide, files }
+  return { kit, api, kept, entries, hide, files, launches }
 }
 
 const session = (savedText: string, ref: string | null = PATH) => ({
@@ -277,6 +289,67 @@ describe('createElectronKit start', () => {
       'started',
       'edited',
     ])
+  })
+})
+
+describe('createElectronKit launched with a file', () => {
+  const LAUNCHED = '/notes/today.md'
+  const byPath =
+    (texts: Record<string, string>): DocumentFiles<string>['read'] =>
+    async (path) =>
+      texts[path] === undefined
+        ? { kind: 'failed', reason: FILE_NOT_FOUND_REASON }
+        : diskFile(texts[path], path)
+
+  it('opens the launched file instead of the last file', async () => {
+    const read = vi.fn(byPath({ [PATH]: '# Last\n', [LAUNCHED]: '# Today\n' }))
+    const ready = await setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      read,
+      launched: LAUNCHED,
+    }).kit
+    expect(read).toHaveBeenCalledExactlyOnceWith(LAUNCHED)
+    expect(ready.unsavedText.initial).toBe('# Today\n')
+    expect(ready.start?.ref).toBe(LAUNCHED)
+    expect(ready.notice).toBeNull()
+  })
+
+  it('reopens the launched file at the next start', async () => {
+    const { kit, entries } = setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      read: byPath({ [LAUNCHED]: '# Today\n' }),
+      launched: LAUNCHED,
+    })
+    await kit
+    expect(entries()[LAST_FILE_KEY]).toBe(LAUNCHED)
+  })
+
+  it('brings back the unsaved text of the launched file', async () => {
+    const ready = await setup({
+      unsaved: { [LAUNCHED]: { text: '# Today, edited', base: '# Today\n' } },
+      read: byPath({ [LAUNCHED]: '# Today\n' }),
+      launched: LAUNCHED,
+    }).kit
+    expect(ready.unsavedText.initial).toBe('# Today, edited')
+    expect(ready.notice).toBe('Restored unsaved changes to SKILL.md')
+  })
+
+  it('says it could not open the launched file and reopens the last one', async () => {
+    const { kit, entries } = setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      read: byPath({ [PATH]: '# Last\n' }),
+      launched: LAUNCHED,
+    })
+    const ready = await kit
+    expect(ready.notice).toBe('Could not open today.md: File not found')
+    expect(ready.unsavedText.initial).toBe('# Last\n')
+    expect(ready.start?.ref).toBe(PATH)
+    expect(entries()[LAST_FILE_KEY]).toBe(PATH)
+  })
+
+  it('carries the launches it was given', async () => {
+    const { kit, launches } = setup()
+    expect((await kit).launches).toBe(launches)
   })
 })
 
