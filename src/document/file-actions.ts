@@ -39,11 +39,16 @@ type FileActionsOptions<Ref> = {
 export type CreatedFile<Ref, T> = {
   readonly ref: Ref | null
   readonly value: T
+  readonly label?: string
 }
 
 export type OpenCreated<T> =
   | { readonly kind: 'stayed' }
-  | { readonly kind: 'prepared'; readonly value: T }
+  | {
+      readonly kind: 'prepared'
+      readonly value: T
+      readonly opened: boolean
+    }
 
 export type FileActions<Ref> = {
   readonly open: () => Promise<void>
@@ -119,12 +124,12 @@ export const createFileActions = <Ref>({
       readonly done: string
       readonly reloaded: boolean
     },
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const settled = guarded ? await afterLeaving(result, current) : result
-    if (settled.kind === 'cancelled') return
+    if (settled.kind === 'cancelled') return false
     if (settled.kind === 'failed') {
       notify(failure(settled.reason))
-      return
+      return false
     }
     const { name, text, ref } = settled.file
     const arrival = restoreUnsaved(
@@ -147,6 +152,7 @@ export const createFileActions = <Ref>({
         : `${done} ${name}`,
     )
     if (arrival.diskChanged && ref !== null) onConflict?.({ name, ref })
+    return true
   }
 
   const open = async (): Promise<void> => {
@@ -188,15 +194,22 @@ export const createFileActions = <Ref>({
       if (outcome === 'stay') return { kind: 'stayed' }
     }
     const created = await prepare()
-    if (created.ref !== null)
-      await arrive(await files.read(created.ref), current, {
+    const opened =
+      created.ref !== null &&
+      (await arrive(await files.read(created.ref), current, {
         keepUnsaved: false,
         guarded: false,
-        failure: (reason) => withReason('Could not open the file', reason),
+        failure: (reason) =>
+          created.label === undefined
+            ? withReason('Could not open the file', reason)
+            : withReason(
+                `Created ${created.label}, but it could not be opened`,
+                reason,
+              ),
         done: 'Opened',
         reloaded: false,
-      })
-    return { kind: 'prepared', value: created.value }
+      }))
+    return { kind: 'prepared', value: created.value, opened }
   }
 
   const reload = async ({ name, ref }: Conflict<Ref>): Promise<void> => {

@@ -886,6 +886,7 @@ describe('openCreated', () => {
     expect(await actions.openCreated(prepare)).toEqual({
       kind: 'prepared',
       value: 'created',
+      opened: true,
     })
     expect(ask).not.toHaveBeenCalled()
     expect(editor.replace).toHaveBeenCalledWith('# New\n')
@@ -997,26 +998,68 @@ describe('openCreated', () => {
     expect(await actions.openCreated(prepare)).toEqual({
       kind: 'prepared',
       value: 'exists',
+      opened: false,
     })
     expect(files.read).not.toHaveBeenCalled()
     expect(editor.replace).not.toHaveBeenCalled()
     expect(session()).toMatchObject({ ref: REF })
   })
 
-  it('says so when the new file cannot be read, and keeps the Document', async () => {
-    const { editor } = fakeEditor('# A\n')
-    const prepare = made()
-    const { actions, notices, session } = setup({
-      read: async () => ({ kind: 'failed', reason: 'Permission denied' }),
-      editor,
-      session: clean,
-      choice: 'cancel',
+  describe('when the new file cannot be read', () => {
+    const unreadable = async (): Promise<OpenResult<Ref>> => ({
+      kind: 'failed',
+      reason: 'Permission denied',
     })
-    expect(await actions.openCreated(prepare)).toMatchObject({
-      kind: 'prepared',
+
+    it('says that it was created but not opened, keeps the Document, and reports it was not opened', async () => {
+      const { editor } = fakeEditor('# A\n')
+      const prepare = vi.fn(async () => ({
+        ref: NEW,
+        value: 'created',
+        label: 'new-skill',
+      }))
+      const { actions, notices, session } = setup({
+        read: unreadable,
+        editor,
+        session: clean,
+        choice: 'cancel',
+      })
+      expect(await actions.openCreated(prepare)).toEqual({
+        kind: 'prepared',
+        value: 'created',
+        opened: false,
+      })
+      expect(notices).toEqual([
+        'Created new-skill, but it could not be opened: Permission denied',
+      ])
+      expect(editor.replace).not.toHaveBeenCalled()
+      expect(session()).toMatchObject({ ref: REF })
     })
-    expect(notices).toEqual(['Could not open the file: Permission denied'])
-    expect(session()).toMatchObject({ ref: REF })
+
+    it('uses the plain message when it was told no name', async () => {
+      const { actions, notices } = setup({
+        read: unreadable,
+        editor: fakeEditor('# A\n').editor,
+        session: clean,
+        choice: 'cancel',
+      })
+      expect(await actions.openCreated(made())).toMatchObject({
+        opened: false,
+      })
+      expect(notices).toEqual(['Could not open the file: Permission denied'])
+    })
+
+    it('does not say it was opened when the user Cancelled the new file', async () => {
+      const { actions } = setup({
+        read: async () => ({ kind: 'cancelled' }),
+        editor: fakeEditor('# A\n').editor,
+        session: clean,
+        choice: 'cancel',
+      })
+      expect(await actions.openCreated(made())).toMatchObject({
+        opened: false,
+      })
+    })
   })
 
   it('creates and opens with no question when the build gives none to ask', async () => {
