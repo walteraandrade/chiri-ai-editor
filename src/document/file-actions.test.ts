@@ -11,6 +11,7 @@ import {
   type FileSessionEvent,
   nextFileSession,
 } from './file-session'
+import type { LeaveChoice } from './leave-guard'
 import type { Unsaved } from './unsaved'
 
 type Ref = { readonly path: string }
@@ -59,6 +60,8 @@ type Options = {
   readonly editor?: EditorText | null
   readonly session?: FileSession<Ref> | null
   readonly calls?: string[]
+  readonly choice?: LeaveChoice
+  readonly untitledBaseline?: string
 }
 
 const setup = ({
@@ -69,6 +72,8 @@ const setup = ({
   editor,
   session: initialSession = null,
   calls = [],
+  choice,
+  untitledBaseline = '',
 }: Options = {}) => {
   let session = initialSession
   const events: FileSessionEvent<Ref>[] = []
@@ -82,8 +87,11 @@ const setup = ({
     read: vi.fn(read),
     save: vi.fn(save),
   }
+  const ask = vi.fn(async (_name: string) => choice ?? 'cancel')
+  const discard = vi.fn()
   const actions = createFileActions({
     files,
+    ...(choice !== undefined && { leave: { ask, discard, untitledBaseline } }),
     offered: vi.fn(offered),
     editor: () => (editor === undefined ? fakeEditor('').editor : editor),
     session: () => session,
@@ -118,6 +126,8 @@ const setup = ({
     savedFiles,
     conflicts,
     savingTexts,
+    ask,
+    discard,
     session: () => session,
   }
 }
@@ -435,5 +445,372 @@ describe('reload', () => {
     expect(editor.replace).not.toHaveBeenCalled()
     expect(events).toEqual([])
     expect(notices).toEqual(['Could not reload SKILL.md: File not found'])
+  })
+})
+
+describe('openRef', () => {
+  const OTHER: Ref = { path: '/skills/b/SKILL.md' }
+
+  it('reads the file by its ref and replaces the Document, like Open', async () => {
+    const { editor } = fakeEditor('Old.')
+    const read = vi.fn(async () => opened('# B\n', 'SKILL.md', OTHER))
+    const { actions, notices, session } = setup({ read, editor })
+    await actions.openRef(OTHER)
+    expect(read).toHaveBeenCalledWith(OTHER)
+    expect(editor.replace).toHaveBeenCalledWith('# B\n')
+    expect(session()).toMatchObject({ ref: OTHER, dirty: false })
+    expect(notices).toEqual(['Opened SKILL.md'])
+  })
+
+  it('does nothing when that file is already the open one', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const { actions, files, notices } = setup({
+      editor,
+      session: sessionOf('# A\n', true),
+    })
+    await actions.openRef(REF)
+    expect(files.read).not.toHaveBeenCalled()
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(notices).toEqual([])
+  })
+
+  it('says so when the file cannot be read, with the reason', async () => {
+    const { editor } = fakeEditor('Old.')
+    const { actions, notices } = setup({
+      read: async () => ({ kind: 'failed', reason: 'Not a Markdown file' }),
+      editor,
+    })
+    await actions.openRef(OTHER)
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(notices).toEqual(['Could not open the file: Not a Markdown file'])
+  })
+
+  it('offers the unsaved text kept for that file', async () => {
+    const { editor } = fakeEditor('Old.')
+    const { actions, session } = setup({
+      read: async () => opened('# B\n', 'SKILL.md', OTHER),
+      offered: async () => ({ text: '# B, unsaved\n', base: '# B\n' }),
+      editor,
+    })
+    await actions.openRef(OTHER)
+    expect(editor.replace).toHaveBeenCalledWith('# B, unsaved\n')
+    expect(session()).toMatchObject({ dirty: true })
+  })
+})
+
+describe('leaving a file with unsaved changes', () => {
+  const OTHER: Ref = { path: '/skills/b/SKILL.md' }
+  const dirty = sessionOf('# A\n', true)
+  const toB = async (): Promise<OpenResult<Ref>> =>
+    opened('# B\n', 'SKILL.md', OTHER)
+
+  it('asks first, after the new file was read, and keeps everything on Cancel', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const { actions, ask, events, notices } = setup({
+      read: toB,
+      editor,
+      session: dirty,
+      choice: 'cancel',
+    })
+    await actions.openRef(OTHER)
+    expect(ask).toHaveBeenCalledWith('SKILL.md')
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(events).toEqual([])
+    expect(notices).toEqual([])
+  })
+
+  it('does not ask about a file that cannot be read', async () => {
+    const { actions, ask } = setup({
+      read: async () => ({ kind: 'failed' }),
+      session: dirty,
+      choice: 'cancel',
+    })
+    await actions.openRef(OTHER)
+    expect(ask).not.toHaveBeenCalled()
+  })
+
+  it('drops the unsaved text of the old file on Discard, then opens the new one', async () => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A, edited\n', calls)
+    const { actions, discard, session } = setup({
+      read: toB,
+      editor,
+      session: dirty,
+      choice: 'discard',
+      calls,
+    })
+    await actions.openRef(OTHER)
+    expect(discard).toHaveBeenCalledWith(REF)
+    expect(editor.replace).toHaveBeenCalledWith('# B\n')
+    expect(session()).toMatchObject({ ref: OTHER, dirty: false })
+  })
+
+  it('saves the old file on Save, then opens the new one', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const save = vi.fn(async () => savedAs())
+    const { actions, session, files } = setup({
+      read: toB,
+      save,
+      editor,
+      session: dirty,
+      choice: 'save',
+    })
+    await actions.openRef(OTHER)
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ text: '# A, edited\n', ref: REF }),
+    )
+    expect(files.read).toHaveBeenCalledTimes(1)
+    expect(editor.replace).toHaveBeenCalledWith('# B\n')
+    expect(session()).toMatchObject({ ref: OTHER })
+  })
+
+  it('stays on the old file when the save did not go through', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const { actions, session, conflicts } = setup({
+      read: toB,
+      save: async () => ({ kind: 'conflict' }),
+      editor,
+      session: dirty,
+      choice: 'save',
+    })
+    await actions.openRef(OTHER)
+    expect(conflicts).toEqual([CONFLICT])
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(session()).toMatchObject({ ref: REF, dirty: true })
+  })
+
+  describe('picking the file that is open', () => {
+    const edited = '# A, edited\n'
+
+    const sameFile = (choice: LeaveChoice) => {
+      let disk = '# A\n'
+      const fake = fakeEditor(edited)
+      const save = vi.fn(async (request: SaveRequest<Ref>) => {
+        disk = request.text
+        return savedAs()
+      })
+      const setupped = setup({
+        open: async () => opened(disk),
+        read: async () => opened(disk),
+        save,
+        editor: fake.editor,
+        session: dirty,
+        choice,
+      })
+      return { ...setupped, editor: fake.editor, disk: () => disk }
+    }
+
+    it('reads the file again after Save, so the text written is the text opened', async () => {
+      const { actions, editor, session, openedFiles, files } = sameFile('save')
+      await actions.open()
+      expect(files.read).toHaveBeenCalledWith(REF)
+      expect(editor.replace).toHaveBeenCalledWith(edited)
+      expect(session()).toEqual({
+        name: 'SKILL.md',
+        ref: REF,
+        savedText: edited,
+        dirty: false,
+      })
+      expect(openedFiles).toEqual([{ text: edited, name: 'SKILL.md' }])
+    })
+
+    it('reads after the save finished, not before', async () => {
+      const { actions, files } = sameFile('save')
+      await actions.open()
+      const [saved] = vi.mocked(files.save).mock.invocationCallOrder
+      const [read] = vi.mocked(files.read).mock.invocationCallOrder
+      expect(saved).toBeDefined()
+      expect(read).toBeGreaterThan(saved ?? Number.POSITIVE_INFINITY)
+    })
+
+    it('says so when the file cannot be read after the save', async () => {
+      const fake = fakeEditor(edited)
+      const { actions, notices, session } = setup({
+        open: async () => opened('# A\n'),
+        read: async () => ({ kind: 'failed', reason: 'File not found' }),
+        save: async () => savedAs(),
+        editor: fake.editor,
+        session: dirty,
+        choice: 'save',
+      })
+      await actions.open()
+      expect(fake.editor.replace).not.toHaveBeenCalled()
+      expect(notices.at(-1)).toBe('Could not open the file: File not found')
+      expect(session()).toMatchObject({ ref: REF })
+    })
+
+    it('reads the file again when Save as just wrote it, with no file open before', async () => {
+      let disk = '# Sample\n'
+      const fake = fakeEditor('# Sample, edited\n')
+      const { actions, files, session } = setup({
+        open: async () => opened(disk, 'sample.md'),
+        read: async () => opened(disk, 'sample.md'),
+        save: async (request) => {
+          disk = request.text
+          return savedAs('sample.md')
+        },
+        editor: fake.editor,
+        choice: 'save',
+        untitledBaseline: '# Sample\n',
+      })
+      await actions.open()
+      expect(files.read).toHaveBeenCalledTimes(1)
+      expect(fake.editor.replace).toHaveBeenCalledWith('# Sample, edited\n')
+      expect(session()).toMatchObject({ dirty: false, ref: REF })
+    })
+
+    it('opens the disk text on Discard, with no second read', async () => {
+      const { actions, editor, files, session } = sameFile('discard')
+      await actions.open()
+      expect(files.read).not.toHaveBeenCalled()
+      expect(editor.replace).toHaveBeenCalledWith('# A\n')
+      expect(session()).toMatchObject({ savedText: '# A\n', dirty: false })
+    })
+
+    it('reads nothing more when the Document was clean', async () => {
+      const fake = fakeEditor('# A\n')
+      const { actions, files } = setup({
+        open: async () => opened('# A\n'),
+        editor: fake.editor,
+        session: sessionOf('# A\n'),
+        choice: 'cancel',
+      })
+      await actions.open()
+      expect(files.read).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('a Document with no file', () => {
+    const STARTED = '# Sample\n'
+
+    it('asks when it was edited, and stays on Cancel', async () => {
+      const { editor } = fakeEditor('# Sample, edited\n')
+      const { actions, ask, events } = setup({
+        read: toB,
+        editor,
+        choice: 'cancel',
+        untitledBaseline: STARTED,
+      })
+      await actions.openRef(OTHER)
+      expect(ask).toHaveBeenCalledWith('Untitled')
+      expect(editor.replace).not.toHaveBeenCalled()
+      expect(events).toEqual([])
+    })
+
+    it('goes on silently when it was not edited', async () => {
+      const { editor } = fakeEditor(STARTED)
+      const { actions, ask } = setup({
+        read: toB,
+        editor,
+        choice: 'cancel',
+        untitledBaseline: STARTED,
+      })
+      await actions.openRef(OTHER)
+      expect(ask).not.toHaveBeenCalled()
+      expect(editor.replace).toHaveBeenCalledWith('# B\n')
+    })
+
+    it('is replaced on Discard', async () => {
+      const { editor } = fakeEditor('# Sample, edited\n')
+      const { actions, discard, session } = setup({
+        read: toB,
+        editor,
+        choice: 'discard',
+        untitledBaseline: STARTED,
+      })
+      await actions.openRef(OTHER)
+      expect(discard).not.toHaveBeenCalled()
+      expect(editor.replace).toHaveBeenCalledWith('# B\n')
+      expect(session()).toMatchObject({ ref: OTHER })
+    })
+
+    it('goes to Save as on Save, then opens the file', async () => {
+      const { editor } = fakeEditor('# Sample, edited\n')
+      const save = vi.fn(async () =>
+        savedAs('sample.md', { path: '/p/sample.md' }),
+      )
+      const { actions, session } = setup({
+        read: toB,
+        save,
+        editor,
+        choice: 'save',
+        untitledBaseline: STARTED,
+      })
+      await actions.openRef(OTHER)
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ ref: null, saveAs: false }),
+      )
+      expect(editor.replace).toHaveBeenCalledWith('# B\n')
+      expect(session()).toMatchObject({ ref: OTHER })
+    })
+
+    it('stays when the Save as is cancelled', async () => {
+      const { editor } = fakeEditor('# Sample, edited\n')
+      const { actions, session } = setup({
+        read: toB,
+        save: async () => ({ kind: 'cancelled' }),
+        editor,
+        choice: 'save',
+        untitledBaseline: STARTED,
+      })
+      await actions.openRef(OTHER)
+      expect(editor.replace).not.toHaveBeenCalled()
+      expect(session()).toBeNull()
+    })
+  })
+
+  it('applies to Open too, after the file was picked', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const { actions, ask, files } = setup({
+      open: toB,
+      editor,
+      session: dirty,
+      choice: 'cancel',
+    })
+    await actions.open()
+    expect(files.open).toHaveBeenCalledTimes(1)
+    expect(ask).toHaveBeenCalledTimes(1)
+    expect(editor.replace).not.toHaveBeenCalled()
+  })
+
+  it('does not apply to Reload from disk, which is a choice already made', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const { actions, ask } = setup({
+      read: async () => opened('# A, by an agent\n'),
+      editor,
+      session: dirty,
+      choice: 'cancel',
+    })
+    await actions.reload(CONFLICT)
+    expect(ask).not.toHaveBeenCalled()
+    expect(editor.replace).toHaveBeenCalledWith('# A, by an agent\n')
+  })
+
+  it('does not ask when the build gives no question to ask', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const { actions } = setup({ read: toB, editor, session: dirty })
+    await actions.openRef(OTHER)
+    expect(editor.replace).toHaveBeenCalledWith('# B\n')
+  })
+})
+
+describe('save result', () => {
+  it('is true when the file was written', async () => {
+    const { actions } = setup({ save: async () => savedAs() })
+    expect(await actions.save(false)).toBe(true)
+  })
+
+  it.each([
+    ['cancelled', { kind: 'cancelled' } as const],
+    ['conflict', { kind: 'conflict' } as const],
+    ['failed', { kind: 'failed' } as const],
+  ])('is false when the save is %s', async (_name, result) => {
+    const { actions } = setup({ save: async () => result })
+    expect(await actions.save(false)).toBe(false)
+  })
+
+  it('is false when there is no editor yet', async () => {
+    const { actions } = setup({ editor: null })
+    expect(await actions.save(false)).toBe(false)
   })
 })

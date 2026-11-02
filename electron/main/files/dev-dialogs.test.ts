@@ -53,6 +53,7 @@ describe('resolveDevDialogs', () => {
       .mockResolvedValueOnce('/skills/a/SKILL.md\n')
       .mockResolvedValueOnce('/skills/b/SKILL.md\n')
       .mockResolvedValueOnce('/tmp/copy.md')
+      .mockResolvedValueOnce('/work/repo/.claude/skills\n')
     const dialogs = resolveDevDialogs(
       { ...DEV, CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
       UNPACKAGED,
@@ -61,6 +62,7 @@ describe('resolveDevDialogs', () => {
     expect(await dialogs?.pickFile(null)).toBe('/skills/a/SKILL.md')
     expect(await dialogs?.pickFile(null)).toBe('/skills/b/SKILL.md')
     expect(await dialogs?.pickSavePath(null, 'a.md')).toBe('/tmp/copy.md')
+    expect(await dialogs?.pickFolder(null)).toBe('/work/repo/.claude/skills')
     expect(read).toHaveBeenCalledWith('/tmp/pick.txt')
   })
 

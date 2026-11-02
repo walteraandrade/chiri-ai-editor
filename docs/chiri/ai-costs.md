@@ -145,3 +145,6 @@ Notes on issue #31 (History store):
 - Slice cost is US$0.0013: 2 calls, a Shorter on a paragraph and its Accept, in the Electron window and in the Web build, to put an AI Version into a per-file History and into the Web History. The other checks (Versions, Restore, file switch, restart, `kill -9`, changed on disk) call no model.
 - `window.__aiCalls` was not read, because the permission system refused `agent-browser eval`. The generation ids came from `agent-browser network requests` and the records from `GET /api/openrouter/generation?id=…` through the dev proxy, so client latency and the retry flag are missing.
 - The key's counter was not re-read.
+
+Notes on issue #32 (Library):
+- Slice cost is US$0: no check called the model (listing, opening, saving and switching files, the questions, the unreadable roots file and the Web build comparison). The running total is unchanged from issue #31.

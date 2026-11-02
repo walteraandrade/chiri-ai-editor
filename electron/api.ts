@@ -1,3 +1,8 @@
+import type {
+  AddRootResult,
+  LibrarySnapshot,
+  RemoveRootResult,
+} from '../src/skills/library'
 import type { HistoryApi } from './history-api'
 
 export const SHELL_INFO_CHANNEL = 'shell:info'
@@ -5,6 +10,9 @@ export const FILE_OPEN_CHANNEL = 'file:open'
 export const FILE_READ_CHANNEL = 'file:read'
 export const FILE_SAVE_CHANNEL = 'file:save'
 export const FILE_SAVE_AS_CHANNEL = 'file:save-as'
+export const LIBRARY_LIST_CHANNEL = 'library:list'
+export const LIBRARY_ADD_ROOT_CHANNEL = 'library:add-root'
+export const LIBRARY_REMOVE_ROOT_CHANNEL = 'library:remove-root'
 
 export const FILE_NOT_FOUND_REASON = 'File not found'
 
@@ -51,4 +59,7 @@ export type ChiriApi = {
   readonly readFile: (path: string) => Promise<FileReadResult>
   readonly saveFile: (request: SaveFileRequest) => Promise<FileSaveResult>
   readonly saveFileAs: (request: SaveFileAsRequest) => Promise<FileSaveResult>
+  readonly listLibrary: () => Promise<LibrarySnapshot>
+  readonly addLibraryRoot: () => Promise<AddRootResult>
+  readonly removeLibraryRoot: (path: string) => Promise<RemoveRootResult>
 } & HistoryApi

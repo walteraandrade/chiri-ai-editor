@@ -1,5 +1,6 @@
 import type { DocumentFiles, OpenResult } from '../platform/kit'
 import type { FileSession, FileSessionEvent } from './file-session'
+import { confirmLeave, type LeaveOptions } from './leave-guard'
 import { suggestedFileName } from './markdown-file'
 import { restoreUnsaved, type Unsaved } from './unsaved'
 
@@ -29,13 +30,17 @@ type FileActionsOptions<Ref> = {
   readonly onOpened?: (file: FileEvent) => void
   readonly onSaved?: (file: FileEvent) => void
   readonly onConflict?: (conflict: Conflict<Ref>) => void
+  readonly leave?: LeaveOptions<Ref>
 }
 
 export type FileActions<Ref> = {
   readonly open: () => Promise<void>
-  readonly save: (saveAs: boolean) => Promise<void>
+  readonly openRef: (ref: Ref) => Promise<void>
+  readonly save: (saveAs: boolean) => Promise<boolean>
   readonly reload: (conflict: Conflict<Ref>) => Promise<void>
 }
+
+const STAYED = { kind: 'cancelled' } as const
 
 const withReason = (text: string, reason: string | undefined): string =>
   reason === undefined ? text : `${text}: ${reason}`
@@ -51,6 +56,7 @@ export const createFileActions = <Ref>({
   onOpened,
   onSaved,
   onConflict,
+  leave,
 }: FileActionsOptions<Ref>): FileActions<Ref> => {
   const unsavedFor = async (ref: Ref | null): Promise<Unsaved | null> => {
     if (ref === null) return null
@@ -61,25 +67,46 @@ export const createFileActions = <Ref>({
     }
   }
 
+  const afterLeaving = async (
+    result: OpenResult<Ref>,
+    current: EditorText,
+  ): Promise<OpenResult<Ref>> => {
+    if (result.kind !== 'opened' || leave === undefined) return result
+    const outcome = await confirmLeave({
+      session: session(),
+      text: current.text(),
+      leave,
+      save: () => save(false),
+    })
+    if (outcome === 'stay') return STAYED
+    const { ref } = result.file
+    return outcome === 'saved' && ref !== null && session()?.ref === ref
+      ? files.read(ref)
+      : result
+  }
+
   const arrive = async (
     result: OpenResult<Ref>,
     current: EditorText,
     {
       keepUnsaved,
+      guarded,
       failure,
       done,
     }: {
       readonly keepUnsaved: boolean
+      readonly guarded: boolean
       readonly failure: (reason: string | undefined) => string
       readonly done: string
     },
   ): Promise<void> => {
-    if (result.kind === 'cancelled') return
-    if (result.kind === 'failed') {
-      notify(failure(result.reason))
+    const settled = guarded ? await afterLeaving(result, current) : result
+    if (settled.kind === 'cancelled') return
+    if (settled.kind === 'failed') {
+      notify(failure(settled.reason))
       return
     }
-    const { name, text, ref } = result.file
+    const { name, text, ref } = settled.file
     const arrival = restoreUnsaved(
       text,
       keepUnsaved ? await unsavedFor(ref) : null,
@@ -106,6 +133,18 @@ export const createFileActions = <Ref>({
     if (current === null) return
     await arrive(await files.open(), current, {
       keepUnsaved: true,
+      guarded: true,
+      failure: (reason) => withReason('Could not open the file', reason),
+      done: 'Opened',
+    })
+  }
+
+  const openRef = async (ref: Ref): Promise<void> => {
+    const current = editor()
+    if (current === null || session()?.ref === ref) return
+    await arrive(await files.read(ref), current, {
+      keepUnsaved: true,
+      guarded: true,
       failure: (reason) => withReason('Could not open the file', reason),
       done: 'Opened',
     })
@@ -116,14 +155,15 @@ export const createFileActions = <Ref>({
     if (current === null) return
     await arrive(await files.read(ref), current, {
       keepUnsaved: false,
+      guarded: false,
       failure: (reason) => withReason(`Could not reload ${name}`, reason),
       done: 'Reloaded',
     })
   }
 
-  const save = async (saveAs: boolean): Promise<void> => {
+  const save = async (saveAs: boolean): Promise<boolean> => {
     const current = editor()
-    if (current === null) return
+    if (current === null) return false
     const text = current.text()
     onSaving?.(text)
     const file = session()
@@ -135,15 +175,15 @@ export const createFileActions = <Ref>({
       expected: file?.savedText ?? null,
       saveAs,
     })
-    if (result.kind === 'cancelled') return
+    if (result.kind === 'cancelled') return false
     if (result.kind === 'failed') {
       notify(withReason(`Could not save ${name}`, result.reason))
-      return
+      return false
     }
     if (result.kind === 'conflict') {
       if (file?.ref != null) onConflict?.({ name, ref: file.ref })
       else notify(`Could not save ${name}: the file changed on disk`)
-      return
+      return false
     }
     dispatch({
       type: 'saved',
@@ -156,7 +196,8 @@ export const createFileActions = <Ref>({
     notify(
       `${result.method === 'download' ? 'Downloaded' : 'Saved'} ${result.name}`,
     )
+    return true
   }
 
-  return { open, save, reload }
+  return { open, openRef, save, reload }
 }

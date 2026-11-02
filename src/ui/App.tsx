@@ -12,6 +12,7 @@ import { formatClock } from '../history/time'
 import type { VersionSummary } from '../history/types'
 import type { PlatformKit } from '../platform/kit'
 import { problemMessage } from '../platform/problems'
+import { skillFileLabel } from '../skills/library-view'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
@@ -20,12 +21,16 @@ import { FileControls } from './FileControls'
 import { FileName } from './FileName'
 import { FullHistory } from './FullHistory'
 import { Hint } from './Hint'
+import { LeaveDialog } from './LeaveDialog'
+import { Library } from './Library'
 import { LineDiff } from './LineDiff'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { ReviewToolbar } from './ReviewToolbar'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useHistoryView } from './use-history-view'
+import { useLeavePrompt } from './use-leave-prompt'
+import { useLibrary } from './use-library'
 import { type FileArrival, useMarkdownFile } from './use-markdown-file'
 import { useVersionTexts } from './use-version-texts'
 import { VersionBar } from './VersionBar'
@@ -35,8 +40,16 @@ type AppProps<Ref> = {
 }
 
 export function App<Ref>({ kit }: AppProps<Ref>) {
-  const { files, unsavedText, start, notice, history, keyStatus, problems } =
-    kit
+  const {
+    files,
+    unsavedText,
+    start,
+    notice,
+    history,
+    keyStatus,
+    problems,
+    library,
+  } = kit
   const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
@@ -109,6 +122,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     },
     [history],
   )
+  const leavePrompt = useLeavePrompt()
   const file = useMarkdownFile({
     files,
     unsavedText,
@@ -118,8 +132,20 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     onOpened,
     onSaving: history.saving,
     onSaved,
+    askLeave: leavePrompt.ask,
   })
   const onChange = file.edited
+  const libraryControls = useLibrary(library, showToast)
+  const openRef = file.session?.ref ?? null
+  const fileLabel =
+    library === undefined ||
+    openRef === null ||
+    libraryControls.state.status !== 'ready'
+      ? undefined
+      : skillFileLabel(
+          libraryControls.state.roots,
+          (path) => library.toRef(path) === openRef,
+        )
 
   const shown =
     mode.kind === 'version'
@@ -150,7 +176,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       reviewTriggerRef.current?.focus()
   }, [])
 
-  return (
+  const page = (
     <div className="min-h-screen">
       <header ref={headerRef} className="sticky top-0 z-30 bg-canvas">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 pt-6 pb-3">
@@ -159,7 +185,10 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
               Chiri
             </h1>
             {file.session ? (
-              <FileName name={file.session.name} dirty={file.session.dirty} />
+              <FileName
+                name={fileLabel ?? file.session.name}
+                dirty={file.session.dirty}
+              />
             ) : null}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
@@ -234,6 +263,26 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       </main>
       <Toast message={toast} onDismiss={dismissToast} />
       {keyStatus.present ? null : <MissingKeyBanner />}
+      {leavePrompt.prompt === null ? null : (
+        <LeaveDialog
+          name={leavePrompt.prompt.name}
+          onAnswer={leavePrompt.answer}
+        />
+      )}
+    </div>
+  )
+
+  return library === undefined ? (
+    page
+  ) : (
+    <div className="flex items-start">
+      <Library
+        library={library}
+        controls={libraryControls}
+        activeRef={openRef}
+        onOpen={(ref) => void file.openRef(ref)}
+      />
+      <div className="min-w-0 flex-1">{page}</div>
     </div>
   )
 }

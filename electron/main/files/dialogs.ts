@@ -14,6 +14,7 @@ export type FileDialogs = {
     owner: BrowserWindow | null,
     suggestedName: string,
   ) => Promise<string | null>
+  readonly pickFolder: (owner: BrowserWindow | null) => Promise<string | null>
 }
 
 export const createFileDialogs = (): FileDialogs => {
@@ -57,5 +58,18 @@ export const createFileDialogs = (): FileDialogs => {
     return canceled || filePath === '' ? null : remember(filePath)
   }
 
-  return { pickFile, pickSavePath }
+  const pickFolder: FileDialogs['pickFolder'] = async (owner) => {
+    const options: OpenDialogOptions = {
+      properties: ['openDirectory'],
+      ...(directory !== undefined && { defaultPath: directory }),
+    }
+    const { canceled, filePaths } =
+      owner === null
+        ? await dialog.showOpenDialog(options)
+        : await dialog.showOpenDialog(owner, options)
+    const [path] = filePaths
+    return canceled || path === undefined ? null : remember(path)
+  }
+
+  return { pickFile, pickSavePath, pickFolder }
 }

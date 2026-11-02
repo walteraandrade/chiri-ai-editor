@@ -76,6 +76,7 @@ export const createWebKit = async ({
     files,
     unsavedText: {
       initial: initialDoc,
+      untitledBaseline: SAMPLE_DOCUMENT,
       changed: (text) => autosave.schedule(text),
       offered: async () => null,
     },

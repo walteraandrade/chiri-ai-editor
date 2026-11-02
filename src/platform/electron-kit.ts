@@ -7,6 +7,7 @@ import { createElectronHistoryStore } from '../history/electron-store'
 import { createSwitchableHistory } from '../history/hub'
 import { createDocumentHistory } from '../history/session'
 import { createElectronFiles } from './electron-files'
+import { createElectronLibrary } from './electron-library'
 import {
   clearLastFile,
   getRemovableStorage,
@@ -17,6 +18,7 @@ import {
 import { createElectronUnsavedStore } from './electron-unsaved'
 import type {
   DocumentFiles,
+  LibraryKit,
   PlatformKit,
   PlatformKitFactory,
   StartFile,
@@ -42,6 +44,7 @@ type ElectronKitDeps = {
   >
   readonly storage: RemovableStorage | null
   readonly files: DocumentFiles<string>
+  readonly library: LibraryKit<string>
   readonly now: () => number
   readonly hasApiKey: boolean
   readonly onHide: (flush: () => void) => void
@@ -122,6 +125,7 @@ export const createElectronKit = async ({
   api,
   storage,
   files,
+  library,
   now,
   hasApiKey,
   onHide,
@@ -183,6 +187,7 @@ export const createElectronKit = async ({
     files,
     unsavedText: {
       initial: initialDoc,
+      untitledBaseline: SAMPLE_DOCUMENT,
       changed: (text, file) => {
         keeper.track(text, SCRATCH_SESSION)
         keeper.track(text, file)
@@ -195,12 +200,14 @@ export const createElectronKit = async ({
         keeper.flush()
         return unsaved.load(path)
       },
+      discard: keeper.discard,
     },
     start: reopened.start,
     notice: reopened.notice,
     history,
     keyStatus: { present: hasApiKey },
     problems,
+    library,
   }
 }
 
@@ -222,6 +229,7 @@ export const browserElectronKit: PlatformKitFactory<string> =
       api,
       storage: getRemovableStorage(),
       files: createElectronFiles(api),
+      library: createElectronLibrary(api),
       now: Date.now,
       hasApiKey: __HAS_OPENROUTER_KEY__,
       onHide: flushWhenPageHides,

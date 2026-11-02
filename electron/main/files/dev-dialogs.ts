@@ -24,5 +24,5 @@ export const resolveDevDialogs = (
       return null
     }
   }
-  return { pickFile: next, pickSavePath: next }
+  return { pickFile: next, pickSavePath: next, pickFolder: next }
 }

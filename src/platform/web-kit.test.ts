@@ -62,6 +62,7 @@ describe('createWebKit', () => {
       createFakeStorage({ [DOCUMENT_STORAGE_KEY]: '# Saved' }),
     )
     expect(kit.unsavedText.initial).toBe('# Saved')
+    expect(kit.unsavedText.untitledBaseline).toBe(SAMPLE_DOCUMENT)
   })
 
   it('starts without storage', async () => {

@@ -1,10 +1,11 @@
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, type IpcMainInvokeEvent, ipcMain } from 'electron'
 import { SHELL_INFO_CHANNEL, type ShellInfo } from '../api'
 import { resolveDevOptions } from './dev-options'
 import { registerFileHandlers } from './files/register'
 import { registerHistory } from './history-main'
+import { registerLibraryHandlers } from './library/register'
 import { isAppNavigation, isTrustedFrame } from './trust'
 
 const CANVAS_COLOR = '#141417'
@@ -38,7 +39,10 @@ const registerIpc = (): void => {
       platform: process.platform,
     }
   })
-  registerFileHandlers((event) => isTrustedFrame(event.senderFrame, appUrl()))
+  const isTrusted = (event: IpcMainInvokeEvent): boolean =>
+    isTrustedFrame(event.senderFrame, appUrl())
+  registerFileHandlers(isTrusted)
+  registerLibraryHandlers(isTrusted)
 }
 
 const lockNavigation = (): void => {
