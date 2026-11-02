@@ -2,6 +2,9 @@
   "name": "chiri-ai-editor",
   "private": true,
   "version": "0.0.0",
+  "description": "Markdown editor with an AI co-author",
+  "author": "Walter Andrade",
+  "homepage": "https://github.com/walteraandrade/chiri-ai-editor",
   "type": "module",
   "main": "./out/main/index.js",
   "packageManager": "pnpm@11.17.0",
@@ -18,7 +21,10 @@
     "preview:electron": "electron-vite preview --skipBuild",
     "test": "vitest run",
     "bakeoff": "tsx scripts/bakeoff.ts",
-    "export-sessions": "tsx scripts/export-sessions.ts"
+    "export-sessions": "tsx scripts/export-sessions.ts",
+    "package": "pnpm build:electron && pnpm check:externals && electron-builder --linux",
+    "package:dir": "pnpm build:electron && pnpm check:externals && electron-builder --linux dir",
+    "check:externals": "tsx scripts/check-externals.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -45,11 +51,13 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "electron": "^43.8.6",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
-  }
+  },
+  "desktopName": "chiri-ai-editor.desktop"
 }

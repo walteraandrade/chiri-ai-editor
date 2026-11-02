@@ -30,6 +30,7 @@ import { FileName } from './FileName'
 import { FrontmatterPanel } from './FrontmatterPanel'
 import { FullHistory } from './FullHistory'
 import { Hint } from './Hint'
+import { KeyDialog } from './KeyDialog'
 import { LeaveDialog } from './LeaveDialog'
 import { Library } from './Library'
 import { LineDiff } from './LineDiff'
@@ -40,6 +41,7 @@ import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useFrontmatterReport } from './use-frontmatter-report'
 import { useHistoryView } from './use-history-view'
+import { useKeyState } from './use-key-state'
 import { useLeavePrompt } from './use-leave-prompt'
 import { useLibrary } from './use-library'
 import { type FileArrival, useMarkdownFile } from './use-markdown-file'
@@ -57,11 +59,11 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     start,
     notice,
     history,
-    keyStatus,
     problems,
     library,
     external,
   } = kit
+  const key = useKeyState(kit)
   const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
@@ -289,6 +291,18 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
               onSave={file.save}
               onShowProblems={showFrontmatterProblems}
             />
+            {key.settings ? (
+              <div className="text-sm">
+                <button
+                  type="button"
+                  className="cm-ai-button"
+                  title="OpenRouter key"
+                  onClick={key.openDialog}
+                >
+                  Key
+                </button>
+              </div>
+            ) : null}
             <ReviewToolbar
               status={review}
               controls={reviewControls}
@@ -360,7 +374,17 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         </div>
       </main>
       <Toast message={toast} onDismiss={dismissToast} />
-      {keyStatus.present ? null : <MissingKeyBanner />}
+      {key.present ? null : (
+        <MissingKeyBanner onSetKey={key.settings && key.openDialog} />
+      )}
+      {key.settings && key.state && key.dialogOpen ? (
+        <KeyDialog
+          settings={key.settings}
+          state={key.state}
+          onState={key.setState}
+          onClose={key.closeDialog}
+        />
+      ) : null}
       {leavePrompt.prompt === null ? null : (
         <LeaveDialog
           name={leavePrompt.prompt.name}

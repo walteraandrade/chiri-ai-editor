@@ -7,6 +7,10 @@ import {
   FILE_READ_CHANNEL,
   FILE_SAVE_AS_CHANNEL,
   FILE_SAVE_CHANNEL,
+  KEY_CLEAR_CHANNEL,
+  KEY_KEEP_AS_PLAIN_TEXT_CHANNEL,
+  KEY_SAVE_CHANNEL,
+  KEY_STATE_CHANNEL,
   LIBRARY_ADD_ROOT_CHANNEL,
   LIBRARY_CREATE_SKILL_CHANNEL,
   LIBRARY_LIST_CHANNEL,
@@ -47,6 +51,10 @@ const api: ChiriApi = {
   },
   createSkill: (request) =>
     ipcRenderer.invoke(LIBRARY_CREATE_SKILL_CHANNEL, request),
+  keyState: () => ipcRenderer.invoke(KEY_STATE_CHANNEL),
+  saveKey: (key) => ipcRenderer.invoke(KEY_SAVE_CHANNEL, key),
+  keepKeyAsPlainText: () => ipcRenderer.invoke(KEY_KEEP_AS_PLAIN_TEXT_CHANNEL),
+  clearKey: () => ipcRenderer.invoke(KEY_CLEAR_CHANNEL),
 }
 
 contextBridge.exposeInMainWorld('chiri', api)

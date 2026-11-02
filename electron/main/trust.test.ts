@@ -3,6 +3,7 @@ import { appOrigin, isAppNavigation, isTrustedFrame } from './trust'
 
 const DEV_URL = 'http://localhost:5301/electron.html'
 const FILE_URL = 'file:///opt/chiri/out/renderer/electron.html'
+const APP_URL = 'app://chiri/electron.html'
 
 describe('appOrigin', () => {
   it('is the origin of the dev server', () => {
@@ -11,6 +12,10 @@ describe('appOrigin', () => {
 
   it('is the file origin for a file URL', () => {
     expect(appOrigin(FILE_URL)).toBe('file://')
+  })
+
+  it('is the scheme and host for the app scheme', () => {
+    expect(appOrigin(APP_URL)).toBe('app://chiri')
   })
 })
 
@@ -32,6 +37,16 @@ describe('isAppNavigation', () => {
     expect(isAppNavigation(`${FILE_URL}#top`, FILE_URL)).toBe(true)
     expect(isAppNavigation('file:///etc/passwd', FILE_URL)).toBe(false)
     expect(isAppNavigation('http://localhost:5301/', FILE_URL)).toBe(false)
+  })
+
+  it('allows only the app host for the app scheme', () => {
+    expect(isAppNavigation('app://chiri/electron.html#a', APP_URL)).toBe(true)
+    expect(isAppNavigation('app://chiri/', APP_URL)).toBe(true)
+    expect(isAppNavigation('app://other/electron.html', APP_URL)).toBe(false)
+    expect(isAppNavigation('data:text/html,hi', APP_URL)).toBe(false)
+    expect(isAppNavigation('about:blank', APP_URL)).toBe(false)
+    expect(isAppNavigation('http://chiri/', APP_URL)).toBe(false)
+    expect(isAppNavigation('file:///etc/passwd', APP_URL)).toBe(false)
   })
 
   it('blocks a URL that does not parse', () => {
