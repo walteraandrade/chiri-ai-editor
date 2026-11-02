@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { FrontmatterProblemRule } from './frontmatter-fields'
 import {
+  announceProblems,
+  announceRule,
   describeFrontmatterProblem,
   describeSkillProblem,
   type FrontmatterContext,
@@ -78,9 +80,14 @@ describe('inspectFrontmatter', () => {
     expect(report.name).toBe('')
     expect(report.description).toBe('')
     expect(report.problems).toEqual([
-      { field: 'name', message: describeSkillProblem(missing('name')) },
+      {
+        field: 'name',
+        rule: 'name-missing',
+        message: describeSkillProblem(missing('name')),
+      },
       {
         field: 'description',
+        rule: 'description-missing',
         message: describeSkillProblem(missing('description')),
       },
     ])
@@ -162,6 +169,7 @@ describe('inspectFrontmatter', () => {
         problems: [
           {
             field: null,
+            rule: 'frontmatter-not-closed',
             message: describeFrontmatterProblem({
               rule: 'frontmatter-not-closed',
               message: 'frontmatter not closed',
@@ -359,6 +367,7 @@ describe('reportProblems and problemsOfField', () => {
       expect(problemsOfField(report, 'compatibility')).toEqual([
         {
           field: 'compatibility',
+          rule: 'compatibility-too-long',
           message: 'compatibility has 501 characters; the limit is 500',
         },
       ])
@@ -377,7 +386,11 @@ describe('reportProblems and problemsOfField', () => {
 
     it('is listed with the problems no input shows', () => {
       expect(otherProblems(withCompatibility('3'))).toEqual([
-        { field: 'compatibility', message: 'compatibility must be text' },
+        {
+          field: 'compatibility',
+          rule: 'compatibility-not-text',
+          message: 'compatibility must be text',
+        },
       ])
     })
 
@@ -386,6 +399,98 @@ describe('reportProblems and problemsOfField', () => {
       expect(otherProblems(broken)).toHaveLength(1)
       expect(otherProblems({ kind: 'none' })).toEqual([])
     })
+  })
+})
+
+describe('announceProblems', () => {
+  const skill = (name: string, description = 'Does a thing.') =>
+    inspectFrontmatter(
+      documentOf(`name: ${name}\ndescription: ${description}`),
+      SKILL_FILE,
+    )
+
+  it('says there are no problems when there are none', () => {
+    expect(announceProblems(skill('demo'))).toBe('No frontmatter problems')
+  })
+
+  it('says nothing for a document with no frontmatter panel', () => {
+    expect(announceProblems({ kind: 'none' })).toBe('')
+  })
+
+  it('names the kinds of problem, in order', () => {
+    expect(announceProblems(skill('Demo--', ''))).toBe(
+      'Frontmatter problems: name is not lowercase; name starts or ends with a hyphen; name has consecutive hyphens; description is missing',
+    )
+  })
+
+  it('does not change while the problems are the same kinds with other numbers', () => {
+    expect(announceProblems(skill('a'.repeat(70)))).toBe(
+      announceProblems(skill('a'.repeat(71))),
+    )
+    expect(announceProblems(skill('demo', 'd'.repeat(1030)))).toBe(
+      announceProblems(skill('demo', 'd'.repeat(1031))),
+    )
+  })
+
+  it('does not change with the line and the text of a YAML error', () => {
+    const at = (text: string) =>
+      announceProblems(inspectFrontmatter(text, NOTES_FILE))
+    expect(at('---\nname: [a\n---\n')).toBe(at('---\nname: demo\nx: [a\n---\n'))
+    expect(at('---\nname: [a\n---\n')).toBe(
+      'Frontmatter problems: the frontmatter has a YAML error',
+    )
+  })
+
+  it('does not change when the folder in a mismatch is another one', () => {
+    const mismatch = (folder: string) =>
+      announceProblems(
+        inspectFrontmatter(documentOf('name: demo\ndescription: Does it.'), {
+          ...SKILL_FILE,
+          folderName: folder,
+        }),
+      )
+    expect(mismatch('one')).toBe(mismatch('two'))
+  })
+
+  it('changes when a kind of problem appears or goes', () => {
+    const kinds = new Set([
+      announceProblems(skill('demo')),
+      announceProblems(skill('Demo')),
+      announceProblems(skill('Demo', '')),
+      announceProblems(skill('demo', '')),
+    ])
+    expect(kinds.size).toBe(4)
+  })
+
+  it('has a short phrase with no digits for every rule', () => {
+    const rules: readonly (SkillRule | FrontmatterProblemRule)[] = [
+      'name-missing',
+      'name-not-text',
+      'name-empty',
+      'name-too-long',
+      'name-not-lowercase',
+      'name-invalid-characters',
+      'name-edge-hyphen',
+      'name-double-hyphen',
+      'name-folder-mismatch',
+      'description-missing',
+      'description-not-text',
+      'description-empty',
+      'description-too-long',
+      'compatibility-not-text',
+      'compatibility-empty',
+      'compatibility-too-long',
+      'frontmatter-not-closed',
+      'frontmatter-not-recognized',
+      'frontmatter-not-a-mapping',
+      'yaml-syntax-error',
+    ]
+    for (const rule of rules) {
+      const phrase = announceRule(rule)
+      expect(phrase.length).toBeGreaterThan(0)
+      expect(phrase).not.toMatch(/\d/)
+    }
+    expect(new Set(rules.map(announceRule)).size).toBe(rules.length)
   })
 })
 

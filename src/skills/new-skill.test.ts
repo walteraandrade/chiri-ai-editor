@@ -54,6 +54,7 @@ describe('newSkillDraft', () => {
   it('is not ready and says nothing while the name is empty', () => {
     expect(newSkillDraft('', root())).toEqual({
       problems: [],
+      announcement: '',
       ready: false,
       location: null,
     })
@@ -64,6 +65,7 @@ describe('newSkillDraft', () => {
   it('is ready for a valid name and shows where the file will be', () => {
     expect(newSkillDraft('pdf-processing', root())).toEqual({
       problems: [],
+      announcement: '',
       ready: true,
       location: '~/.claude/skills/pdf-processing/SKILL.md',
     })
@@ -89,6 +91,34 @@ describe('newSkillDraft', () => {
     expect(newSkillDraft('a'.repeat(70), root()).problems).toEqual([
       'name has 70 characters; the limit is 64',
     ])
+  })
+
+  describe('announcement, which a screen reader hears', () => {
+    const announced = (name: string) => newSkillDraft(name, root()).announcement
+
+    it('names the kinds of problem, with no numbers', () => {
+      expect(announced('PDF--tool-')).toBe(
+        'Name problems: name is not lowercase; name starts or ends with a hyphen; name has consecutive hyphens',
+      )
+      expect(announced('a'.repeat(70))).toBe('Name problems: name is too long')
+    })
+
+    it('stays the same while only the numbers change', () => {
+      expect(announced('a'.repeat(70))).toBe(announced('a'.repeat(71)))
+    })
+
+    it('changes when a kind of problem appears or goes', () => {
+      expect(announced('p')).toBe('')
+      expect(announced('P')).not.toBe(announced('p'))
+      expect(announced('Pd')).toBe(announced('P'))
+      expect(announced('Pd f')).not.toBe(announced('Pd'))
+    })
+
+    it('says a skill with the name is there', () => {
+      expect(announced('pdf')).toBe(
+        'Name problems: a skill folder with this name already exists',
+      )
+    })
   })
 
   it('refuses a name another skill in the folder already has', () => {

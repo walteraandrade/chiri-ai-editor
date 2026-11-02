@@ -17,8 +17,11 @@ export type FrontmatterContext = {
   readonly folderName: string | undefined
 }
 
+export type PanelRule = SkillRule | FrontmatterProblemRule
+
 export type PanelProblem = {
   readonly field: CheckedField | null
+  readonly rule: PanelRule
   readonly message: string
 }
 
@@ -88,13 +91,44 @@ export const describeFrontmatterProblem = (
   problem: FrontmatterProblem,
 ): string => FRONTMATTER_PROBLEMS[problem.rule](problem)
 
+const ANNOUNCEMENTS: Readonly<Record<PanelRule, string>> = {
+  'name-missing': 'name is missing',
+  'name-not-text': 'name is not text',
+  'name-empty': 'name is empty',
+  'name-too-long': 'name is too long',
+  'name-not-lowercase': 'name is not lowercase',
+  'name-invalid-characters': 'name has invalid characters',
+  'name-edge-hyphen': 'name starts or ends with a hyphen',
+  'name-double-hyphen': 'name has consecutive hyphens',
+  'name-folder-mismatch': 'name does not match its folder',
+  'description-missing': 'description is missing',
+  'description-not-text': 'description is not text',
+  'description-empty': 'description is empty',
+  'description-too-long': 'description is too long',
+  'compatibility-not-text': 'compatibility is not text',
+  'compatibility-empty': 'compatibility is empty',
+  'compatibility-too-long': 'compatibility is too long',
+  'frontmatter-not-closed': 'the frontmatter is not closed',
+  'frontmatter-not-recognized': 'the frontmatter is not recognized',
+  'frontmatter-not-a-mapping': 'the frontmatter is not key: value lines',
+  'yaml-syntax-error': 'the frontmatter has a YAML error',
+}
+
+export const announceRule = (rule: PanelRule): string => ANNOUNCEMENTS[rule]
+
 const unreadable = (
   skill: boolean,
   problem: FrontmatterProblem,
 ): FrontmatterReport => ({
   kind: 'unreadable',
   skill,
-  problems: [{ field: null, message: describeFrontmatterProblem(problem) }],
+  problems: [
+    {
+      field: null,
+      rule: problem.rule,
+      message: describeFrontmatterProblem(problem),
+    },
+  ],
 })
 
 const shown = (value: unknown): string =>
@@ -126,6 +160,7 @@ export const inspectFrontmatter = (
     present: reading.kind === 'present',
     problems: checkSkillFrontmatter(fields, folderName).map((problem) => ({
       field: problem.field,
+      rule: problem.rule,
       message: describeSkillProblem(problem),
     })),
   }
@@ -142,6 +177,15 @@ export const problemsOfField = (
   field: CheckedField,
 ): readonly PanelProblem[] =>
   problemsIn(report).filter((problem) => problem.field === field)
+
+export const announceProblems = (report: FrontmatterReport): string => {
+  if (report.kind === 'none') return ''
+  return report.problems.length === 0
+    ? 'No frontmatter problems'
+    : `Frontmatter problems: ${report.problems
+        .map(({ rule }) => announceRule(rule))
+        .join('; ')}`
+}
 
 export const otherProblems = (
   report: FrontmatterReport,

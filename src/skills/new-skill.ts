@@ -1,3 +1,4 @@
+import { announceRule } from './frontmatter-panel'
 import type {
   CreateSkillRequest,
   CreateSkillResult,
@@ -11,6 +12,7 @@ export type NewSkillOutcome = CreateSkillResult | { readonly kind: 'cancelled' }
 
 export type NewSkillDraft = {
   readonly problems: readonly string[]
+  readonly announcement: string
   readonly ready: boolean
   readonly location: string | null
 }
@@ -27,16 +29,24 @@ export const newSkillDraft = (
   root: LibraryRoot | undefined,
 ): NewSkillDraft => {
   const trimmed = name.trim()
-  if (trimmed === '') return { problems: [], ready: false, location: null }
+  if (trimmed === '')
+    return { problems: [], announcement: '', ready: false, location: null }
   const taken = root?.skills.some(({ folderName }) => folderName === trimmed)
+  const rules = checkSkillName(trimmed)
   const problems = [
-    ...checkSkillName(trimmed).map(({ message }) => message),
+    ...rules.map(({ message }) => message),
     ...(taken && root !== undefined
       ? [`A skill folder named "${trimmed}" already exists in ${root.label}`]
       : []),
   ]
+  const phrases = [
+    ...rules.map(({ rule }) => announceRule(rule)),
+    ...(taken ? ['a skill folder with this name already exists'] : []),
+  ]
   return {
     problems,
+    announcement:
+      phrases.length === 0 ? '' : `Name problems: ${phrases.join('; ')}`,
     ready: problems.length === 0 && root !== undefined,
     location:
       root === undefined ? null : `${root.label}/${trimmed}/${SKILL_FILE_NAME}`,

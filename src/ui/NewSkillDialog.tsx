@@ -126,10 +126,12 @@ export function NewSkillDialog({
                 setFailure(null)
               }}
             />
+            <p aria-live="polite" aria-atomic="true" className="sr-only">
+              {failure ?? draft.announcement}
+            </p>
             {problems.length === 0 ? null : (
               <ul
                 id={problemsId}
-                role="alert"
                 className="mt-1 space-y-0.5 text-danger text-xs"
               >
                 {problems.map((problem) => (
