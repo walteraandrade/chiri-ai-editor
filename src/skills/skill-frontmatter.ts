@@ -1,13 +1,17 @@
 export const AGENT_SKILLS_SPEC_URL = 'https://agentskills.io/specification'
 
-// Limits and rules for `name` and `description`, as stated at AGENT_SKILLS_SPEC_URL.
+// Limits and rules for `name`, `description` and `compatibility`, as stated at AGENT_SKILLS_SPEC_URL.
 export const NAME_MAX_LENGTH = 64
 export const DESCRIPTION_MAX_LENGTH = 1024
+export const COMPATIBILITY_MAX_LENGTH = 500
 
 export type SkillField = 'name' | 'description'
 
+export type CheckedField = SkillField | 'compatibility'
+
 export type SkillRule =
   | `${SkillField}-${'missing' | 'not-text' | 'empty' | 'too-long'}`
+  | `compatibility-${'not-text' | 'empty' | 'too-long'}`
   | 'name-not-lowercase'
   | 'name-invalid-characters'
   | 'name-edge-hyphen'
@@ -15,7 +19,7 @@ export type SkillRule =
   | 'name-folder-mismatch'
 
 export type SkillProblem = {
-  readonly field: SkillField
+  readonly field: CheckedField
   readonly rule: SkillRule
   readonly message: string
 }
@@ -23,7 +27,7 @@ export type SkillProblem = {
 const NOT_LETTER_DIGIT_OR_HYPHEN = /[^\p{L}\p{N}-]/u
 
 const problem = (
-  field: SkillField,
+  field: CheckedField,
   rule: SkillRule,
   message: string,
 ): SkillProblem => ({ field, rule, message })
@@ -44,7 +48,7 @@ const readText = (field: SkillField, value: unknown): string | SkillProblem =>
         ? problem(field, `${field}-empty`, `${field} must not be empty`)
         : value
 
-const tooLong = (field: SkillField, length: number, limit: number) =>
+const tooLong = (field: CheckedField, length: number, limit: number) =>
   problem(
     field,
     `${field}-too-long`,
@@ -97,6 +101,39 @@ const descriptionProblems = (description: string): readonly SkillProblem[] => {
   ])
 }
 
+const compatibilityProblems = (value: unknown): readonly SkillProblem[] => {
+  if (value === undefined) return []
+  if (value === null)
+    return [
+      problem(
+        'compatibility',
+        'compatibility-empty',
+        'compatibility must not be empty',
+      ),
+    ]
+  if (typeof value !== 'string')
+    return [
+      problem(
+        'compatibility',
+        'compatibility-not-text',
+        'compatibility must be text',
+      ),
+    ]
+  const length = characterCount(value)
+  return value.trim() === ''
+    ? [
+        problem(
+          'compatibility',
+          'compatibility-empty',
+          'compatibility must not be empty',
+        ),
+      ]
+    : failed([
+        length > COMPATIBILITY_MAX_LENGTH &&
+          tooLong('compatibility', length, COMPATIBILITY_MAX_LENGTH),
+      ])
+}
+
 export const checkSkillName = (
   name: string,
   folderName?: string,
@@ -118,5 +155,6 @@ export const checkSkillFrontmatter = (
     ...(typeof description === 'string'
       ? descriptionProblems(description)
       : [description]),
+    ...compatibilityProblems(fields.compatibility),
   ]
 }

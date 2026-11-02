@@ -7,6 +7,7 @@ import {
   type FrontmatterReport,
   inspectFrontmatter,
   isSameReport,
+  otherProblems,
   problemsOfField,
   reportProblems,
 } from './frontmatter-panel'
@@ -202,7 +203,11 @@ describe('inspectFrontmatter', () => {
 
 describe('describeSkillProblem', () => {
   const field = (rule: SkillRule): SkillProblem['field'] =>
-    rule.startsWith('description') ? 'description' : 'name'
+    rule.startsWith('description')
+      ? 'description'
+      : rule.startsWith('compatibility')
+        ? 'compatibility'
+        : 'name'
 
   const problemFor = (rule: SkillRule): SkillProblem => ({
     field: field(rule),
@@ -219,6 +224,9 @@ describe('describeSkillProblem', () => {
     'description-not-text',
     'description-empty',
     'description-too-long',
+    'compatibility-not-text',
+    'compatibility-empty',
+    'compatibility-too-long',
     'name-not-lowercase',
     'name-invalid-characters',
     'name-edge-hyphen',
@@ -235,6 +243,9 @@ describe('describeSkillProblem', () => {
         { name: 'A--b-/', description: 'x'.repeat(1025) },
         { name: 'a'.repeat(65), description: 'x' },
         { name: 'abc', description: 'x' },
+        { name: 'abc', description: 'x', compatibility: 3 },
+        { name: 'abc', description: 'x', compatibility: '' },
+        { name: 'abc', description: 'x', compatibility: 'c'.repeat(501) },
       ].flatMap((fields) =>
         checkSkillFrontmatter(fields, 'folder').map(({ rule }) => rule),
       ),
@@ -245,9 +256,7 @@ describe('describeSkillProblem', () => {
   it.each(RULES)('says what is wrong for %s', (rule) => {
     const text = describeSkillProblem(problemFor(rule))
     expect(text.length).toBeGreaterThan(0)
-    expect(text).toContain(
-      rule.startsWith('description') ? 'description' : 'name',
-    )
+    expect(text).toContain(field(rule))
   })
 
   it('tells where a missing field is used', () => {
@@ -328,6 +337,55 @@ describe('reportProblems and problemsOfField', () => {
     expect(problemsOfField(fields, 'description')).toHaveLength(1)
     expect(problemsOfField(broken, 'name')).toEqual([])
     expect(problemsOfField({ kind: 'none' }, 'name')).toEqual([])
+  })
+
+  describe('compatibility, which the panel does not edit', () => {
+    const withCompatibility = (value: string): FrontmatterReport =>
+      inspectFrontmatter(
+        documentOf(
+          `name: demo\ndescription: Does a thing.\ncompatibility: ${value}`,
+        ),
+        SKILL_FILE,
+      )
+
+    it('is no problem when absent or valid', () => {
+      expect(withCompatibility('Requires git')).toMatchObject({ problems: [] })
+      expect(otherProblems(withCompatibility('Requires git'))).toEqual([])
+      expect(otherProblems(inspectFrontmatter(VALID, SKILL_FILE))).toEqual([])
+    })
+
+    it('shows a problem with it, under its own name', () => {
+      const report = withCompatibility(`"${'c'.repeat(501)}"`)
+      expect(problemsOfField(report, 'compatibility')).toEqual([
+        {
+          field: 'compatibility',
+          message: 'compatibility has 501 characters; the limit is 500',
+        },
+      ])
+      expect(problemsOfField(report, 'name')).toEqual([])
+      expect(problemsOfField(report, 'description')).toEqual([])
+    })
+
+    it('counts it among the problems shown by Save', () => {
+      expect(reportProblems(withCompatibility('3'))).toEqual([
+        'compatibility must be text',
+      ])
+      expect(reportProblems(withCompatibility('""'))).toEqual([
+        'compatibility is empty. Remove it or say what the skill needs',
+      ])
+    })
+
+    it('is listed with the problems no input shows', () => {
+      expect(otherProblems(withCompatibility('3'))).toEqual([
+        { field: 'compatibility', message: 'compatibility must be text' },
+      ])
+    })
+
+    it('leaves name and description problems to their inputs', () => {
+      expect(otherProblems(fields)).toEqual([])
+      expect(otherProblems(broken)).toHaveLength(1)
+      expect(otherProblems({ kind: 'none' })).toEqual([])
+    })
   })
 })
 

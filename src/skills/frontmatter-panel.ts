@@ -6,8 +6,8 @@ import {
 } from './frontmatter-fields'
 import { SKILL_FILE_NAME } from './scan-skills'
 import {
+  type CheckedField,
   checkSkillFrontmatter,
-  type SkillField,
   type SkillProblem,
   type SkillRule,
 } from './skill-frontmatter'
@@ -18,7 +18,7 @@ export type FrontmatterContext = {
 }
 
 export type PanelProblem = {
-  readonly field: SkillField | null
+  readonly field: CheckedField | null
   readonly message: string
 }
 
@@ -61,6 +61,10 @@ const SKILL_PROBLEMS: Readonly<
   'description-empty': () =>
     'description is empty. Say what the skill does and when to use it',
   'description-too-long': ({ message }) => message,
+  'compatibility-not-text': () => 'compatibility must be text',
+  'compatibility-empty': () =>
+    'compatibility is empty. Remove it or say what the skill needs',
+  'compatibility-too-long': ({ message }) => message,
 }
 
 export const describeSkillProblem = (problem: SkillProblem): string =>
@@ -135,9 +139,16 @@ export const reportProblems = (report: FrontmatterReport): readonly string[] =>
 
 export const problemsOfField = (
   report: FrontmatterReport,
-  field: SkillField,
+  field: CheckedField,
 ): readonly PanelProblem[] =>
   problemsIn(report).filter((problem) => problem.field === field)
+
+export const otherProblems = (
+  report: FrontmatterReport,
+): readonly PanelProblem[] =>
+  problemsIn(report).filter(
+    ({ field }) => field !== 'name' && field !== 'description',
+  )
 
 export const isSameReport = (
   a: FrontmatterReport,

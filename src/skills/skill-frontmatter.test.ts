@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   AGENT_SKILLS_SPEC_URL,
+  COMPATIBILITY_MAX_LENGTH,
   checkSkillFrontmatter,
   checkSkillName,
   DESCRIPTION_MAX_LENGTH,
@@ -286,6 +287,78 @@ describe('name and folder', () => {
 
   it('treats an empty folder name as a name to match', () => {
     expect(folderRules('pdf', '')).toEqual(['name-folder-mismatch'])
+  })
+})
+
+describe('compatibility', () => {
+  const rulesWith = (compatibility: unknown): readonly SkillRule[] =>
+    rulesOf({ ...VALID, compatibility })
+
+  it('takes its limit from the specification', () => {
+    expect(COMPATIBILITY_MAX_LENGTH).toBe(500)
+  })
+
+  it('is optional: no field, no problem', () => {
+    expect(rulesOf(VALID)).toEqual([])
+  })
+
+  it('accepts text of 1 to 500 characters', () => {
+    expect(rulesWith('Requires git and jq')).toEqual([])
+    expect(rulesWith('x')).toEqual([])
+    expect(rulesWith('x'.repeat(COMPATIBILITY_MAX_LENGTH))).toEqual([])
+  })
+
+  it('counts characters, not UTF-16 units', () => {
+    expect(rulesWith('😀'.repeat(COMPATIBILITY_MAX_LENGTH))).toEqual([])
+    expect(rulesWith('😀'.repeat(COMPATIBILITY_MAX_LENGTH + 1))).toEqual([
+      'compatibility-too-long',
+    ])
+  })
+
+  it('reports text over the limit, with the counts', () => {
+    expect(
+      checkSkillFrontmatter({
+        ...VALID,
+        compatibility: 'x'.repeat(COMPATIBILITY_MAX_LENGTH + 1),
+      }),
+    ).toEqual([
+      {
+        field: 'compatibility',
+        rule: 'compatibility-too-long',
+        message: 'compatibility has 501 characters; the limit is 500',
+      },
+    ])
+  })
+
+  it.each([
+    ['an empty string', ''],
+    ['blank text', '   \n'],
+    ['a key with no value', null],
+  ])('reports %s as empty', (_label, value) => {
+    expect(rulesWith(value)).toEqual(['compatibility-empty'])
+  })
+
+  it.each([
+    ['a number', 3],
+    ['true', true],
+    ['a list', ['git', 'jq']],
+    ['a map', { git: true }],
+  ])('reports %s as not text', (_label, value) => {
+    expect(rulesWith(value)).toEqual(['compatibility-not-text'])
+  })
+
+  it('lists it after the name and description problems', () => {
+    expect(
+      rulesOf({ name: 'Bad', description: '', compatibility: '' }),
+    ).toEqual([
+      'name-not-lowercase',
+      'description-empty',
+      'compatibility-empty',
+    ])
+  })
+
+  it('does not change the checks of name and description', () => {
+    expect(checkSkillName('pdf-processing')).toEqual([])
   })
 })
 

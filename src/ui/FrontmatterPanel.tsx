@@ -1,6 +1,7 @@
 import { type KeyboardEvent, type RefObject, useId } from 'react'
 import {
   type FrontmatterReport,
+  otherProblems,
   type PanelProblem,
   problemsOfField,
 } from '../skills/frontmatter-panel'
@@ -106,6 +107,7 @@ export function FrontmatterPanel({
   onEdit,
   onHistory,
 }: FrontmatterPanelProps) {
+  const othersId = useId()
   if (report.kind === 'none') return null
   if (report.kind === 'unreadable')
     return (
@@ -164,6 +166,7 @@ export function FrontmatterPanel({
           onEdit={onEdit}
           onHistory={onHistory}
         />
+        <ProblemList id={othersId} problems={otherProblems(report)} />
       </div>
     </section>
   )
