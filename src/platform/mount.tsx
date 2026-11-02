@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../index.css'
+import { applyInitialTheme } from '../theme/apply-theme'
 import { App } from '../ui/App'
 import { StartError } from '../ui/StartError'
 import type { PlatformKit, PlatformKitFactory } from './kit'
@@ -30,4 +31,7 @@ const renderStartError = (error: unknown): void => {
 
 export const mountApp = <Ref,>(
   createKit: PlatformKitFactory<Ref>,
-): Promise<void> => startWith(createKit, render).catch(renderStartError)
+): Promise<void> => {
+  applyInitialTheme()
+  return startWith(createKit, render).catch(renderStartError)
+}

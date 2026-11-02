@@ -5,8 +5,9 @@ Browser Markdown editor with an AI co-author. The AI proposes inline, reviewable
 ## Read first
 
 1. [GLOSSARY.md](GLOSSARY.md) — use these names in code, UI, PRs and issues.
-2. [docs/PLAN.md](docs/PLAN.md) — slices, roles, gates, the per-slice loop.
-3. The GitHub issue you are working on, and every ADR it links in [docs/chiri/adr/](docs/chiri/adr/).
+2. [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md) — before any UI, color or motion change.
+3. [docs/PLAN.md](docs/PLAN.md) — slices, roles, gates, the per-slice loop.
+4. The GitHub issue you are working on, and every ADR it links in [docs/chiri/adr/](docs/chiri/adr/).
 
 ADRs are decisions, not suggestions. If an ADR blocks you, stop and report it; do not work around it.
 
@@ -19,7 +20,7 @@ ADRs are decisions, not suggestions. If an ADR blocks you, stop and report it; d
 | App | Vite + React + TypeScript (strict) |
 | Desktop shell | Electron 43 built with `electron-vite` ([ADR 0013](docs/chiri/adr/0013-native-app-on-electron.md)); two builds, Web and Electron ([ADR 0016](docs/chiri/adr/0016-web-and-electron-builds.md)) |
 | Editor | CodeMirror 6, `@codemirror/lang-markdown` |
-| Styling | Tailwind v4, theme tokens in CSS via `@theme`; dark theme only; sans-serif; League Spartan for the app title |
+| Styling | Tailwind v4, theme tokens in CSS via `@theme`, derived from a few theme seeds ([DESIGN.md](DESIGN.md)); dark Chiri theme by default, the Omarchy theme (light or dark) in dev when present; sans-serif; League Spartan for the app title |
 | AI | `ai@^7` + `@openrouter/ai-sdk-provider@^3` + `zod` |
 | Diff | `diff` (jsdiff) |
 | Tests | Vitest |
@@ -68,7 +69,8 @@ src/
 ├── main.electron.tsx  # Electron build entry: builds the Electron kit, mounts App
 ├── platform/      # PlatformKit type and async kit factory, Web kit, Electron kit (files through the preload API, unsaved text per file), start.ts (mount once the factory resolves) (ADR 0016)
 ├── document/      # Open and Save: file actions, file session, Web DocumentFiles adapter, unsaved text
-├── editor/        # CodeMirror setup, decorations, keymaps
+├── editor/        # CodeMirror setup, decorations, keymaps, motion (moments, AI caret)
+├── theme/         # theme seeds, Omarchy theme source, choice and apply (DESIGN.md)
 ├── suggestions/   # Suggestion state, lifecycle, position mapping (pure)
 ├── diff/          # adaptive diff (pure)
 ├── blocks/        # Block extraction from the syntax tree (pure)
@@ -79,7 +81,7 @@ electron/
 ├── main/          # main process: window, IPC handlers, dev switches, trust checks; installed app: app:// handler, OpenRouter forwarder, key store, security headers (installed-app.ts wires them)
 │   └── files/     # Markdown read, atomic save, native dialogs, request validation
 └── preload/       # contextBridge API, one function per action
-config/            # Vite proxy, shared renderer config, port parsing
+config/            # Vite proxy, shared renderer config, port parsing, Omarchy theme plugin
 build/             # packaging resources (icon)
 electron-builder.yml  # Linux package, fuses
 index.html         # Web build page

@@ -4,6 +4,8 @@
 
 A browser Markdown editor with an AI co-author. Select text, or put the cursor in a paragraph, and ask for a change with a Quick action (Shorter, Clearer, More formal, Fix grammar), free text, or `⌘K`. The AI answers inline as a tracked change: the old text struck through, the new text beside it, and a one-line Rationale on a card in the margin (on hover when the window is narrow). Small edits show a word-level diff; rewrites show the whole block. You can Accept, Reject, or Refine a Suggestion ("make it shorter", then "now more formal"), and step back to an earlier version with the arrows on its card. A Review pass reads the whole Document, optionally with a Focus ("tone only"), and streams up to six Suggestions, with Accept all and Reject all; when it ends, the cursor lands on the first one in the text. Nothing touches the Document until you Accept, and Accept is a normal edit, so `⌘Z` undoes it. Open loads a `.md` file from disk and Save writes it back (in Chrome and Edge, to the same file; elsewhere, as a download). The Timeline under the header keeps a Version of the whole text after each Accept, Open, Restore and pause in your typing, marked by who made it; click a dot to see that Version against now and Restore it, or open Full history to read how the Document changed, AI Rationales included.
 
+The AI has one visible identity: an "AI" tag in a single color. While it works, its caret travels to the passage it is working on, labeled with your Instruction, and during a Review pass it hops to each Suggestion as it streams in. New text fades in word by word, removed text is struck through as you watch, and accepted text lands in the AI's color before it fades into your own ink. All of it falls back to plain color changes under the system's reduced-motion setting.
+
 ![Two Suggestions, a word-level change and a block-level rewrite, with the Active Suggestion's card in the right margin: its Rationale, Accept, Reject and Refine](docs/chiri/verification/img/margin-cards-1.png)
 
 **How it was built.**
@@ -29,6 +31,7 @@ pnpm dev:electron        # or the same app in an Electron window
 - The key stays on the server side. The browser sends a placeholder, and the Vite proxy (`/api/openrouter/*`) overwrites `Authorization`. `.env` is not committed and the built bundle contains no key ([ADR 0005](docs/chiri/adr/0005-local-only-vite-proxy.md)). The app is local only; there is no hosted version.
 - Without a key the app opens and shows a banner that says what is missing.
 - To try it: the sample Document has an overlong paragraph, a slangy one and a typo. Select one and press `⌘K`.
+- On an [Omarchy](https://omarchy.org) machine, `pnpm dev` and `pnpm dev:electron` read the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`), light or dark, and follow it live when you switch themes. The **Omarchy** button at the bottom left of the editor switches between it and the Chiri theme; the choice is remembered. Elsewhere, and in built or installed apps, the app uses the Chiri theme. See [DESIGN.md](DESIGN.md).
 
 | Command | What it does |
 |---|---|

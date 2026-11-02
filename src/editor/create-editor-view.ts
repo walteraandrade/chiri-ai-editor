@@ -1,6 +1,7 @@
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { baseExtensions } from './extensions'
+import { themeMode } from './theme-mode'
 
 type EditorViewOptions = {
   readonly parent: HTMLElement
@@ -21,6 +22,7 @@ export const createEditorView = ({
       doc,
       extensions: [
         ...baseExtensions,
+        themeMode(),
         ...extensions,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) onChange(update.state.doc.toString())

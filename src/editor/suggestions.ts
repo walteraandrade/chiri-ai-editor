@@ -4,9 +4,11 @@ import type { ModelClient } from '../ai/client'
 import { describeError } from '../suggestions/error-message'
 import { findSuggestion, newlyFailed } from '../suggestions/state'
 import type { FailedSuggestion, SuggestionNotice } from '../suggestions/types'
+import { aiCaret } from './ai-caret'
 import { askBubble } from './ask-bubble'
 import { cardPlacement } from './card-placement'
 import { interactionState } from './interaction-state'
+import { motion } from './motion-field'
 import { refineInputField } from './refine-input'
 import {
   type ReviewStatus,
@@ -85,7 +87,9 @@ export const suggestionExtensions = ({
     onDrop: review.onDrop,
     onEnd: review.onEnd,
   }).extension,
+  motion,
   suggestionDecorations,
+  aiCaret,
   cardPlacement,
   suggestionCards,
   suggestionKeymap,

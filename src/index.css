@@ -3,30 +3,118 @@
 @import "@fontsource-variable/league-spartan";
 @import "./editor/suggestions.css";
 
-@theme static {
-  --color-canvas: #141417;
-  --color-surface: #1e1e22;
-  --color-raised: #28282d;
-  --color-ink-strong: #f1f1f3;
-  --color-ink: rgb(241 241 243 / 0.82);
-  --color-ink-muted: rgb(241 241 243 / 0.6);
-  --color-ink-faint: rgb(241 241 243 / 0.38);
-  --color-accent: #e37545;
-  --color-accent-soft: #f0a179;
-  --color-danger: #f87171;
+:root {
+  --theme-bg: #141417;
+  --theme-ink-strong: #f1f1f3;
+  --theme-ink: color-mix(in oklab, var(--theme-ink-strong) 82%, transparent);
+  --theme-raised: color-mix(
+    in oklab,
+    var(--theme-bg),
+    var(--theme-ink-strong) 9%
+  );
+  --theme-accent: #e37545;
+  --theme-ai: var(--theme-accent);
+  --theme-danger: #f87171;
+  --theme-selection: color-mix(in oklab, var(--theme-accent) 28%, transparent);
+  --theme-shadow: rgb(0 0 0 / 0.5);
 
-  --color-fill: rgb(241 241 243 / 0.06);
-  --color-fill-hover: rgb(241 241 243 / 0.11);
-  --color-code-bg: rgb(241 241 243 / 0.05);
-  --color-selection: rgb(227 117 69 / 0.28);
-  --color-accent-tint: rgb(227 117 69 / 0.12);
-  --color-shimmer: rgb(227 117 69 / 0.25);
-  --color-danger-tint: rgb(248 113 113 / 0.1);
+  --motion-press: 120ms;
+  --motion-state: 180ms;
+  --motion-enter: 260ms;
+  --motion-travel: 560ms;
+  --motion-reveal: 420ms;
+  --motion-land: 1400ms;
+  --motion-settle: 420ms;
+}
+
+:root[data-theme-mode="light"] {
+  --theme-shadow: rgb(24 24 40 / 0.16);
+}
+
+@theme static {
+  --color-canvas: var(--theme-bg);
+  --color-surface: color-mix(
+    in oklab,
+    var(--theme-bg),
+    var(--theme-ink-strong) 4.5%
+  );
+  --color-raised: var(--theme-raised);
+  --color-ink-strong: var(--theme-ink-strong);
+  --color-ink: var(--theme-ink);
+  --color-ink-muted: color-mix(
+    in oklab,
+    var(--theme-ink-strong) 62%,
+    transparent
+  );
+  --color-ink-faint: color-mix(
+    in oklab,
+    var(--theme-ink-strong) 40%,
+    transparent
+  );
+  --color-accent: var(--theme-accent);
+  --color-accent-soft: color-mix(
+    in oklab,
+    var(--theme-accent) 72%,
+    var(--theme-ink-strong)
+  );
+  --color-accent-tint: color-mix(
+    in oklab,
+    var(--theme-accent) 12%,
+    transparent
+  );
+  --color-danger: var(--theme-danger);
+  --color-shadow: var(--theme-shadow);
+
+  --color-fill: color-mix(in oklab, var(--theme-ink-strong) 6%, transparent);
+  --color-fill-hover: color-mix(
+    in oklab,
+    var(--theme-ink-strong) 11%,
+    transparent
+  );
+  --color-hairline: color-mix(
+    in oklab,
+    var(--theme-ink-strong) 9%,
+    transparent
+  );
+  --color-code-bg: color-mix(in oklab, var(--theme-ink-strong) 5%, transparent);
+  --color-scrollbar: color-mix(
+    in oklab,
+    var(--theme-ink-strong) 16%,
+    transparent
+  );
+  --color-scrollbar-hover: color-mix(
+    in oklab,
+    var(--theme-ink-strong) 32%,
+    transparent
+  );
+  --color-selection: var(--theme-selection);
+  --color-danger-tint: color-mix(
+    in oklab,
+    var(--theme-danger) 10%,
+    transparent
+  );
+
+  --color-ai: var(--theme-ai);
+  --color-ai-text: color-mix(
+    in oklab,
+    var(--theme-ai) 72%,
+    var(--theme-ink-strong)
+  );
+  --color-ai-tint: color-mix(in oklab, var(--theme-ai) 12%, transparent);
+  --color-ai-wash: color-mix(in oklab, var(--theme-ai) 6%, transparent);
+  --color-ai-glow: color-mix(in oklab, var(--theme-ai) 28%, transparent);
+  --color-ai-ink: var(--theme-bg);
 
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "League Spartan Variable", var(--font-sans);
   --font-mono:
     ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --shadow-float: 0 10px 32px var(--theme-shadow);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out-sine: cubic-bezier(0.37, 0, 0.63, 1);
 }
 
 @layer base {
@@ -34,7 +122,104 @@
     color-scheme: dark;
   }
 
+  html[data-theme-mode="light"] {
+    color-scheme: light;
+  }
+
   body {
     @apply bg-canvas font-sans text-ink antialiased;
   }
 }
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  background-color: var(--color-scrollbar);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-scrollbar-hover);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-scrollbar) transparent;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-in-out-sine);
+}
+
+.theme-swatch {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.45rem;
+  box-shadow: inset 0 0 0 1px var(--color-ink-faint);
+  transition: background-color var(--motion-state) var(--ease-out-quart);
+}
+
+.theme-toggle[aria-pressed="true"] .theme-swatch {
+  box-shadow: none;
+}
+
+.popover-in {
+  --enter-rise: -4px;
+  animation: surface-in var(--motion-enter) var(--ease-out-expo);
+  transform-origin: top right;
+}
+
+.rise-in {
+  animation: rise-in var(--motion-enter) var(--ease-out-expo) backwards;
+}
+
+.toast-in {
+  --enter-rise: 10px;
+  animation: surface-in 320ms var(--ease-out-expo);
+}
+
+@keyframes surface-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--enter-slide, 0px), var(--enter-rise, 6px))
+      scale(0.98);
+    filter: blur(3px);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+/* biome-ignore-start lint/complexity/noImportantStyles: reduced motion has to beat every component animation */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+/* biome-ignore-end lint/complexity/noImportantStyles: reduced motion has to beat every component animation */

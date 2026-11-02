@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { loadEnv, type UserConfig } from 'vite'
+import { omarchyTheme } from './omarchy-theme.ts'
 import { buildOpenRouterProxyTable } from './openrouter-proxy.ts'
 import { devServerOptions } from './ports.ts'
 
@@ -13,7 +14,7 @@ export const rendererConfig = (
   const proxy = buildOpenRouterProxyTable(apiKey)
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), omarchyTheme()],
     define: {
       __HAS_OPENROUTER_KEY__: JSON.stringify(Boolean(apiKey)),
       __OPENROUTER_MODEL__: JSON.stringify(model),

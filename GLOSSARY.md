@@ -24,6 +24,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Accept** | Apply the Replacement to the Document. A normal edit, so `Cmd+Z` undoes it. |
 | **Reject** | Drop the Suggestion. Not undoable in v1. |
 | **Refine** | A follow-up Instruction on an open Suggestion. Produces a new Replacement in place. The diff is always against the original text. Each step (the first request plus each Refine) is kept; the Card's arrows `‹ n / m ›` switch between them. These steps are not Versions: only the accepted one reaches the History. |
+| **AI caret** | The AI's cursor: a bar in the AI color with an "AI" tag showing the Instruction. It shows only while the AI works (a request, a Refine, a Review pass), at the end of the range it is working on. |
 | **Discard** | Remove a Suggestion because the user edited inside its range or a newer Suggestion overlapped it. Shows a discreet notice. |
 | **Review pass** | On-demand request: the AI reads the whole Document (Blocks numbered `p1`, `p2`, …) and returns up to 6 Suggestions, one per Block, streamed one by one. |
 | **Focus** | Optional free text that narrows a Review pass ("focus on tone"). |

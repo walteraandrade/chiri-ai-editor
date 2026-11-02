@@ -10,10 +10,8 @@ type ReviewToolbarProps = {
 
 const FOCUS_PLACEHOLDER = 'Focus (optional): tone, concision…'
 
-const progressLabel = (added: number): string =>
-  added === 0
-    ? 'Reviewing…'
-    : `Reviewing… ${added} ${added === 1 ? 'suggestion' : 'suggestions'}`
+const countLabel = (added: number): string =>
+  `${added} ${added === 1 ? 'suggestion' : 'suggestions'}`
 
 export function ReviewToolbar({
   status,
@@ -59,14 +57,14 @@ export function ReviewToolbar({
         <>
           <button
             type="button"
-            className="cm-ai-button"
+            className="cm-ai-button cm-ai-button-primary rise-in"
             onClick={() => controls?.acceptAll()}
           >
             Accept all
           </button>
           <button
             type="button"
-            className="cm-ai-button"
+            className="cm-ai-button rise-in"
             onClick={() => controls?.rejectAll()}
           >
             Reject all
@@ -91,7 +89,13 @@ export function ReviewToolbar({
       >
         {status.running ? (
           <>
-            {progressLabel(status.added)}
+            <span className="cm-ai-pulse" aria-hidden="true" />
+            Reviewing…
+            {status.added > 0 ? (
+              <span key={status.added} className="cm-ai-count ml-1">
+                {countLabel(status.added)}
+              </span>
+            ) : null}
             <span className="ml-2 text-ink-strong">Stop</span>
           </>
         ) : (
@@ -103,7 +107,7 @@ export function ReviewToolbar({
           id={popoverId}
           role="dialog"
           aria-label="Review the Document"
-          className="absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 bg-raised p-2 shadow-lg"
+          className="popover-in absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 border border-hairline bg-raised p-2 shadow-float"
           onSubmit={(event) => {
             event.preventDefault()
             submit()

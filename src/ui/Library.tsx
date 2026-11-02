@@ -21,6 +21,7 @@ type LibraryProps<Ref> = {
 type SkillItemProps = {
   readonly skill: Skill
   readonly open: boolean
+  readonly hasOpenFile: boolean
   readonly isActiveFile: (path: string) => boolean
   readonly onToggle: () => void
   readonly onOpenFile: (path: string) => void
@@ -29,6 +30,7 @@ type SkillItemProps = {
 function SkillItem({
   skill,
   open,
+  hasOpenFile,
   isActiveFile,
   onToggle,
   onOpenFile,
@@ -39,13 +41,13 @@ function SkillItem({
         type="button"
         aria-expanded={open}
         title={skill.realPath}
-        className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-fill"
+        className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-fill ${hasOpenFile && !open ? 'bg-accent/10' : ''}`}
         onClick={onToggle}
       >
         <span className="flex items-baseline gap-2">
           <span
             aria-hidden="true"
-            className="w-2 shrink-0 text-ink-faint text-xs"
+            className={`w-2 shrink-0 text-xs ${hasOpenFile ? 'text-accent' : 'text-ink-faint'}`}
           >
             {open ? '▾' : '▸'}
           </span>
@@ -72,15 +74,19 @@ function SkillItem({
                 <button
                   type="button"
                   aria-current={isActiveFile(file.path) ? 'true' : undefined}
-                  className={`block w-full truncate px-2 py-1 text-left text-xs hover:bg-fill ${
+                  className={`flex w-full items-center gap-2 px-2 py-1 text-left text-xs ${
                     isActiveFile(file.path)
-                      ? 'bg-accent-tint text-ink-strong'
-                      : 'text-ink'
+                      ? 'bg-accent/20 font-medium text-ink-strong'
+                      : 'text-ink hover:bg-fill'
                   }`}
                   title={file.path}
                   onClick={() => onOpenFile(file.path)}
                 >
-                  {file.name}
+                  <span
+                    aria-hidden="true"
+                    className={`size-1.5 shrink-0 ${isActiveFile(file.path) ? 'bg-accent' : ''}`}
+                  />
+                  <span className="min-w-0 truncate">{file.name}</span>
                 </button>
               ) : (
                 <span
@@ -156,6 +162,7 @@ function RootSection({
                 key={skill.realPath}
                 skill={skill}
                 open={open}
+                hasOpenFile={skill.realPath === holdingOpenFile}
                 isActiveFile={isActiveFile}
                 onToggle={() => onToggle(skill.realPath, !open)}
                 onOpenFile={onOpenFile}
