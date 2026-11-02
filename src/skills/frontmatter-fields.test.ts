@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { findFrontmatter } from '../blocks/frontmatter'
 import {
   type FrontmatterEdit,
+  planSkillFieldEdits,
   readFrontmatter,
   readYamlFields,
+  type SkillFieldValues,
   setSkillFields,
+  type TextEdit,
 } from './frontmatter-fields'
 
 const BODY = '\n# Demo\n\nBody has name: nope and a rule.\n\n---\n\nAfter.\n'
@@ -1003,5 +1006,140 @@ describe('setSkillFields', () => {
       expect(fieldsOf(result)).toEqual({ name: 'n' })
       expect(bodyOf(result)).toBe('\n# Body\n')
     })
+  })
+})
+
+describe('planSkillFieldEdits', () => {
+  const editsOf = (
+    text: string,
+    values: SkillFieldValues,
+  ): readonly TextEdit[] => {
+    const plan = planSkillFieldEdits(text, values)
+    if (!plan.ok) throw new Error(plan.problem.message)
+    return plan.edits
+  }
+
+  const applied = (text: string, edits: readonly TextEdit[]): string =>
+    [...edits]
+      .sort((a, b) => b.from - a.from)
+      .reduce(
+        (result, { from, to, insert }) =>
+          result.slice(0, from) + insert + result.slice(to),
+        text,
+      )
+
+  const SAMPLES: readonly (readonly [string, string])[] = [
+    [
+      'a document with frontmatter',
+      documentOf('name: a\ndescription: b\nlicense: MIT'),
+    ],
+    ['a frontmatter with only a name', documentOf('name: a')],
+    ['a frontmatter with only a description', documentOf('description: b')],
+    ['an empty frontmatter', '---\n---\n# Body\n'],
+    [
+      'a frontmatter with other keys',
+      documentOf('license: MIT\nmetadata:\n  a: b'),
+    ],
+    ['a block scalar', documentOf('name: a\ndescription: |\n  one\n  two')],
+    ['a quoted value', documentOf('name: "a"\ndescription: \'b\'')],
+    ['no frontmatter', '# Title\n\nText.\n'],
+    ['a body that starts with a dash', '- item\n'],
+    ['a body that starts with a line break', '\n# Title\n'],
+    ['an empty document', ''],
+  ]
+
+  const VALUES: readonly SkillFieldValues[] = [
+    { name: 'x' },
+    { description: 'Y.' },
+    { name: 'x', description: 'Y: z # w' },
+    { name: '', description: 'multi\nline' },
+    { name: '123', description: 'true' },
+    {},
+  ]
+
+  it.each(SAMPLES)(
+    'describes the same text as setSkillFields for %s',
+    (_label, text) => {
+      for (const values of VALUES) {
+        const edit = setSkillFields(text, values)
+        if (!edit.ok) throw new Error(edit.problem.message)
+        expect(applied(text, editsOf(text, values))).toBe(edit.text)
+      }
+    },
+  )
+
+  it('replaces only the value range of a field that is there', () => {
+    const text = documentOf('name: demo\ndescription: Does it.')
+    const edits = editsOf(text, { name: 'renamed' })
+    expect(edits).toHaveLength(1)
+    const [edit] = edits
+    expect(text.slice(edit?.from, edit?.to)).toMatch(/^: demo\n?$/)
+    expect(edit?.insert).toMatch(/^: renamed\n?$/)
+  })
+
+  it('inserts a missing field and touches no other character', () => {
+    const text = documentOf('name: demo')
+    const edits = editsOf(text, { description: 'Does it.' })
+    expect(edits).toHaveLength(1)
+    expect(edits[0]?.from).toBe(edits[0]?.to)
+    expect(edits[0]?.insert).toBe('description: Does it.\n')
+  })
+
+  it('creates the frontmatter with one insertion at the start, whatever the body begins with', () => {
+    for (const body of [
+      '# Title\n',
+      '- item\n',
+      '---x\n',
+      'name: y\n',
+      '> quote\n',
+    ]) {
+      expect(editsOf(body, { name: 'x' })).toEqual([
+        { from: 0, to: 0, insert: '---\nname: x\n---\n\n' },
+      ])
+    }
+  })
+
+  it('creates no separator before a body that starts with a line break or is empty', () => {
+    expect(editsOf('\n# Title\n', { name: 'x' })).toEqual([
+      { from: 0, to: 0, insert: '---\nname: x\n---\n' },
+    ])
+    expect(editsOf('', { name: 'x' })).toEqual([
+      { from: 0, to: 0, insert: '---\nname: x\n---\n' },
+    ])
+  })
+
+  it('has no edit when nothing changes', () => {
+    expect(editsOf(documentOf('name: a'), { name: 'a' })).toEqual([])
+    expect(editsOf('# Title\n', {})).toEqual([])
+  })
+
+  it('keeps every edit inside the frontmatter when there is one', () => {
+    const text = documentOf('name: a\ndescription: b')
+    const frontmatter = findFrontmatter(text)
+    for (const edit of editsOf(text, { name: 'x', description: 'y' })) {
+      expect(edit.from).toBeGreaterThanOrEqual(
+        frontmatter?.yamlFrom ?? Number.NaN,
+      )
+      expect(edit.to).toBeLessThanOrEqual(
+        text.indexOf('\n---', frontmatter?.yamlFrom) + 1,
+      )
+    }
+  })
+
+  it('gives edits that do not overlap, in the order of the text', () => {
+    const text = documentOf('description: b\nname: a')
+    const edits = editsOf(text, { name: 'x', description: 'y' })
+    expect(edits).toHaveLength(2)
+    expect(edits[0]?.to).toBeLessThanOrEqual(edits[1]?.from ?? Number.NaN)
+  })
+
+  it.each([
+    ['not closed', '---\nname: a\n\n# T\n', 'frontmatter-not-closed'],
+    ['not recognized', '---\nprose here\n---\n', 'frontmatter-not-recognized'],
+    ['a YAML error', '---\nname: [a\n---\n', 'yaml-syntax-error'],
+  ])('refuses a frontmatter that is %s', (_label, text, rule) => {
+    const plan = planSkillFieldEdits(text, { name: 'x' })
+    expect(plan.ok).toBe(false)
+    if (!plan.ok) expect(plan.problem.rule).toBe(rule)
   })
 })

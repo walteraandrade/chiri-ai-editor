@@ -38,3 +38,24 @@ export const sameLibrary = (
 ): boolean =>
   left.problem === right.problem &&
   JSON.stringify(left.roots) === JSON.stringify(right.roots)
+
+export type OpenSkillFile = {
+  readonly folderName: string
+  readonly fileName: string
+}
+
+export const openSkillFile = (
+  roots: LibraryListing,
+  isOpenFile: (path: string) => boolean,
+): OpenSkillFile | undefined =>
+  roots
+    .flatMap(({ skills }) => skills)
+    .flatMap((skill) =>
+      skill.files
+        .filter(({ path }) => isOpenFile(path))
+        .map((file) => ({
+          folderName: skill.folderName,
+          fileName: file.name,
+        })),
+    )
+    .at(0)

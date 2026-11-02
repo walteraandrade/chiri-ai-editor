@@ -86,6 +86,28 @@ export const editorTheme = EditorView.theme(
       padding: '0',
       fontSize: 'inherit',
     },
+    '.cm-frontmatter-line': {
+      fontFamily: 'var(--font-mono)',
+      fontSize: '0.875em',
+      lineHeight: '1.65',
+      color: 'var(--color-ink-muted)',
+      backgroundColor: 'var(--color-code-bg)',
+      borderInline: '0.75rem solid transparent',
+    },
+    '.cm-frontmatter-delimiter': {
+      color: 'var(--color-ink-faint)',
+    },
+    '.cm-frontmatter-line span': {
+      fontSize: 'inherit',
+      fontWeight: 'inherit',
+      fontStyle: 'inherit',
+      color: 'inherit',
+      backgroundColor: 'transparent',
+      padding: '0',
+    },
+    '.cm-frontmatter-line .cm-frontmatter-key': {
+      color: 'var(--color-accent-soft)',
+    },
   },
   { dark: true },
 )

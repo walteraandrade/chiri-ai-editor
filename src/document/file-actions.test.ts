@@ -863,6 +863,222 @@ describe('leaving a file with unsaved changes', () => {
   })
 })
 
+describe('openCreated', () => {
+  const NEW: Ref = { path: '/skills/new/SKILL.md' }
+  const dirty = sessionOf('# A\n', true)
+  const clean = sessionOf('# A\n')
+  const toNew = async (): Promise<OpenResult<Ref>> =>
+    opened('# New\n', 'SKILL.md', NEW)
+  const made = (prepare = vi.fn()) => {
+    prepare.mockImplementation(async () => ({ ref: NEW, value: 'created' }))
+    return prepare
+  }
+
+  it('creates first and opens the new file when nothing is unsaved', async () => {
+    const { editor } = fakeEditor('# A\n')
+    const prepare = made()
+    const { actions, ask, session, notices } = setup({
+      read: toNew,
+      editor,
+      session: clean,
+      choice: 'cancel',
+    })
+    expect(await actions.openCreated(prepare)).toEqual({
+      kind: 'prepared',
+      value: 'created',
+      opened: true,
+    })
+    expect(ask).not.toHaveBeenCalled()
+    expect(editor.replace).toHaveBeenCalledWith('# New\n')
+    expect(session()).toMatchObject({ ref: NEW, dirty: false })
+    expect(notices).toEqual(['Opened SKILL.md'])
+  })
+
+  it('asks before it creates anything, and creates nothing on Cancel', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const prepare = made()
+    const { actions, ask, files, events, notices } = setup({
+      read: toNew,
+      editor,
+      session: dirty,
+      choice: 'cancel',
+    })
+    expect(await actions.openCreated(prepare)).toEqual({ kind: 'stayed' })
+    expect(ask).toHaveBeenCalledWith('SKILL.md')
+    expect(prepare).not.toHaveBeenCalled()
+    expect(files.read).not.toHaveBeenCalled()
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(events).toEqual([])
+    expect(notices).toEqual([])
+  })
+
+  it('saves the open file on Save, then creates and opens, asking once', async () => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A, edited\n', calls)
+    const prepare = made()
+    prepare.mockImplementationOnce(async () => {
+      calls.push('prepare')
+      return { ref: NEW, value: 'created' }
+    })
+    const save = vi.fn(async () => savedAs())
+    const { actions, ask, session } = setup({
+      read: toNew,
+      save,
+      editor,
+      session: dirty,
+      choice: 'save',
+      calls,
+    })
+    await actions.openCreated(prepare)
+    expect(ask).toHaveBeenCalledTimes(1)
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ text: '# A, edited\n', ref: REF }),
+    )
+    expect(calls.indexOf('onSaveEnded')).toBeLessThan(calls.indexOf('prepare'))
+    expect(session()).toMatchObject({ ref: NEW, dirty: false })
+  })
+
+  it('creates nothing when the save did not go through', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const prepare = made()
+    const { actions, session, conflicts } = setup({
+      read: toNew,
+      save: async () => ({ kind: 'conflict' }),
+      editor,
+      session: dirty,
+      choice: 'save',
+    })
+    expect(await actions.openCreated(prepare)).toEqual({ kind: 'stayed' })
+    expect(prepare).not.toHaveBeenCalled()
+    expect(conflicts).toEqual([CONFLICT])
+    expect(session()).toMatchObject({ ref: REF, dirty: true })
+  })
+
+  it('drops the unsaved text of the open file on Discard, then creates and opens, asking once', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const prepare = made()
+    const { actions, ask, discard, session } = setup({
+      read: toNew,
+      editor,
+      session: dirty,
+      choice: 'discard',
+    })
+    await actions.openCreated(prepare)
+    expect(ask).toHaveBeenCalledTimes(1)
+    expect(discard).toHaveBeenCalledWith(REF)
+    expect(prepare).toHaveBeenCalledTimes(1)
+    expect(editor.replace).toHaveBeenCalledWith('# New\n')
+    expect(session()).toMatchObject({ ref: NEW, dirty: false })
+  })
+
+  it('asks about an edited Document that has no file, and creates nothing on Cancel', async () => {
+    const { editor } = fakeEditor('typed\n')
+    const prepare = made()
+    const { actions, ask } = setup({
+      read: toNew,
+      editor,
+      session: null,
+      choice: 'cancel',
+      untitledBaseline: 'sample\n',
+    })
+    expect(await actions.openCreated(prepare)).toEqual({ kind: 'stayed' })
+    expect(ask).toHaveBeenCalledWith('Untitled')
+    expect(prepare).not.toHaveBeenCalled()
+  })
+
+  it('opens nothing when nothing was created, and says what it was told', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const prepare = vi.fn(async () => ({ ref: null, value: 'exists' }))
+    const { actions, files, session } = setup({
+      read: toNew,
+      editor,
+      session: dirty,
+      choice: 'discard',
+    })
+    expect(await actions.openCreated(prepare)).toEqual({
+      kind: 'prepared',
+      value: 'exists',
+      opened: false,
+    })
+    expect(files.read).not.toHaveBeenCalled()
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(session()).toMatchObject({ ref: REF })
+  })
+
+  describe('when the new file cannot be read', () => {
+    const unreadable = async (): Promise<OpenResult<Ref>> => ({
+      kind: 'failed',
+      reason: 'Permission denied',
+    })
+
+    it('says that it was created but not opened, keeps the Document, and reports it was not opened', async () => {
+      const { editor } = fakeEditor('# A\n')
+      const prepare = vi.fn(async () => ({
+        ref: NEW,
+        value: 'created',
+        label: 'new-skill',
+      }))
+      const { actions, notices, session } = setup({
+        read: unreadable,
+        editor,
+        session: clean,
+        choice: 'cancel',
+      })
+      expect(await actions.openCreated(prepare)).toEqual({
+        kind: 'prepared',
+        value: 'created',
+        opened: false,
+      })
+      expect(notices).toEqual([
+        'Created new-skill, but it could not be opened: Permission denied',
+      ])
+      expect(editor.replace).not.toHaveBeenCalled()
+      expect(session()).toMatchObject({ ref: REF })
+    })
+
+    it('uses the plain message when it was told no name', async () => {
+      const { actions, notices } = setup({
+        read: unreadable,
+        editor: fakeEditor('# A\n').editor,
+        session: clean,
+        choice: 'cancel',
+      })
+      expect(await actions.openCreated(made())).toMatchObject({
+        opened: false,
+      })
+      expect(notices).toEqual(['Could not open the file: Permission denied'])
+    })
+
+    it('does not say it was opened when the user Cancelled the new file', async () => {
+      const { actions } = setup({
+        read: async () => ({ kind: 'cancelled' }),
+        editor: fakeEditor('# A\n').editor,
+        session: clean,
+        choice: 'cancel',
+      })
+      expect(await actions.openCreated(made())).toMatchObject({
+        opened: false,
+      })
+    })
+  })
+
+  it('creates and opens with no question when the build gives none to ask', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const prepare = made()
+    const { actions } = setup({ read: toNew, editor, session: dirty })
+    await actions.openCreated(prepare)
+    expect(prepare).toHaveBeenCalledTimes(1)
+    expect(editor.replace).toHaveBeenCalledWith('# New\n')
+  })
+
+  it('does nothing before the editor exists', async () => {
+    const prepare = made()
+    const { actions } = setup({ editor: null, choice: 'cancel' })
+    expect(await actions.openCreated(prepare)).toEqual({ kind: 'stayed' })
+    expect(prepare).not.toHaveBeenCalled()
+  })
+})
+
 describe('save result', () => {
   it('is true when the file was written', async () => {
     const { actions } = setup({ save: async () => savedAs() })

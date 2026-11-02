@@ -15,6 +15,7 @@ type LibraryProps<Ref> = {
   readonly controls: LibraryControls
   readonly activeRef: Ref | null
   readonly onOpen: (ref: Ref) => void
+  readonly onNewSkill: () => void
 }
 
 type SkillItemProps = {
@@ -172,6 +173,7 @@ export function Library<Ref>({
   controls: { state, refresh, addRoot, removeRoot },
   activeRef,
   onOpen,
+  onNewSkill,
 }: LibraryProps<Ref>) {
   const [choices, setChoices] = useState<SkillChoices>({})
   const isActiveFile = (path: string): boolean =>
@@ -184,8 +186,8 @@ export function Library<Ref>({
       aria-label="Library"
       className="sticky top-0 flex h-screen w-72 shrink-0 flex-col bg-surface"
     >
-      <div className="flex items-center justify-between gap-2 px-3 pt-6 pb-3">
-        <h2 className="font-display font-semibold text-ink-strong text-lg tracking-wide">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 pt-6 pb-3">
+        <h2 className="whitespace-nowrap font-display font-semibold text-ink-strong text-lg tracking-wide">
           Library
           {state.status === 'ready' ? (
             <span className="font-sans font-normal text-ink-faint text-xs">
@@ -195,6 +197,15 @@ export function Library<Ref>({
           ) : null}
         </h2>
         <div className="flex items-center gap-1 text-sm">
+          <button
+            type="button"
+            className="cm-ai-button"
+            title="Create a skill from a template"
+            disabled={state.status !== 'ready'}
+            onClick={onNewSkill}
+          >
+            New
+          </button>
           <button
             type="button"
             className="cm-ai-button"

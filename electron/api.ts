@@ -1,5 +1,7 @@
 import type {
   AddRootResult,
+  CreateSkillRequest,
+  CreateSkillResult,
   LibrarySnapshot,
   RemoveRootResult,
 } from '../src/skills/library'
@@ -15,6 +17,7 @@ export const LIBRARY_ADD_ROOT_CHANNEL = 'library:add-root'
 export const LIBRARY_REMOVE_ROOT_CHANNEL = 'library:remove-root'
 export const WATCH_FILE_CHANNEL = 'external:watch-file'
 export const EXTERNAL_CHANGES_CHANNEL = 'external:changes'
+export const LIBRARY_CREATE_SKILL_CHANNEL = 'library:create-skill'
 
 export const FILE_NOT_FOUND_REASON = 'File not found'
 
@@ -73,4 +76,7 @@ export type ChiriApi = {
   readonly onExternalChanges: (
     listener: (changes: ExternalChanges) => void,
   ) => () => void
+  readonly createSkill: (
+    request: CreateSkillRequest,
+  ) => Promise<CreateSkillResult>
 } & HistoryApi

@@ -20,6 +20,11 @@ const api = (overrides: Partial<LibraryApi> = {}): LibraryApi => ({
   })),
   removeLibraryRoot: vi.fn(async () => ({ kind: 'removed' as const })),
   onExternalChanges: vi.fn(() => () => undefined),
+  createSkill: vi.fn(async ({ root, name }) => ({
+    kind: 'created' as const,
+    path: `${root}/${name}/SKILL.md`,
+    name,
+  })),
   ...overrides,
 })
 
@@ -134,5 +139,44 @@ describe('createElectronLibrary', () => {
     )
     library.subscribe(() => undefined)()
     expect(stop).toHaveBeenCalledOnce()
+  })
+
+  it('creates a skill through the main process with the root and the name', async () => {
+    const calls = api()
+    expect(
+      await createElectronLibrary(calls).createSkill({
+        root: '/home/u/.claude/skills',
+        name: 'pdf',
+      }),
+    ).toEqual({
+      kind: 'created',
+      path: '/home/u/.claude/skills/pdf/SKILL.md',
+      name: 'pdf',
+    })
+    expect(calls.createSkill).toHaveBeenCalledWith({
+      root: '/home/u/.claude/skills',
+      name: 'pdf',
+    })
+  })
+
+  it('reports a failed create instead of throwing', async () => {
+    const library = createElectronLibrary(
+      api({
+        createSkill: async () => {
+          throw new Error('IPC closed')
+        },
+      }),
+    )
+    expect(await library.createSkill({ root: '/x', name: 'pdf' })).toEqual({
+      kind: 'failed',
+      reason: 'Could not reach the app',
+    })
+  })
+
+  it('knows the folder of a file from its path', () => {
+    const library = createElectronLibrary(api())
+    expect(library.folderNameOf('/skills/pdf-tools/SKILL.md')).toBe('pdf-tools')
+    expect(library.folderNameOf('/SKILL.md')).toBeUndefined()
+    expect(library.folderNameOf('SKILL.md')).toBeUndefined()
   })
 })

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   AGENT_SKILLS_SPEC_URL,
+  COMPATIBILITY_MAX_LENGTH,
   checkSkillFrontmatter,
+  checkSkillName,
   DESCRIPTION_MAX_LENGTH,
   NAME_MAX_LENGTH,
   type SkillRule,
@@ -285,5 +287,119 @@ describe('name and folder', () => {
 
   it('treats an empty folder name as a name to match', () => {
     expect(folderRules('pdf', '')).toEqual(['name-folder-mismatch'])
+  })
+})
+
+describe('compatibility', () => {
+  const rulesWith = (compatibility: unknown): readonly SkillRule[] =>
+    rulesOf({ ...VALID, compatibility })
+
+  it('takes its limit from the specification', () => {
+    expect(COMPATIBILITY_MAX_LENGTH).toBe(500)
+  })
+
+  it('is optional: no field, no problem', () => {
+    expect(rulesOf(VALID)).toEqual([])
+  })
+
+  it('accepts text of 1 to 500 characters', () => {
+    expect(rulesWith('Requires git and jq')).toEqual([])
+    expect(rulesWith('x')).toEqual([])
+    expect(rulesWith('x'.repeat(COMPATIBILITY_MAX_LENGTH))).toEqual([])
+  })
+
+  it('counts characters, not UTF-16 units', () => {
+    expect(rulesWith('😀'.repeat(COMPATIBILITY_MAX_LENGTH))).toEqual([])
+    expect(rulesWith('😀'.repeat(COMPATIBILITY_MAX_LENGTH + 1))).toEqual([
+      'compatibility-too-long',
+    ])
+  })
+
+  it('reports text over the limit, with the counts', () => {
+    expect(
+      checkSkillFrontmatter({
+        ...VALID,
+        compatibility: 'x'.repeat(COMPATIBILITY_MAX_LENGTH + 1),
+      }),
+    ).toEqual([
+      {
+        field: 'compatibility',
+        rule: 'compatibility-too-long',
+        message: 'compatibility has 501 characters; the limit is 500',
+      },
+    ])
+  })
+
+  it.each([
+    ['an empty string', ''],
+    ['blank text', '   \n'],
+    ['a key with no value', null],
+  ])('reports %s as empty', (_label, value) => {
+    expect(rulesWith(value)).toEqual(['compatibility-empty'])
+  })
+
+  it.each([
+    ['a number', 3],
+    ['true', true],
+    ['a list', ['git', 'jq']],
+    ['a map', { git: true }],
+  ])('reports %s as not text', (_label, value) => {
+    expect(rulesWith(value)).toEqual(['compatibility-not-text'])
+  })
+
+  it('lists it after the name and description problems', () => {
+    expect(
+      rulesOf({ name: 'Bad', description: '', compatibility: '' }),
+    ).toEqual([
+      'name-not-lowercase',
+      'description-empty',
+      'compatibility-empty',
+    ])
+  })
+
+  it('does not change the checks of name and description', () => {
+    expect(checkSkillName('pdf-processing')).toEqual([])
+  })
+})
+
+describe('checkSkillName', () => {
+  const rules = (name: string, folderName?: string): readonly SkillRule[] =>
+    checkSkillName(name, folderName).map(({ rule }) => rule)
+
+  it('has no problems for a valid name, with or without a folder', () => {
+    expect(rules('pdf-processing')).toEqual([])
+    expect(rules('pdf-processing', 'pdf-processing')).toEqual([])
+  })
+
+  it('reports an empty name and a blank one', () => {
+    expect(rules('')).toEqual(['name-empty'])
+    expect(rules('   ')).toEqual(['name-empty'])
+  })
+
+  it('applies the same name rules as the frontmatter check', () => {
+    expect(rules('PDF--Tool-')).toEqual([
+      'name-not-lowercase',
+      'name-edge-hyphen',
+      'name-double-hyphen',
+    ])
+    expect(rules('a/b')).toEqual(['name-invalid-characters'])
+    expect(rules('a'.repeat(65))).toEqual(['name-too-long'])
+  })
+
+  it('judges the trimmed name, like the frontmatter check', () => {
+    expect(rules('  pdf-processing  ')).toEqual([])
+  })
+
+  it('reports a folder that differs from the name', () => {
+    expect(rules('pdf-processing', 'pdf')).toEqual(['name-folder-mismatch'])
+  })
+
+  it('agrees with checkSkillFrontmatter on the name field', () => {
+    const description = 'Does a thing.'
+    for (const name of ['pdf', 'Pdf', '-pdf', 'p--df', 'pdf!', '']) {
+      expect(checkSkillName(name, 'pdf')).toEqual(
+        checkSkillFrontmatter({ name, description }, 'pdf'),
+      )
+    }
   })
 })

@@ -9,7 +9,7 @@ const MAX_NAME_CHARS = 255
 
 const withoutNul = (value: string): boolean => !value.includes('\0')
 
-const pathSchema = z
+export const pathSchema = z
   .string()
   .min(1)
   .max(MAX_PATH_CHARS)

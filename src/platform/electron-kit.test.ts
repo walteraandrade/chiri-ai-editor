@@ -78,7 +78,13 @@ const fakeLibrary: LibraryKit<string> = {
   list: async () => ({ kind: 'listed', roots: [], problem: null }),
   addRoot: async () => ({ kind: 'cancelled' }),
   removeRoot: async () => ({ kind: 'removed' }),
+  createSkill: async ({ root, name }) => ({
+    kind: 'created',
+    path: `${root}/${name}/SKILL.md`,
+    name,
+  }),
   toRef: (path) => path,
+  folderNameOf: () => undefined,
   subscribe: () => () => undefined,
 }
 

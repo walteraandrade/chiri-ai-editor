@@ -151,3 +151,6 @@ Notes on issue #32 (Library):
 
 Notes on issue #33 (External changes):
 - Slice cost is US$0: no check called the model. The agent's edits were simulated by writing the files from a shell (in place, and as a temporary file renamed over the target), and the pull was a real pull between two temporary clones. The running total is unchanged from issue #32.
+
+Notes on issue #34 (Skill checks):
+- Slice cost is US$0: no check called the model (the frontmatter panel, the checks, the editor styling and New skill do not use it). The running total is unchanged from issue #33.

@@ -173,7 +173,7 @@ export const useMarkdownFile = <Ref>({
     })
   }, [files, unsavedText, dispatch, askLeave, check])
 
-  const { open, openRef, save, reload, reloadFrom } = actions
+  const { open, openRef, openCreated, save, reload, reloadFrom } = actions
 
   useEffect(() => {
     reloadFromRef.current = reloadFrom
@@ -233,6 +233,7 @@ export const useMarkdownFile = <Ref>({
     conflict,
     open,
     openRef,
+    openCreated,
     save,
     edited,
     reloadFromDisk,

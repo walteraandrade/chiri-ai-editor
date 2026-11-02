@@ -12,22 +12,33 @@ import { formatClock } from '../history/time'
 import type { VersionSummary } from '../history/types'
 import type { PlatformKit } from '../platform/kit'
 import { problemMessage } from '../platform/problems'
-import { skillFileLabel } from '../skills/library-view'
+import {
+  describeFrontmatterProblem,
+  reportProblems,
+} from '../skills/frontmatter-panel'
+import type { CreateSkillRequest, CreateSkillResult } from '../skills/library'
+import { openSkillFile, skillFileLabel } from '../skills/library-view'
+import type { NewSkillOutcome } from '../skills/new-skill'
+import { SKILL_FILE_NAME } from '../skills/scan-skills'
+import type { SkillField } from '../skills/skill-frontmatter'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
 import { ExternalChangeNotice } from './ExternalChangeNotice'
 import { FileControls } from './FileControls'
 import { FileName } from './FileName'
+import { FrontmatterPanel } from './FrontmatterPanel'
 import { FullHistory } from './FullHistory'
 import { Hint } from './Hint'
 import { LeaveDialog } from './LeaveDialog'
 import { Library } from './Library'
 import { LineDiff } from './LineDiff'
 import { MissingKeyBanner } from './MissingKeyBanner'
+import { NewSkillDialog } from './NewSkillDialog'
 import { ReviewToolbar } from './ReviewToolbar'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
+import { useFrontmatterReport } from './use-frontmatter-report'
 import { useHistoryView } from './use-history-view'
 import { useLeavePrompt } from './use-leave-prompt'
 import { useLibrary } from './use-library'
@@ -145,18 +156,85 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     onSaved,
     askLeave: leavePrompt.ask,
   })
-  const onChange = file.edited
   const libraryControls = useLibrary(library, showToast)
   const openRef = file.session?.ref ?? null
-  const fileLabel =
+  const librarySkillFile =
     library === undefined ||
     openRef === null ||
     libraryControls.state.status !== 'ready'
       ? undefined
-      : skillFileLabel(
-          libraryControls.state.roots,
-          (path) => library.toRef(path) === openRef,
-        )
+      : {
+          label: skillFileLabel(
+            libraryControls.state.roots,
+            (path) => library.toRef(path) === openRef,
+          ),
+          file: openSkillFile(
+            libraryControls.state.roots,
+            (path) => library.toRef(path) === openRef,
+          ),
+        }
+  const fileLabel = librarySkillFile?.label
+  const frontmatterFileName =
+    librarySkillFile?.file?.fileName ?? file.session?.name ?? null
+  const frontmatterFolderName =
+    frontmatterFileName !== SKILL_FILE_NAME
+      ? undefined
+      : (librarySkillFile?.file?.folderName ??
+        (library === undefined || openRef === null
+          ? undefined
+          : library.folderNameOf(openRef)))
+  const frontmatter = useFrontmatterReport(initialDoc, documentControls, {
+    fileName: frontmatterFileName,
+    folderName: frontmatterFolderName,
+  })
+  const refreshFrontmatter = frontmatter.refresh
+  const frontmatterPanel = useRef<HTMLElement>(null)
+  const { edited, openCreated } = file
+  const onChange = useCallback(
+    (text: string) => {
+      edited(text)
+      refreshFrontmatter(text)
+    },
+    [edited, refreshFrontmatter],
+  )
+  const frontmatterProblems = reportProblems(frontmatter.report)
+  const editFrontmatter = useCallback(
+    (field: SkillField, value: string) => {
+      const plan = documentControls?.setSkillFields({ [field]: value })
+      if (plan?.kind === 'refused')
+        showToast(describeFrontmatterProblem(plan.problem))
+    },
+    [documentControls, showToast],
+  )
+  const showFrontmatterProblems = useCallback(() => {
+    closeHistory()
+    requestAnimationFrame(() => frontmatterPanel.current?.focus())
+  }, [closeHistory])
+  const [newSkillOpen, setNewSkillOpen] = useState(false)
+  const { createSkill: createLibrarySkill } = libraryControls
+  const createSkill = useCallback(
+    async (request: CreateSkillRequest): Promise<NewSkillOutcome> => {
+      if (library === undefined)
+        return { kind: 'failed', reason: 'No Library here' }
+      const outcome = await openCreated<CreateSkillResult>(async () => {
+        const result = await createLibrarySkill(request)
+        return result.kind === 'created'
+          ? {
+              ref: library.toRef(result.path),
+              value: result,
+              label: result.name,
+            }
+          : { ref: null, value: result }
+      })
+      if (outcome.kind === 'stayed') return { kind: 'cancelled' }
+      if (outcome.value.kind === 'created') {
+        setNewSkillOpen(false)
+        if (outcome.opened) showToast(`Created ${outcome.value.name}`)
+      }
+      return outcome.value
+    },
+    [createLibrarySkill, library, showToast, openCreated],
+  )
 
   const shown =
     mode.kind === 'version'
@@ -206,8 +284,10 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             <Hint />
             <FileControls
               disabled={documentControls === null}
+              problems={frontmatterProblems}
               onOpen={file.open}
               onSave={file.save}
+              onShowProblems={showFrontmatterProblems}
             />
             <ReviewToolbar
               status={review}
@@ -257,6 +337,13 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           />
         ) : null}
         <div hidden={mode.kind !== 'editing'}>
+          <FrontmatterPanel
+            report={frontmatter.report}
+            disabled={documentControls === null}
+            panelRef={frontmatterPanel}
+            onEdit={editFrontmatter}
+            onHistory={(command) => documentControls?.[command]()}
+          />
           <EditorPane
             initialDoc={initialDoc}
             onChange={onChange}
@@ -292,7 +379,15 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         controls={libraryControls}
         activeRef={openRef}
         onOpen={(ref) => void file.openRef(ref)}
+        onNewSkill={() => setNewSkillOpen(true)}
       />
+      {newSkillOpen && libraryControls.state.status === 'ready' ? (
+        <NewSkillDialog
+          roots={libraryControls.state.roots}
+          onCreate={createSkill}
+          onClose={() => setNewSkillOpen(false)}
+        />
+      ) : null}
       <div className="min-w-0 flex-1">{page}</div>
     </div>
   )

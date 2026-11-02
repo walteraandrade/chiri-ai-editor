@@ -8,6 +8,7 @@ import {
   FILE_SAVE_AS_CHANNEL,
   FILE_SAVE_CHANNEL,
   LIBRARY_ADD_ROOT_CHANNEL,
+  LIBRARY_CREATE_SKILL_CHANNEL,
   LIBRARY_LIST_CHANNEL,
   LIBRARY_REMOVE_ROOT_CHANNEL,
   SHELL_INFO_CHANNEL,
@@ -44,6 +45,8 @@ const api: ChiriApi = {
       ipcRenderer.removeListener(EXTERNAL_CHANGES_CHANNEL, relay)
     }
   },
+  createSkill: (request) =>
+    ipcRenderer.invoke(LIBRARY_CREATE_SKILL_CHANNEL, request),
 }
 
 contextBridge.exposeInMainWorld('chiri', api)
