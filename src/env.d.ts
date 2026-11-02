@@ -6,3 +6,8 @@ interface Window {
   __reviewDrops?: import('./ai/dev-log').ReviewDropEntry[]
   chiri?: import('../electron/api').ChiriApi
 }
+
+declare module 'virtual:omarchy-theme' {
+  const theme: import('./theme/tokens').ThemeTokens | null
+  export default theme
+}

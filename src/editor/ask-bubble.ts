@@ -16,6 +16,7 @@ import {
   freeTextInstruction,
   quickActionInstruction,
 } from '../suggestions/instruction'
+import { aiFlag } from './ai-caret'
 import { currentTarget } from './current-target'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
@@ -108,7 +109,7 @@ const buildBubble = (view: EditorView) => {
     class: 'cm-ai-bubble-input',
     attrs: {
       type: 'text',
-      placeholder: 'Ask AI…',
+      placeholder: 'Ask for a change…',
       'aria-label': 'Ask AI',
       autocomplete: 'off',
       spellcheck: 'false',
@@ -143,15 +144,15 @@ const buildBubble = (view: EditorView) => {
         },
       },
     },
-    [input],
+    [aiFlag(), input],
   )
 
-  const buttons = QUICK_ACTIONS.map((action) =>
+  const buttons = QUICK_ACTIONS.map((action, index) =>
     el(
       'button',
       {
         class: 'cm-ai-chip',
-        attrs: { type: 'button' },
+        attrs: { type: 'button', style: `--i: ${index}` },
         on: {
           mousedown: (event) => event.preventDefault(),
           click: () => {

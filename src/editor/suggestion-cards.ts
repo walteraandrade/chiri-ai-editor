@@ -20,11 +20,13 @@ import {
 } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion, SuggestionId } from '../suggestions/types'
+import { play } from '../ui/motion'
 import {
   detectApplePlatform,
   formatCtrlShortcut,
   formatShortcut,
 } from '../ui/platform'
+import { aiFlag } from './ai-caret'
 import {
   type CardPlacement,
   cardPlacementOf,
@@ -197,6 +199,7 @@ const shortcutLabel = (key: string): string =>
   formatShortcut(key, detectApplePlatform())
 
 type ButtonOptions = {
+  readonly primary?: boolean
   readonly refocus?: boolean
   readonly disabled?: boolean
   readonly busy?: boolean
@@ -209,6 +212,7 @@ const actionButton = (
   hint: string | undefined,
   run: () => void,
   {
+    primary = false,
     refocus = true,
     disabled = false,
     busy = false,
@@ -218,7 +222,7 @@ const actionButton = (
   el(
     'button',
     {
-      class: 'cm-ai-button',
+      class: primary ? 'cm-ai-button cm-ai-button-primary' : 'cm-ai-button',
       attrs: {
         type: 'button',
         ...(disabled && { disabled: '' }),
@@ -490,14 +494,23 @@ const renderCard = (
   return [
     ...(version === null ? [] : [versionNav.render(version)]),
     ...(showRationale
-      ? [el('p', { class: 'cm-ai-rationale' }, [suggestion.rationale])]
+      ? [
+          el('p', { class: 'cm-ai-rationale' }, [
+            aiFlag(),
+            suggestion.rationale,
+          ]),
+        ]
       : []),
     ...(changes === null ? [] : [changeNav.render(changes)]),
     ...(showActions
       ? [
           el('div', { class: 'cm-ai-card-actions' }, [
-            actionButton(view, 'Accept', shortcutLabel('↵'), () =>
-              acceptSuggestionById(view, suggestion.id),
+            actionButton(
+              view,
+              'Accept',
+              shortcutLabel('↵'),
+              () => acceptSuggestionById(view, suggestion.id),
+              { primary: true },
             ),
             actionButton(view, 'Reject', 'Esc', () =>
               rejectSuggestionById(view, suggestion.id),
@@ -510,6 +523,16 @@ const renderCard = (
     ...refineError(view, suggestion, showActions),
   ]
 }
+
+const swapIn = (dom: HTMLElement): void =>
+  play(
+    dom,
+    [
+      { opacity: 0.2, filter: 'blur(2px)' },
+      { opacity: 1, filter: 'blur(0)' },
+    ],
+    { duration: 240, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' },
+  )
 
 const openedRefine = (update: ViewUpdate): boolean =>
   update.transactions.some((transaction) =>
@@ -549,6 +572,7 @@ const cardCreator =
     })
     let renderedKey = ''
     let range: ChangeRange | null = null
+    let renderedId: SuggestionId | null = null
     let formOwner: SuggestionId | null = null
     const syncFormOwner = (state: EditorState): void => {
       const next = refineInputOpenFor(state)
@@ -568,6 +592,10 @@ const cardCreator =
         dom,
         renderCard(view, content, refineForm, versionNav, changeNav),
       )
+      const swapped =
+        renderedId !== null && renderedId !== content.suggestion.id
+      renderedId = content.suggestion.id
+      if (swapped) swapIn(dom)
     }
     sync(view.state)
     return {

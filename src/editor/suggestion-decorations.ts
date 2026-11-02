@@ -13,14 +13,59 @@ import type {
 } from '../suggestions/types'
 import { bubbleField, targetPreviewRange } from './ask-bubble'
 import { el } from './dom'
+import {
+  momentsOf,
+  motionField,
+  type RangeMomentKind,
+  revealingIds,
+} from './motion-field'
 import { rejectSuggestionById } from './suggestion-commands'
 import { activeOf, suggestionsField, suggestionsOf } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
+
+const WORD_STEP_MS = 34
+const WORD_BUDGET_MS = 560
 
 const idAttributes = (id: SuggestionId) => ({ 'data-suggestion-id': id })
 
 const classNames = (...names: readonly (string | false)[]): string =>
   names.filter((name) => name !== false).join(' ')
+
+const isSpace = (part: string): boolean => /^\s+$/.test(part)
+
+const revealedWords = (text: string): readonly (Node | string)[] => {
+  const parts = text.split(/(\s+)/).filter((part) => part !== '')
+  const count = parts.filter((part) => !isSpace(part)).length
+  const step = Math.min(WORD_STEP_MS, WORD_BUDGET_MS / Math.max(count, 1))
+  return parts.reduce<{
+    readonly nodes: (Node | string)[]
+    readonly index: number
+  }>(
+    ({ nodes, index }, part) =>
+      isSpace(part)
+        ? { nodes: [...nodes, part], index }
+        : {
+            nodes: [
+              ...nodes,
+              el(
+                'span',
+                {
+                  class: 'cm-ai-word',
+                  attrs: {
+                    style: `--word-delay: ${Math.round(index * step)}ms`,
+                  },
+                },
+                [part],
+              ),
+            ],
+            index: index + 1,
+          },
+    { nodes: [], index: 0 },
+  ).nodes
+}
+
+const textChildren = (text: string, entering: boolean) =>
+  entering ? revealedWords(text) : [text]
 
 class InsertedWidget extends WidgetType {
   constructor(
@@ -28,6 +73,7 @@ class InsertedWidget extends WidgetType {
     readonly text: string,
     readonly separated: boolean,
     readonly refining: boolean,
+    readonly entering: boolean,
   ) {
     super()
   }
@@ -37,7 +83,8 @@ class InsertedWidget extends WidgetType {
       other.id === this.id &&
       other.text === this.text &&
       other.separated === this.separated &&
-      other.refining === this.refining
+      other.refining === this.refining &&
+      other.entering === this.entering
     )
   }
 
@@ -49,10 +96,11 @@ class InsertedWidget extends WidgetType {
           'cm-ai-inserted',
           this.separated && 'cm-ai-inserted-separated',
           this.refining && 'cm-ai-refining',
+          this.entering && 'cm-ai-enter',
         ),
         attrs: idAttributes(this.id),
       },
-      [this.text],
+      textChildren(this.text, this.entering),
     )
   }
 
@@ -66,6 +114,7 @@ class ReplacementWidget extends WidgetType {
     readonly id: SuggestionId,
     readonly text: string,
     readonly refining: boolean,
+    readonly entering: boolean,
   ) {
     super()
   }
@@ -74,7 +123,8 @@ class ReplacementWidget extends WidgetType {
     return (
       other.id === this.id &&
       other.text === this.text &&
-      other.refining === this.refining
+      other.refining === this.refining &&
+      other.entering === this.entering
     )
   }
 
@@ -85,10 +135,11 @@ class ReplacementWidget extends WidgetType {
         class: classNames(
           'cm-ai-replacement',
           this.refining && 'cm-ai-refining',
+          this.entering && 'cm-ai-enter',
         ),
         attrs: idAttributes(this.id),
       },
-      [el('ins', {}, [this.text])],
+      [el('ins', {}, textChildren(this.text, this.entering))],
     )
   }
 
@@ -175,16 +226,21 @@ const suggestionMark = (
     attributes: idAttributes(id),
   })
 
-const deletedMark = (id: SuggestionId, refining: boolean) =>
+const deletedMark = (id: SuggestionId, refining: boolean, entering: boolean) =>
   Decoration.mark({
     tagName: 'del',
-    class: classNames('cm-ai-deleted', refining && 'cm-ai-refining'),
+    class: classNames(
+      'cm-ai-deleted',
+      refining && 'cm-ai-refining',
+      entering && 'cm-ai-enter',
+    ),
     attributes: idAttributes(id),
   })
 
 const readyRanges = (
   suggestion: ReadySuggestion,
   active: boolean,
+  entering: boolean,
 ): readonly Range<Decoration>[] => {
   const { id, from, to, diff } = suggestion
   const refining = suggestion.refine.status === 'working'
@@ -192,13 +248,18 @@ const readyRanges = (
     if (hunk.type === 'deleted') {
       return hunk.from === hunk.to
         ? []
-        : [deletedMark(id, refining).range(from + hunk.from, from + hunk.to)]
+        : [
+            deletedMark(id, refining, entering).range(
+              from + hunk.from,
+              from + hunk.to,
+            ),
+          ]
     }
     if (hunk.type !== 'inserted') return []
     if (diff.mode === 'block') {
       return [
         Decoration.widget({
-          widget: new ReplacementWidget(id, hunk.text, refining),
+          widget: new ReplacementWidget(id, hunk.text, refining, entering),
           block: true,
           side: 1,
         }).range(to),
@@ -207,7 +268,13 @@ const readyRanges = (
     const separated = diff.hunks[index - 1]?.type === 'deleted'
     return [
       Decoration.widget({
-        widget: new InsertedWidget(id, hunk.text, separated, refining),
+        widget: new InsertedWidget(
+          id,
+          hunk.text,
+          separated,
+          refining,
+          entering,
+        ),
         side: 1,
       }).range(from + hunk.at),
     ]
@@ -224,6 +291,7 @@ const readyRanges = (
 const suggestionRanges = (
   suggestion: Suggestion,
   active: boolean,
+  entering: boolean,
 ): readonly Range<Decoration>[] => {
   switch (suggestion.status) {
     case 'pending':
@@ -241,27 +309,45 @@ const suggestionRanges = (
         }).range(suggestion.to),
       ]
     case 'ready':
-      return readyRanges(suggestion, active)
+      return readyRanges(suggestion, active, entering)
   }
 }
 
 const targetPreview = Decoration.mark({ class: 'cm-ai-target-preview' })
 
+const momentMarks: Readonly<Record<RangeMomentKind, Decoration>> = {
+  land: Decoration.mark({ class: 'cm-ai-landed' }),
+  settle: Decoration.mark({ class: 'cm-ai-settled' }),
+}
+
+const momentRanges = (state: EditorState): readonly Range<Decoration>[] =>
+  momentsOf(state).flatMap((moment) =>
+    moment.kind === 'reveal'
+      ? []
+      : [momentMarks[moment.kind].range(moment.from, moment.to)],
+  )
+
 export const buildDecorations = (state: EditorState): DecorationSet => {
   const active = activeOf(state)
   const preview = targetPreviewRange(state)
+  const revealing = revealingIds(state)
   return Decoration.set(
     [
       ...suggestionsOf(state).items.flatMap((suggestion) =>
-        suggestionRanges(suggestion, suggestion.id === active?.id),
+        suggestionRanges(
+          suggestion,
+          suggestion.id === active?.id,
+          revealing.has(suggestion.id),
+        ),
       ),
       ...(preview ? [targetPreview.range(preview.from, preview.to)] : []),
+      ...momentRanges(state),
     ],
     true,
   )
 }
 
 export const suggestionDecorations = EditorView.decorations.compute(
-  [suggestionsField, bubbleField, 'selection'],
+  [suggestionsField, bubbleField, motionField, 'selection'],
   buildDecorations,
 )

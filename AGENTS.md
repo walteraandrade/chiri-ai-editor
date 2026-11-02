@@ -5,8 +5,9 @@ Browser Markdown editor with an AI co-author. The AI proposes inline, reviewable
 ## Read first
 
 1. [GLOSSARY.md](GLOSSARY.md) — use these names in code, UI, PRs and issues.
-2. [docs/PLAN.md](docs/PLAN.md) — slices, roles, gates, the per-slice loop.
-3. The GitHub issue you are working on, and every ADR it links in [docs/chiri/adr/](docs/chiri/adr/).
+2. [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md) — before any UI, color or motion change.
+3. [docs/PLAN.md](docs/PLAN.md) — slices, roles, gates, the per-slice loop.
+4. The GitHub issue you are working on, and every ADR it links in [docs/chiri/adr/](docs/chiri/adr/).
 
 ADRs are decisions, not suggestions. If an ADR blocks you, stop and report it; do not work around it.
 
@@ -19,7 +20,7 @@ ADRs are decisions, not suggestions. If an ADR blocks you, stop and report it; d
 | App | Vite + React + TypeScript (strict) |
 | Desktop shell | Electron 43 built with `electron-vite` ([ADR 0013](docs/chiri/adr/0013-native-app-on-electron.md)); two builds, Web and Electron ([ADR 0016](docs/chiri/adr/0016-web-and-electron-builds.md)) |
 | Editor | CodeMirror 6, `@codemirror/lang-markdown` |
-| Styling | Tailwind v4, theme tokens in CSS via `@theme`; dark theme only; sans-serif; League Spartan for the app title |
+| Styling | Tailwind v4, theme tokens in CSS via `@theme`, derived from a few theme seeds ([DESIGN.md](DESIGN.md)); dark Chiri theme by default, the Omarchy theme (light or dark) in dev when present; sans-serif; League Spartan for the app title |
 | AI | `ai@^7` + `@openrouter/ai-sdk-provider@^3` + `zod` |
 | Diff | `diff` (jsdiff) |
 | Tests | Vitest |

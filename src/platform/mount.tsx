@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '../index.css'
 import { App } from '../ui/App'
 import { StartError } from '../ui/StartError'
+import { applyInitialTheme } from '../ui/use-theme'
 import type { PlatformKit, PlatformKitFactory } from './kit'
 import { startWith } from './start'
 import { startErrorMessage } from './start-error'
@@ -30,4 +31,7 @@ const renderStartError = (error: unknown): void => {
 
 export const mountApp = <Ref,>(
   createKit: PlatformKitFactory<Ref>,
-): Promise<void> => startWith(createKit, render).catch(renderStartError)
+): Promise<void> => {
+  applyInitialTheme()
+  return startWith(createKit, render).catch(renderStartError)
+}

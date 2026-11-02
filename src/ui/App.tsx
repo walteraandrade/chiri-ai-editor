@@ -37,6 +37,7 @@ import { LineDiff } from './LineDiff'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { NewSkillDialog } from './NewSkillDialog'
 import { ReviewToolbar } from './ReviewToolbar'
+import { ThemeToggle } from './ThemeToggle'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useFrontmatterReport } from './use-frontmatter-report'
@@ -45,6 +46,7 @@ import { useKeyState } from './use-key-state'
 import { useLeavePrompt } from './use-leave-prompt'
 import { useLibrary } from './use-library'
 import { type FileArrival, useMarkdownFile } from './use-markdown-file'
+import { useTheme } from './use-theme'
 import { useVersionTexts } from './use-version-texts'
 import { VersionBar } from './VersionBar'
 
@@ -70,6 +72,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const [controls, setControls] = useState<ReviewControls | null>(null)
   const [documentControls, setDocumentControls] =
     useState<DocumentControls | null>(null)
+  const theme = useTheme()
   const toastId = useRef(0)
   const headerRef = useRef<HTMLElement>(null)
   const reviewTriggerRef = useRef<HTMLButtonElement>(null)
@@ -373,6 +376,15 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           />
         </div>
       </main>
+      {theme.omarchy ? (
+        <div className="fixed bottom-4 left-4 z-30 hidden bg-canvas text-sm sm:block">
+          <ThemeToggle
+            theme={theme.omarchy}
+            active={theme.choice === 'omarchy'}
+            onToggle={theme.toggle}
+          />
+        </div>
+      ) : null}
       <Toast message={toast} onDismiss={dismissToast} />
       {key.present ? null : (
         <MissingKeyBanner onSetKey={key.settings && key.openDialog} />
