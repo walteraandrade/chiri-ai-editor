@@ -24,3 +24,8 @@ export const saveErrorMessage = (error: unknown): string =>
   error instanceof Error && error.message.endsWith('Invalid key')
     ? 'That does not look like a key. Paste it again.'
     : 'Could not save the key.'
+
+export const removeNote = (state: KeyState): string | null =>
+  state.keyringStored && state.storage !== 'keyring'
+    ? 'Remove key also deletes the key stored in your keyring.'
+    : null

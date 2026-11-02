@@ -8,6 +8,7 @@ const state = (overrides: Partial<KeyState> = {}): KeyState => ({
   present: false,
   storage: 'none',
   keyringAvailable: true,
+  keyringStored: false,
   backend: 'gnome_libsecret',
   unreadable: false,
   ...overrides,

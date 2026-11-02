@@ -3,7 +3,7 @@ import { builtinModules } from 'node:module'
 const PATTERNS = [
   /^\s*(?:import|export)\b[^;'"`]*?\bfrom\s*["']([^"']+)["']/gm,
   /^\s*import\s*["']([^"']+)["']/gm,
-  /\b(?:require|import)\s*\(\s*["']([^"']+)["']\s*\)/g,
+  /(?<![\w$.])(?:__require|require|import)\s*\(\s*["']([^"']+)["']\s*\)/g,
 ]
 
 const packageName = (specifier: string): string => {

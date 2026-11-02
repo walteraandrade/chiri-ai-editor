@@ -36,6 +36,28 @@ describe('bareImports', () => {
     expect(bareImports(source)).toEqual([])
   })
 
+  it('finds the __require calls an ESM bundle makes for CommonJS dependencies', () => {
+    const source = [
+      'const a = __require("fsevents");',
+      'const b = __require("@scope/native/build");',
+      'const c = __require("process");',
+      'const d = __require("buffer");',
+      'const e = __require("node:fs");',
+      'const f = __require("./local.node");',
+    ].join('\n')
+    expect(bareImports(source)).toEqual(['@scope/native', 'fsevents'])
+  })
+
+  it('ignores method calls and look-alike names', () => {
+    const source = [
+      'loader.require("left-pad");',
+      'const a = myrequire("left-pad");',
+      'const b = $require("left-pad");',
+      'obj.import("left-pad");',
+    ].join('\n')
+    expect(bareImports(source)).toEqual([])
+  })
+
   it('lists each package once', () => {
     const source = 'import "zod"; import { z } from "zod"; require("zod/v4")'
     expect(bareImports(source)).toEqual(['zod'])

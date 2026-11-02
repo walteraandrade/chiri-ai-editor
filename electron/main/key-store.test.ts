@@ -400,3 +400,59 @@ describe('createKeyStore: clearing and status', () => {
     expect(JSON.stringify(store.status())).not.toContain(KEY)
   })
 })
+
+describe('createKeyStore: keyringStored in the status', () => {
+  const stored = async () => {
+    const writer = storeWith('gnome_libsecret')
+    await writer.store.save(KEY)
+    return writer.file.content()
+  }
+
+  it('is false with nothing stored', async () => {
+    const { store } = storeWith('gnome_libsecret')
+    expect((await store.load()).keyringStored).toBe(false)
+  })
+
+  it('is true after a key is saved to the keyring', async () => {
+    const { store } = storeWith('gnome_libsecret')
+    expect((await store.save(KEY)).keyringStored).toBe(true)
+  })
+
+  it('is true when a keyring file cannot be read because the keyring is unavailable', async () => {
+    const { store } = storeWith('basic_text', fakeFile(await stored()))
+    expect(await store.load()).toMatchObject({
+      present: false,
+      unreadable: true,
+      keyringStored: true,
+    })
+  })
+
+  it('stays true when a session key is entered next to a kept keyring file', async () => {
+    const { store } = storeWith('basic_text', fakeFile(await stored()))
+    await store.load()
+    expect(await store.save('sk-or-v1-second')).toMatchObject({
+      storage: 'session',
+      keyringStored: true,
+    })
+  })
+
+  it('is false for a plain text file and after a plain text file is replaced by a session key', async () => {
+    const plain = '{"version":1,"storage":"plain-text","data":"AAAA"}'
+    const { store } = storeWith('basic_text', fakeFile(plain))
+    expect((await store.load()).keyringStored).toBe(false)
+    expect((await store.save(KEY)).keyringStored).toBe(false)
+  })
+
+  it('is false once Remove key has deleted the file', async () => {
+    const { store } = storeWith('basic_text', fakeFile(await stored()))
+    await store.load()
+    expect((await store.clear()).keyringStored).toBe(false)
+  })
+
+  it('turns false when plain text replaces the keyring file', async () => {
+    const { store } = storeWith('basic_text', fakeFile(await stored()))
+    await store.load()
+    await store.save('sk-or-v1-second')
+    expect((await store.keepAsPlainText()).keyringStored).toBe(false)
+  })
+})

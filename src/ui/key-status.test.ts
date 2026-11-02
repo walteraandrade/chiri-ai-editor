@@ -3,6 +3,7 @@ import type { KeyState } from '../../electron/api'
 import {
   describeKeyState,
   offersPlainText,
+  removeNote,
   saveErrorMessage,
 } from './key-status'
 
@@ -11,6 +12,7 @@ const state = (overrides: Partial<KeyState> = {}): KeyState => ({
   present: false,
   storage: 'none',
   keyringAvailable: true,
+  keyringStored: false,
   backend: 'gnome_libsecret',
   unreadable: false,
   ...overrides,
@@ -100,5 +102,50 @@ describe('saveErrorMessage', () => {
       'Could not save the key.',
     )
     expect(saveErrorMessage('x')).toBe('Could not save the key.')
+  })
+})
+
+describe('removeNote', () => {
+  const NOTE = 'Remove key also deletes the key stored in your keyring.'
+
+  it('warns when a keyring key sits behind a session key', () => {
+    expect(
+      removeNote(
+        state({
+          present: true,
+          storage: 'session',
+          keyringAvailable: false,
+          keyringStored: true,
+        }),
+      ),
+    ).toBe(NOTE)
+  })
+
+  it('warns when a keyring key cannot be read', () => {
+    expect(
+      removeNote(
+        state({
+          unreadable: true,
+          keyringAvailable: false,
+          keyringStored: true,
+        }),
+      ),
+    ).toBe(NOTE)
+  })
+
+  it('says nothing when the key shown is the keyring key', () => {
+    expect(
+      removeNote(
+        state({ present: true, storage: 'keyring', keyringStored: true }),
+      ),
+    ).toBeNull()
+  })
+
+  it('says nothing when no keyring key is stored', () => {
+    expect(removeNote(state())).toBeNull()
+    expect(removeNote(state({ present: true, storage: 'session' }))).toBeNull()
+    expect(
+      removeNote(state({ present: true, storage: 'plain-text' })),
+    ).toBeNull()
   })
 })

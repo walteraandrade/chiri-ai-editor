@@ -4,6 +4,7 @@ import type { KeySettings } from '../platform/kit'
 import {
   describeKeyState,
   offersPlainText,
+  removeNote,
   saveErrorMessage,
 } from './key-status'
 
@@ -106,11 +107,19 @@ export function KeyDialog({
             {error}
           </p>
         ) : null}
+        {removeNote(state) ? (
+          <p id="key-remove-note" className="text-ink-muted text-sm">
+            {removeNote(state)}
+          </p>
+        ) : null}
         <div className="flex items-center justify-end gap-2 text-sm">
           {state.present || state.unreadable ? (
             <button
               type="button"
               className="cm-ai-button mr-auto"
+              aria-describedby={
+                removeNote(state) ? 'key-remove-note' : undefined
+              }
               disabled={busy}
               onClick={() => run(settings.clear)}
             >

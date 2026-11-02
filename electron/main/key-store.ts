@@ -86,6 +86,7 @@ export const createKeyStore = ({
   readonly file: KeyFile
 }): KeyStore => {
   let held: Held = NO_KEY
+  let onDisk: StoredFormat | null = null
 
   const keyringAvailable = (): boolean =>
     chooseKeyStorage({
@@ -98,6 +99,7 @@ export const createKeyStore = ({
     present: held.key !== undefined,
     storage: held.storage,
     keyringAvailable: keyringAvailable(),
+    keyringStored: onDisk === 'keyring',
     backend: safeStorage.getSelectedStorageBackend(),
     unreadable: held.unreadable,
   })
@@ -118,11 +120,11 @@ export const createKeyStore = ({
 
   const load = async (): Promise<KeyDetails> => {
     const text = await file.read().catch(() => undefined)
+    const stored =
+      text === null || text === undefined ? null : parseStored(text)
+    onDisk = stored?.storage ?? null
     if (text === null) held = NO_KEY
-    else {
-      const stored = text === undefined ? null : parseStored(text)
-      held = stored === null ? UNREADABLE : decrypt(stored)
-    }
+    else held = stored === null ? UNREADABLE : decrypt(stored)
     return status()
   }
 
@@ -132,6 +134,7 @@ export const createKeyStore = ({
   ): Promise<Held | null> => {
     try {
       await file.write(serialize(format, safeStorage.encryptString(key)))
+      onDisk = format
       return { ...NO_KEY, key, storage: format }
     } catch {
       return null
@@ -144,7 +147,10 @@ export const createKeyStore = ({
   }
 
   const keepForSession = async (key: string): Promise<Held> => {
-    if ((await storedFormat()) !== 'keyring') await file.remove()
+    if ((await storedFormat()) !== 'keyring') {
+      await file.remove()
+      onDisk = null
+    }
     return { ...NO_KEY, key, storage: 'session' }
   }
 
@@ -165,6 +171,7 @@ export const createKeyStore = ({
 
   const clear = async (): Promise<KeyDetails> => {
     await file.remove()
+    onDisk = null
     held = NO_KEY
     return status()
   }

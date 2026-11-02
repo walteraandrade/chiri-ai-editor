@@ -74,6 +74,7 @@ export type KeyDetails = {
   readonly present: boolean
   readonly storage: KeyStorage
   readonly keyringAvailable: boolean
+  readonly keyringStored: boolean
   readonly backend: string
   readonly unreadable: boolean
 }
