@@ -3,6 +3,7 @@ import {
   chooseKeyStorage,
   createKeyStore,
   type KeyFile,
+  NATIVE_BACKEND,
   type SafeStorageLike,
 } from './key-store'
 
@@ -144,6 +145,51 @@ const storeWith = (backend: string, file: FakeFile = fakeFile()) => {
   const store = createKeyStore({ safeStorage, file })
   return { store, safeStorage, file }
 }
+
+const withoutBackendQuery = (
+  options: { readonly encrypts?: boolean } = {},
+): SafeStorageLike => {
+  const { getSelectedStorageBackend: _linuxOnly, ...rest } = fakeSafeStorage(
+    NATIVE_BACKEND,
+    options,
+  )
+  return rest
+}
+
+describe('createKeyStore: Windows and macOS, where safeStorage has no backend query', () => {
+  it('saves to the keyring and reads the key back', async () => {
+    const file = fakeFile()
+    const status = await createKeyStore({
+      safeStorage: withoutBackendQuery(),
+      file,
+    }).save(KEY)
+    expect(status).toMatchObject({
+      present: true,
+      storage: 'keyring',
+      keyringAvailable: true,
+      backend: NATIVE_BACKEND,
+    })
+    const reopened = createKeyStore({
+      safeStorage: withoutBackendQuery(),
+      file,
+    })
+    expect(await reopened.load()).toMatchObject({ present: true })
+    expect(reopened.current()).toBe(KEY)
+  })
+
+  it('keeps the key for the session when encryption is not available', async () => {
+    const file = fakeFile()
+    const status = await createKeyStore({
+      safeStorage: withoutBackendQuery({ encrypts: false }),
+      file,
+    }).save(KEY)
+    expect(status).toMatchObject({
+      storage: 'session',
+      keyringAvailable: false,
+    })
+    expect(file.writes()).toBe(0)
+  })
+})
 
 describe('createKeyStore: saving', () => {
   it('encrypts the key into the file when the keyring works', async () => {

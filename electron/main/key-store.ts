@@ -2,7 +2,7 @@ import type { KeyDetails, KeyStorage } from '../api'
 
 export type SafeStorageLike = {
   readonly isEncryptionAvailable: () => boolean
-  readonly getSelectedStorageBackend: () => string
+  readonly getSelectedStorageBackend?: () => string
   readonly encryptString: (plainText: string) => Buffer
   readonly decryptString: (encrypted: Buffer) => string
   readonly setUsePlainTextEncryption: (usePlainText: boolean) => void
@@ -40,6 +40,7 @@ type Held = {
 const NO_KEY: Held = { key: undefined, storage: 'none', unreadable: false }
 const UNREADABLE: Held = { ...NO_KEY, unreadable: true }
 const WEAK_BACKENDS: readonly string[] = ['basic_text', 'unknown']
+export const NATIVE_BACKEND = 'native'
 
 export const chooseKeyStorage = ({
   encryptionAvailable,
@@ -88,10 +89,13 @@ export const createKeyStore = ({
   let held: Held = NO_KEY
   let onDisk: StoredFormat | null = null
 
+  const backendOf = (): string =>
+    safeStorage.getSelectedStorageBackend?.() ?? NATIVE_BACKEND
+
   const keyringAvailable = (): boolean =>
     chooseKeyStorage({
       encryptionAvailable: safeStorage.isEncryptionAvailable(),
-      backend: safeStorage.getSelectedStorageBackend(),
+      backend: backendOf(),
       plainTextAllowed: false,
     }) === 'keyring'
 
@@ -100,7 +104,7 @@ export const createKeyStore = ({
     storage: held.storage,
     keyringAvailable: keyringAvailable(),
     keyringStored: onDisk === 'keyring',
-    backend: safeStorage.getSelectedStorageBackend(),
+    backend: backendOf(),
     unreadable: held.unreadable,
   })
 
