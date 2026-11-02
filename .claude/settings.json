@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(agent-browser eval *)",
+      "Bash(agent-browser --session * eval *)"
+    ]
+  }
+}
