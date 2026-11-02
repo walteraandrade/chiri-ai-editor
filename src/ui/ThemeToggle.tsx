@@ -14,7 +14,9 @@ export function ThemeToggle({ theme, active, onToggle }: ThemeToggleProps) {
       className="cm-ai-button theme-toggle"
       aria-pressed={active}
       title={
-        active ? 'Use the Chiri theme' : `Follow the Omarchy theme (${label})`
+        active
+          ? `Omarchy theme: ${label}. Click for the Chiri theme`
+          : `Follow the Omarchy theme (${label})`
       }
       onClick={onToggle}
     >
@@ -24,7 +26,6 @@ export function ThemeToggle({ theme, active, onToggle }: ThemeToggleProps) {
         aria-hidden="true"
       />
       Omarchy
-      <span className="ml-1.5 text-ink-muted">{label}</span>
     </button>
   )
 }

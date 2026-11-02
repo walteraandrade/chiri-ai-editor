@@ -377,7 +377,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         </div>
       </main>
       {theme.omarchy ? (
-        <div className="fixed bottom-4 left-4 z-30 hidden bg-canvas text-sm sm:block">
+        <div className="sticky bottom-4 z-30 ml-4 hidden w-fit bg-canvas text-sm sm:block">
           <ThemeToggle
             theme={theme.omarchy}
             active={theme.choice === 'omarchy'}

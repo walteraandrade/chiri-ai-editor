@@ -31,7 +31,7 @@ pnpm dev:electron        # or the same app in an Electron window
 - The key stays on the server side. The browser sends a placeholder, and the Vite proxy (`/api/openrouter/*`) overwrites `Authorization`. `.env` is not committed and the built bundle contains no key ([ADR 0005](docs/chiri/adr/0005-local-only-vite-proxy.md)). The app is local only; there is no hosted version.
 - Without a key the app opens and shows a banner that says what is missing.
 - To try it: the sample Document has an overlong paragraph, a slangy one and a typo. Select one and press `⌘K`.
-- On an [Omarchy](https://omarchy.org) machine, `pnpm dev` reads the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`), light or dark, and follows it live when you switch themes. A button in the bottom-left corner switches between it and the Chiri theme; the choice is remembered. Elsewhere, and in `pnpm build`, the app uses the Chiri theme. See [DESIGN.md](DESIGN.md).
+- On an [Omarchy](https://omarchy.org) machine, `pnpm dev` and `pnpm dev:electron` read the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`), light or dark, and follow it live when you switch themes. The **Omarchy** button at the bottom left of the editor switches between it and the Chiri theme; the choice is remembered. Elsewhere, and in built or installed apps, the app uses the Chiri theme. See [DESIGN.md](DESIGN.md).
 
 | Command | What it does |
 |---|---|

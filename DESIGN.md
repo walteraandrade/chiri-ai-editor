@@ -63,7 +63,7 @@ components:
 
 **Creative North Star: "The Shared Manuscript".** One page, two authors. The writer's ink is neutral; the AI writes in one color and wears one name tag, so every glance answers "who did this?". The surface is flat graphite with square corners; depth comes from tonal layers and a single soft shadow on floating surfaces.
 
-Colors are not hard-coded. Every token derives from eight theme seeds on `:root` (`--theme-bg`, `--theme-raised`, `--theme-ink`, `--theme-ink-strong`, `--theme-accent`, `--theme-ai`, `--theme-danger`, `--theme-selection`) through `color-mix()`. The default seeds are the Chiri theme below; in `pnpm dev` on an Omarchy machine the seeds come from the current Omarchy theme, light or dark (`config/omarchy-theme.ts`). A new theme is eight colors, not a new stylesheet.
+Colors are not hard-coded. Every token (`--color-*`, including the older `accent-soft`, `accent-tint` and `surface` used by the History and Library UI) derives from eight theme seeds on `:root` (`--theme-bg`, `--theme-raised`, `--theme-ink`, `--theme-ink-strong`, `--theme-accent`, `--theme-ai`, `--theme-danger`, `--theme-selection`) through `color-mix()`. The default seeds are the Chiri theme below; in `pnpm dev` on an Omarchy machine the seeds come from the current Omarchy theme, light or dark (`config/omarchy-theme.ts`, registered in `config/renderer.ts` for both the Web and the Electron dev servers). A new theme is eight colors, not a new stylesheet.
 
 ## 2. Colors
 
@@ -72,6 +72,7 @@ Colors are not hard-coded. Every token derives from eight theme seeds on `:root`
 
 ### Neutral
 - **Graphite Canvas** (#141417): page and editor background.
+- **Surface Graphite** (canvas + 4.5% ink): side panels and dialogs (Library, key dialog, frontmatter panel).
 - **Raised Graphite** (#28282d, derived as canvas + 9% ink): bubble, Cards, popovers, toasts.
 - **Paper White Ink** (#f1f1f3): strong ink for headings and controls; body ink is the same at 82%, muted 62%, faint 40%.
 - **Signal Red** (#f87171): errors only.

@@ -33,6 +33,11 @@
 
 @theme static {
   --color-canvas: var(--theme-bg);
+  --color-surface: color-mix(
+    in oklab,
+    var(--theme-bg),
+    var(--theme-ink-strong) 4.5%
+  );
   --color-raised: var(--theme-raised);
   --color-ink-strong: var(--theme-ink-strong);
   --color-ink: var(--theme-ink);
@@ -47,6 +52,16 @@
     transparent
   );
   --color-accent: var(--theme-accent);
+  --color-accent-soft: color-mix(
+    in oklab,
+    var(--theme-accent) 72%,
+    var(--theme-ink-strong)
+  );
+  --color-accent-tint: color-mix(
+    in oklab,
+    var(--theme-accent) 12%,
+    transparent
+  );
   --color-danger: var(--theme-danger);
   --color-shadow: var(--theme-shadow);
 
