@@ -4,6 +4,7 @@ import {
   describeKeyState,
   offersPlainText,
   removeNote,
+  savedKeyMessage,
   saveErrorMessage,
 } from './key-status'
 
@@ -147,5 +148,35 @@ describe('removeNote', () => {
     expect(
       removeNote(state({ present: true, storage: 'plain-text' })),
     ).toBeNull()
+  })
+})
+
+describe('savedKeyMessage', () => {
+  it('confirms a key that is now stored, so the dialog can close', () => {
+    expect(savedKeyMessage(state({ present: true, storage: 'keyring' }))).toBe(
+      'Key saved in the system keyring.',
+    )
+    expect(
+      savedKeyMessage(state({ present: true, storage: 'plain-text' })),
+    ).toBe('Key saved as plain text.')
+  })
+
+  it('confirms a session key when there is no plain text choice left', () => {
+    expect(savedKeyMessage(state({ present: true, storage: 'session' }))).toBe(
+      'Key kept for this session only.',
+    )
+  })
+
+  it('keeps the dialog open while it still offers plain text', () => {
+    expect(
+      savedKeyMessage(
+        state({ present: true, storage: 'session', keyringAvailable: false }),
+      ),
+    ).toBeNull()
+  })
+
+  it('keeps the dialog open when no key is set', () => {
+    expect(savedKeyMessage(state())).toBeNull()
+    expect(savedKeyMessage(state({ unreadable: true }))).toBeNull()
   })
 })

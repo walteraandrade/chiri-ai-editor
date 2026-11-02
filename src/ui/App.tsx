@@ -404,6 +404,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           settings={key.settings}
           state={key.state}
           onState={key.setState}
+          onSaved={showToast}
           onClose={key.closeDialog}
         />
       ) : null}

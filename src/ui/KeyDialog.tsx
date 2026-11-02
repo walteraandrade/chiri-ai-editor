@@ -5,6 +5,7 @@ import {
   describeKeyState,
   offersPlainText,
   removeNote,
+  savedKeyMessage,
   saveErrorMessage,
 } from './key-status'
 
@@ -12,6 +13,7 @@ type KeyDialogProps = {
   readonly settings: KeySettings
   readonly state: KeyState
   readonly onState: (state: KeyState) => void
+  readonly onSaved: (message: string) => void
   readonly onClose: () => void
 }
 
@@ -19,6 +21,7 @@ export function KeyDialog({
   settings,
   state,
   onState,
+  onSaved,
   onClose,
 }: KeyDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -31,24 +34,37 @@ export function KeyDialog({
     if (dialog && !dialog.open) dialog.showModal()
   }, [])
 
-  const run = async (action: () => Promise<KeyState>): Promise<boolean> => {
+  const run = async (
+    action: () => Promise<KeyState>,
+  ): Promise<KeyState | null> => {
     setBusy(true)
     setError(null)
     try {
-      onState(await action())
-      return true
+      const next = await action()
+      onState(next)
+      return next
     } catch (failure) {
       setError(saveErrorMessage(failure))
-      return false
+      return null
     } finally {
       setBusy(false)
     }
   }
 
+  const store = async (action: () => Promise<KeyState>): Promise<void> => {
+    const next = await run(action)
+    if (next === null) return
+    setValue('')
+    const message = savedKeyMessage(next)
+    if (message === null) return
+    onSaved(message)
+    dialogRef.current?.close()
+  }
+
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault()
     if (value.trim() === '') return
-    if (await run(() => settings.save(value))) setValue('')
+    await store(() => settings.save(value))
   }
 
   return (
@@ -95,7 +111,7 @@ export function KeyDialog({
                 type="button"
                 className="cm-ai-button"
                 disabled={busy}
-                onClick={() => run(settings.keepAsPlainText)}
+                onClick={() => store(settings.keepAsPlainText)}
               >
                 Store as plain text
               </button>

@@ -20,6 +20,18 @@ export const describeKeyState = (state: KeyState): string => {
 export const offersPlainText = (state: KeyState): boolean =>
   state.present && state.storage === 'session' && !state.keyringAvailable
 
+const SAVED_MESSAGES: Record<KeyState['storage'], string | null> = {
+  keyring: 'Key saved in the system keyring.',
+  'plain-text': 'Key saved as plain text.',
+  session: 'Key kept for this session only.',
+  none: null,
+}
+
+export const savedKeyMessage = (state: KeyState): string | null =>
+  state.present && !offersPlainText(state)
+    ? SAVED_MESSAGES[state.storage]
+    : null
+
 export const saveErrorMessage = (error: unknown): string =>
   error instanceof Error && error.message.endsWith('Invalid key')
     ? 'That does not look like a key. Paste it again.'
