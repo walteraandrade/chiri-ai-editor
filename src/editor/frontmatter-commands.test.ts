@@ -87,6 +87,15 @@ describe('applySkillFields', () => {
     expect(editor.text()).toBe(SKILL)
   })
 
+  it('joins a burst of typing in one field into one undo step, like the editor', () => {
+    const editor = editorOver(SKILL)
+    applySkillFields(editor.handle, { name: 'd' })
+    applySkillFields(editor.handle, { name: 'de' })
+    applySkillFields(editor.handle, { name: 'dem' })
+    editor.undo()
+    expect(editor.text()).toBe(SKILL)
+  })
+
   it('reaches the History as an ordinary edit', () => {
     const editor = editorOver(SKILL)
     applySkillFields(editor.handle, { name: 'renamed' })

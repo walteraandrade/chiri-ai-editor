@@ -330,6 +330,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             disabled={documentControls === null}
             panelRef={frontmatterPanel}
             onEdit={editFrontmatter}
+            onHistory={(command) => documentControls?.[command]()}
           />
           <EditorPane
             initialDoc={initialDoc}

@@ -9,6 +9,6 @@ export const applySkillFields = (
 ): FieldEditPlan => {
   const plan = planFieldEdit(textOf(handle.state), values)
   if (plan.kind === 'change')
-    handle.dispatch({ changes: plan.change, userEvent: 'input.frontmatter' })
+    handle.dispatch({ changes: plan.change, userEvent: 'input.type' })
   return plan
 }

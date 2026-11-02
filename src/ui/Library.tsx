@@ -186,8 +186,8 @@ export function Library<Ref>({
       aria-label="Library"
       className="sticky top-0 flex h-screen w-72 shrink-0 flex-col bg-surface"
     >
-      <div className="flex items-center justify-between gap-2 px-3 pt-6 pb-3">
-        <h2 className="font-display font-semibold text-ink-strong text-lg tracking-wide">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 pt-6 pb-3">
+        <h2 className="whitespace-nowrap font-display font-semibold text-ink-strong text-lg tracking-wide">
           Library
           {state.status === 'ready' ? (
             <span className="font-sans font-normal text-ink-faint text-xs">

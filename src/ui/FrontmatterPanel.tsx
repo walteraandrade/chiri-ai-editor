@@ -1,16 +1,19 @@
-import { type RefObject, useId } from 'react'
+import { type KeyboardEvent, type RefObject, useId } from 'react'
 import {
   type FrontmatterReport,
   type PanelProblem,
   problemsOfField,
 } from '../skills/frontmatter-panel'
 import type { SkillField } from '../skills/skill-frontmatter'
+import { type HistoryCommand, historyCommandOf } from './history-keys'
+import { detectApplePlatform } from './platform'
 
 type FrontmatterPanelProps = {
   readonly report: FrontmatterReport
   readonly disabled: boolean
   readonly panelRef: RefObject<HTMLElement | null>
   readonly onEdit: (field: SkillField, value: string) => void
+  readonly onHistory: (command: HistoryCommand) => void
 }
 
 type ProblemListProps = {
@@ -26,6 +29,7 @@ type SkillFieldInputProps = {
   readonly disabled: boolean
   readonly multiline: boolean
   readonly onEdit: (field: SkillField, value: string) => void
+  readonly onHistory: (command: HistoryCommand) => void
 }
 
 const INPUT_CLASS =
@@ -49,6 +53,7 @@ function SkillFieldInput({
   disabled,
   multiline,
   onEdit,
+  onHistory,
 }: SkillFieldInputProps) {
   const inputId = useId()
   const problemsId = `${inputId}-problems`
@@ -59,7 +64,12 @@ function SkillFieldInput({
     spellCheck: false,
     'aria-invalid': problems.length > 0 || undefined,
     'aria-describedby': problems.length > 0 ? problemsId : undefined,
-    className: INPUT_CLASS,
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      const command = historyCommandOf(event, detectApplePlatform())
+      if (command === null) return
+      event.preventDefault()
+      onHistory(command)
+    },
   }
   return (
     <div>
@@ -80,6 +90,7 @@ function SkillFieldInput({
         <input
           {...shared}
           type="text"
+          className={INPUT_CLASS}
           onChange={(event) => onEdit(field, event.target.value)}
         />
       )}
@@ -93,6 +104,7 @@ export function FrontmatterPanel({
   disabled,
   panelRef,
   onEdit,
+  onHistory,
 }: FrontmatterPanelProps) {
   if (report.kind === 'none') return null
   if (report.kind === 'unreadable')
@@ -127,7 +139,7 @@ export function FrontmatterPanel({
         <h2 className="font-medium text-ink-strong text-xs">Frontmatter</h2>
         <p className="text-ink-faint text-xs">
           {report.present
-            ? 'Edits change only these two lines of the YAML'
+            ? 'Edits change only name and description in the YAML'
             : 'Typing adds the frontmatter to the top of the file'}
         </p>
       </div>
@@ -140,6 +152,7 @@ export function FrontmatterPanel({
           disabled={disabled}
           multiline={false}
           onEdit={onEdit}
+          onHistory={onHistory}
         />
         <SkillFieldInput
           field="description"
@@ -149,6 +162,7 @@ export function FrontmatterPanel({
           disabled={disabled}
           multiline
           onEdit={onEdit}
+          onHistory={onHistory}
         />
       </div>
     </section>

@@ -1,3 +1,4 @@
+import { redo, undo } from '@codemirror/commands'
 import type { EditorView } from '@codemirror/view'
 import type { FieldEditPlan } from '../skills/frontmatter-edit'
 import type { SkillFieldValues } from '../skills/frontmatter-fields'
@@ -12,6 +13,8 @@ export type DocumentControls = {
   readonly restore: (text: string) => void
   readonly focus: () => void
   readonly setSkillFields: (values: SkillFieldValues) => FieldEditPlan
+  readonly undo: () => void
+  readonly redo: () => void
 }
 
 export const bindDocumentControls = (view: EditorView): DocumentControls => ({
@@ -24,4 +27,10 @@ export const bindDocumentControls = (view: EditorView): DocumentControls => ({
   restore: (text) => replaceDocument(view, text, 'input.restore'),
   focus: () => view.focus(),
   setSkillFields: (values) => applySkillFields(view, values),
+  undo: () => {
+    undo(view)
+  },
+  redo: () => {
+    redo(view)
+  },
 })
