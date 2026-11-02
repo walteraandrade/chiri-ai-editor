@@ -97,6 +97,16 @@ const descriptionProblems = (description: string): readonly SkillProblem[] => {
   ])
 }
 
+export const checkSkillName = (
+  name: string,
+  folderName?: string,
+): readonly SkillProblem[] => {
+  const checked = readText('name', name)
+  return typeof checked === 'string'
+    ? nameProblems(checked, folderName)
+    : [checked]
+}
+
 export const checkSkillFrontmatter = (
   fields: Readonly<Record<string, unknown>>,
   folderName?: string,

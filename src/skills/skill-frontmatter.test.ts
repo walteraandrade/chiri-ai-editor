@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AGENT_SKILLS_SPEC_URL,
   checkSkillFrontmatter,
+  checkSkillName,
   DESCRIPTION_MAX_LENGTH,
   NAME_MAX_LENGTH,
   type SkillRule,
@@ -285,5 +286,47 @@ describe('name and folder', () => {
 
   it('treats an empty folder name as a name to match', () => {
     expect(folderRules('pdf', '')).toEqual(['name-folder-mismatch'])
+  })
+})
+
+describe('checkSkillName', () => {
+  const rules = (name: string, folderName?: string): readonly SkillRule[] =>
+    checkSkillName(name, folderName).map(({ rule }) => rule)
+
+  it('has no problems for a valid name, with or without a folder', () => {
+    expect(rules('pdf-processing')).toEqual([])
+    expect(rules('pdf-processing', 'pdf-processing')).toEqual([])
+  })
+
+  it('reports an empty name and a blank one', () => {
+    expect(rules('')).toEqual(['name-empty'])
+    expect(rules('   ')).toEqual(['name-empty'])
+  })
+
+  it('applies the same name rules as the frontmatter check', () => {
+    expect(rules('PDF--Tool-')).toEqual([
+      'name-not-lowercase',
+      'name-edge-hyphen',
+      'name-double-hyphen',
+    ])
+    expect(rules('a/b')).toEqual(['name-invalid-characters'])
+    expect(rules('a'.repeat(65))).toEqual(['name-too-long'])
+  })
+
+  it('judges the trimmed name, like the frontmatter check', () => {
+    expect(rules('  pdf-processing  ')).toEqual([])
+  })
+
+  it('reports a folder that differs from the name', () => {
+    expect(rules('pdf-processing', 'pdf')).toEqual(['name-folder-mismatch'])
+  })
+
+  it('agrees with checkSkillFrontmatter on the name field', () => {
+    const description = 'Does a thing.'
+    for (const name of ['pdf', 'Pdf', '-pdf', 'p--df', 'pdf!', '']) {
+      expect(checkSkillName(name, 'pdf')).toEqual(
+        checkSkillFrontmatter({ name, description }, 'pdf'),
+      )
+    }
   })
 })

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LibraryListing, LibraryRoot } from './library'
 import {
   isSkillOpen,
+  openSkillFile,
   sameLibrary,
   skillCount,
   skillFileLabel,
@@ -197,5 +198,42 @@ describe('sameLibrary', () => {
         snapshot([skill('pdf')], 'Could not read library-roots.json'),
       ),
     ).toBe(false)
+  })
+})
+
+describe('openSkillFile', () => {
+  const linked = skill('pdf-link', {
+    realPath: '/real/pdf-processing',
+    files: [
+      {
+        path: '/real/pdf-processing/README.md',
+        name: 'SKILL.md',
+        isMarkdown: true,
+      },
+      {
+        path: '/real/pdf-processing/forms.md',
+        name: 'references/forms.md',
+        isMarkdown: true,
+      },
+    ],
+  })
+  const listing: LibraryListing = [root([skill('git'), linked])]
+  const opening = (path: string) => (candidate: string) => candidate === path
+
+  it('gives the folder name the root lists and the name inside the skill', () => {
+    expect(
+      openSkillFile(listing, opening('/real/pdf-processing/README.md')),
+    ).toEqual({ folderName: 'pdf-link', fileName: 'SKILL.md' })
+  })
+
+  it('also finds a nested file, with its path inside the skill', () => {
+    expect(
+      openSkillFile(listing, opening('/real/pdf-processing/forms.md')),
+    ).toEqual({ folderName: 'pdf-link', fileName: 'references/forms.md' })
+  })
+
+  it('is undefined for a file outside the Library', () => {
+    expect(openSkillFile(listing, opening('/tmp/x.md'))).toBeUndefined()
+    expect(openSkillFile([], opening('/tmp/x.md'))).toBeUndefined()
   })
 })
