@@ -4,7 +4,11 @@ import { EXTERNAL_CHANGES_CHANNEL, WATCH_FILE_CHANNEL } from '../../api'
 import { listLibrary } from '../library/handlers'
 import type { LibraryHandle } from '../library/register'
 import { createExternalChanges } from './external-changes'
-import { directoryIdentity, nodeDirectoryWatch } from './node-watch'
+import {
+  danglingLinkTargets,
+  directoryIdentity,
+  nodeDirectoryWatch,
+} from './node-watch'
 import { parseWatchRequest } from './requests'
 
 type Trust = (event: IpcMainInvokeEvent) => boolean
@@ -18,6 +22,7 @@ export const registerExternalChanges = (
     realPath: (path) => realpath(path),
     identityOf: directoryIdentity,
     watch: nodeDirectoryWatch,
+    danglingTargets: danglingLinkTargets,
     emit: (changes) => {
       for (const window of BrowserWindow.getAllWindows())
         if (!window.isDestroyed() && !window.webContents.isDestroyed())

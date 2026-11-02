@@ -16,7 +16,7 @@ const DELAY_MS = 100
 const skillText = (name: string): string =>
   `---\nname: ${name}\ndescription: About ${name}.\n---\n`
 
-const setup = (initial: FakeTree) => {
+const setup = (initial: FakeTree, dangling: Record<string, string[]> = {}) => {
   let tree = initial
   const identities = new Map<string, string>()
   const opened = new Map<string, WatchListener>()
@@ -45,6 +45,7 @@ const setup = (initial: FakeTree) => {
     realPath: async (path) => createFakeFileSystem(tree).realPath(path),
     identityOf: async (dir) => identities.get(dir) ?? null,
     watch,
+    danglingTargets: async (root) => dangling[root] ?? [],
     emit: (changes) => emitted.push(changes),
     onProblem: (message) => problems.push(message),
     delayMs: DELAY_MS,
@@ -146,6 +147,53 @@ describe('createExternalChanges', () => {
     exist(CLAUDE, '/work/repo/skills', '/work/repo/skills/shared')
     await controller.start()
     expect(opened.has('/work/repo/skills/shared')).toBe(true)
+  })
+
+  it('keeps watching where a link whose target is gone would come back', async () => {
+    const { controller, opened, exist } = setup(
+      { [`${CLAUDE}/pdf/SKILL.md`]: skillText('pdf') },
+      { [CLAUDE]: ['/work/repo/skills/removed'] },
+    )
+    exist(CLAUDE, `${CLAUDE}/pdf`, '/work/repo/skills')
+    await controller.start()
+    expect(opened.has('/work/repo/skills')).toBe(true)
+  })
+
+  it('falls back to the nearest folder that exists when the whole path of the target is gone', async () => {
+    const { controller, opened, exist } = setup(
+      { [`${CLAUDE}/pdf/SKILL.md`]: skillText('pdf') },
+      { [CLAUDE]: ['/work/gone/deeper/removed'] },
+    )
+    exist(CLAUDE, `${CLAUDE}/pdf`, '/work')
+    await controller.start()
+    expect(opened.has('/work')).toBe(true)
+  })
+
+  it('sees a skill come back behind a link whose target was removed', async () => {
+    const { controller, emitted, exist, send, edit, opened, lists } = setup(
+      { [`${CLAUDE}/pdf/SKILL.md`]: skillText('pdf') },
+      { [CLAUDE]: ['/work/repo/skills/shared'] },
+    )
+    exist(CLAUDE, `${CLAUDE}/pdf`, '/work/repo/skills')
+    await controller.start()
+    edit({
+      [`${CLAUDE}/pdf/SKILL.md`]: skillText('pdf'),
+      [`${CLAUDE}/shared`]: link('/work/repo/skills/shared'),
+      '/work/repo/skills/shared/SKILL.md': skillText('shared'),
+    })
+    exist('/work/repo/skills/shared')
+    send('/work/repo/skills', 'rename', 'shared')
+    await vi.advanceTimersByTimeAsync(DELAY_MS)
+    expect(emitted).toHaveLength(1)
+    expect(lists()).toBe(2)
+    expect(opened.has('/work/repo/skills/shared')).toBe(true)
+  })
+
+  it('watches where a root that does not exist yet would appear', async () => {
+    const { controller, opened, exist } = setup({})
+    exist('/home/u/.claude')
+    await controller.start()
+    expect(opened.has('/home/u/.claude')).toBe(true)
   })
 
   it('watches the folder of the open file, even outside every root', async () => {

@@ -4,14 +4,19 @@ import {
   realpath,
   rename,
   rm,
+  symlink,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { WatchEvent } from './classify-changes'
 import { createFolderWatcher } from './folder-watcher'
-import { directoryIdentity, nodeDirectoryWatch } from './node-watch'
+import {
+  danglingLinkTargets,
+  directoryIdentity,
+  nodeDirectoryWatch,
+} from './node-watch'
 
 let dir = ''
 let watching: ReturnType<typeof createFolderWatcher> | null = null
@@ -92,5 +97,24 @@ describe('directoryIdentity', () => {
     await writeFile(join(dir, 'a.md'), 'x')
     expect(await directoryIdentity(join(dir, 'missing'))).toBeNull()
     expect(await directoryIdentity(join(dir, 'a.md'))).toBeNull()
+  })
+})
+
+describe('danglingLinkTargets', () => {
+  it('lists where each broken link in a folder points, resolved against the folder', async () => {
+    await mkdir(join(dir, 'real'))
+    await symlink(join(dir, 'real'), join(dir, 'fine'))
+    await symlink(join(dir, 'elsewhere', 'gone'), join(dir, 'absolute'))
+    await symlink('../sibling/gone', join(dir, 'relative'))
+    expect((await danglingLinkTargets(dir)).toSorted()).toEqual(
+      [join(dir, 'elsewhere', 'gone'), join(dir, '..', 'sibling', 'gone')]
+        .map((path) => resolve(path))
+        .toSorted(),
+    )
+  })
+
+  it('has nothing to list for a folder without links', async () => {
+    await mkdir(join(dir, 'real'))
+    expect(await danglingLinkTargets(dir)).toEqual([])
   })
 })

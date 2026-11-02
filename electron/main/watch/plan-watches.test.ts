@@ -100,6 +100,17 @@ describe('watchDirectories', () => {
     ).toEqual([CLAUDE, `${CLAUDE}/pdf`, '/notes/drafts'])
   })
 
+  it('adds the anchors it is given, once', () => {
+    expect(
+      watchDirectories({
+        roots: [CLAUDE],
+        skills: [],
+        openFile: null,
+        anchors: ['/work/repo/skills', CLAUDE],
+      }),
+    ).toEqual([CLAUDE, '/work/repo/skills'].toSorted())
+  })
+
   it('skips a root that cannot be read', async () => {
     expect(await plan({ '/other/x.md': 'x' }, ['/missing/skills'])).toEqual([])
   })

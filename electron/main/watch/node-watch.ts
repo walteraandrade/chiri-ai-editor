@@ -1,5 +1,6 @@
 import { watch } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { readdir, readlink, realpath, stat } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import type { DirectoryWatch } from './folder-watcher'
 
 export const nodeDirectoryWatch: DirectoryWatch = (dir, listener) => {
@@ -19,4 +20,28 @@ export const directoryIdentity = async (
   } catch {
     return null
   }
+}
+
+export const danglingLinkTargets = async (
+  root: string,
+): Promise<readonly string[]> => {
+  const entries = await readdir(root, { withFileTypes: true })
+  const targets = await Promise.all(
+    entries
+      .filter((entry) => entry.isSymbolicLink())
+      .map(async (entry): Promise<readonly string[]> => {
+        const link = join(root, entry.name)
+        try {
+          await realpath(link)
+          return []
+        } catch {
+          try {
+            return [resolve(root, await readlink(link))]
+          } catch {
+            return []
+          }
+        }
+      }),
+  )
+  return targets.flat()
 }

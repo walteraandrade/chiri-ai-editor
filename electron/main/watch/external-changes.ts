@@ -1,3 +1,4 @@
+import { dirname } from 'node:path'
 import { createCoalescer } from '../../../src/document/coalescer'
 import type { LibrarySnapshot } from '../../../src/skills/library'
 import type { ExternalChanges } from '../../api'
@@ -14,6 +15,7 @@ type ExternalChangesDeps = {
   readonly realPath: (path: string) => Promise<string>
   readonly identityOf: (dir: string) => Promise<string | null>
   readonly watch: DirectoryWatch
+  readonly danglingTargets: (root: string) => Promise<readonly string[]>
   readonly emit: (changes: ExternalChanges) => void
   readonly onProblem: (message: string, error: unknown) => void
   readonly delayMs?: number
@@ -40,6 +42,7 @@ export const createExternalChanges = ({
   realPath,
   identityOf,
   watch,
+  danglingTargets,
   emit,
   onProblem,
   delayMs = DEFAULT_DELAY_MS,
@@ -54,6 +57,13 @@ export const createExternalChanges = ({
     onFailure: (dir, error) => onProblem(`Could not watch ${dir}`, error),
   })
 
+  const nearestExisting = async (dir: string): Promise<string> => {
+    const parent = dirname(dir)
+    return (await identityOf(dir)) !== null || parent === dir
+      ? dir
+      : nearestExisting(parent)
+  }
+
   const plan = async (): Promise<ReadonlyMap<string, string>> => {
     const { roots } = await list()
     const readable = roots.filter((root) => root.readable)
@@ -62,10 +72,24 @@ export const createExternalChanges = ({
         async ({ root }) => (await attempt(() => realPath(root))) ?? root,
       ),
     )
+    const dangling = await Promise.all(
+      real.map(
+        async (root) => (await attempt(() => danglingTargets(root))) ?? [],
+      ),
+    )
+    const missing = roots
+      .filter(({ readable: ok }) => !ok)
+      .map(({ root }) => root)
+    const anchors = await Promise.all(
+      [...missing, ...dangling.flat()].map((path) =>
+        nearestExisting(dirname(path)),
+      ),
+    )
     const dirs = watchDirectories({
       roots: real,
       skills: readable.flatMap(({ skills }) => skills),
       openFile,
+      anchors,
     })
     const identities = await Promise.all(
       dirs.map(async (dir) => [dir, await identityOf(dir)] as const),

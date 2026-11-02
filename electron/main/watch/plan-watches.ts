@@ -5,6 +5,7 @@ type WatchPlanInput = {
   readonly roots: readonly string[]
   readonly skills: readonly Skill[]
   readonly openFile: string | null
+  readonly anchors?: readonly string[]
 }
 
 export type WatchDiff = {
@@ -22,10 +23,12 @@ export const watchDirectories = ({
   roots,
   skills,
   openFile,
+  anchors = [],
 }: WatchPlanInput): readonly string[] =>
   [
     ...new Set([
       ...roots,
+      ...anchors,
       ...skills.flatMap(foldersOf),
       ...(openFile === null ? [] : [dirname(openFile)]),
     ]),
