@@ -1,34 +1,73 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FILE_NOT_FOUND_REASON } from '../../electron/api'
+import type { HistoryApi } from '../../electron/history-api'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
-import { DOCUMENT_STORAGE_KEY } from '../document/storage'
-import { createElectronKit } from './electron-kit'
-import {
-  LAST_FILE_KEY,
-  type RemovableStorage,
-  UNSAVED_KEY_PREFIX,
-} from './electron-storage'
+import type { Unsaved } from '../document/unsaved'
+import { createLocalHistoryStore } from '../history/local-store'
+import type { HistoryStore } from '../history/store'
+import { createElectronKit, SCRATCH_KEY } from './electron-kit'
+import { LAST_FILE_KEY } from './electron-storage'
 import type { DocumentFiles, OpenResult } from './kit'
 
 const PATH = '/skills/a/SKILL.md'
+const OTHER = '/skills/b/SKILL.md'
 
 const createFakeStorage = (initial: Record<string, string> = {}) => {
   const data = new Map(Object.entries(initial))
-  const storage: RemovableStorage = {
-    getItem: (key) => data.get(key) ?? null,
-    setItem: (key, value) => {
-      data.set(key, value)
+  return {
+    storage: {
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        data.set(key, value)
+      },
+      removeItem: (key: string) => {
+        data.delete(key)
+      },
     },
-    removeItem: (key) => {
-      data.delete(key)
-    },
+    entries: () => Object.fromEntries(data),
   }
-  return { storage, entries: () => Object.fromEntries(data) }
 }
 
-const unsavedEntry = (path: string, text: string, base: string) => ({
-  [`${UNSAVED_KEY_PREFIX}${path}`]: JSON.stringify({ text, base }),
-})
+const createFakeApi = (unsaved: Record<string, Unsaved> = {}) => {
+  const kept = new Map(Object.entries(unsaved))
+  const stores = new Map<string, HistoryStore>()
+  const storeOf = (key: string): HistoryStore => {
+    const known = stores.get(key)
+    if (known) return known
+    const created = createLocalHistoryStore(null)
+    stores.set(key, created)
+    return created
+  }
+  const api = {
+    historyList: vi.fn((key: string) => storeOf(key).list(key)),
+    historyText: vi.fn((key: string, id: number) => storeOf(key).text(key, id)),
+    historyRecord: vi.fn(
+      (key: string, input: Parameters<HistoryStore['record']>[1]) =>
+        storeOf(key).record(key, input),
+    ),
+    historyMarkSaved: vi.fn(
+      (key: string, input: Parameters<HistoryStore['markSaved']>[1]) =>
+        storeOf(key).markSaved(key, input),
+    ),
+    unsavedLoad: vi.fn(async (key: string) => kept.get(key) ?? null),
+    unsavedSave: vi.fn(async (key: string, value: Unsaved) => {
+      kept.set(key, value)
+    }),
+    unsavedClear: vi.fn(async (key: string) => {
+      kept.delete(key)
+    }),
+  } satisfies Pick<
+    HistoryApi,
+    | 'historyList'
+    | 'historyText'
+    | 'historyRecord'
+    | 'historyMarkSaved'
+    | 'unsavedLoad'
+    | 'unsavedSave'
+    | 'unsavedClear'
+  >
+  return { api, kept }
+}
 
 const diskFile = (text: string, path = PATH): OpenResult<string> => ({
   kind: 'opened',
@@ -38,11 +77,18 @@ const diskFile = (text: string, path = PATH): OpenResult<string> => ({
 const setup = (
   options: {
     readonly stored?: Record<string, string>
+    readonly unsaved?: Record<string, Unsaved>
+    readonly history?: Record<string, string>
+    readonly failUnsavedLoad?: Error
     readonly read?: DocumentFiles<string>['read']
   } = {},
 ) => {
   const { storage, entries } = createFakeStorage(options.stored)
-  const flushStorage = vi.fn(async () => undefined)
+  const { api, kept } = createFakeApi(options.unsaved)
+  for (const [key, text] of Object.entries(options.history ?? {}))
+    void api.historyRecord(key, { at: 1, cause: { kind: 'edited' }, text })
+  if (options.failUnsavedLoad)
+    api.unsavedLoad.mockRejectedValueOnce(options.failUnsavedLoad)
   const hide: { flush: () => void } = { flush: () => undefined }
   const files: DocumentFiles<string> = {
     open: async () => ({ kind: 'cancelled' }),
@@ -50,16 +96,16 @@ const setup = (
     save: async () => ({ kind: 'cancelled' }),
   }
   const kit = createElectronKit({
+    api,
     storage,
     files,
-    flushStorage,
     now: () => 1000,
     hasApiKey: true,
     onHide: (flush) => {
       hide.flush = flush
     },
   })
-  return { kit, entries, flushStorage, hide, files }
+  return { kit, api, kept, entries, hide, files }
 }
 
 const session = (savedText: string, ref: string | null = PATH) => ({
@@ -79,8 +125,7 @@ describe('createElectronKit start', () => {
   })
 
   it('starts from the sample Document with no last file', async () => {
-    const { kit } = setup()
-    const ready = await kit
+    const ready = await setup().kit
     expect(ready.unsavedText.initial).toBe(SAMPLE_DOCUMENT)
     expect(ready.start).toBeNull()
     expect(ready.notice).toBeNull()
@@ -102,10 +147,8 @@ describe('createElectronKit start', () => {
 
   it('brings back the unsaved text of the last file', async () => {
     const ready = await setup({
-      stored: {
-        [LAST_FILE_KEY]: PATH,
-        ...unsavedEntry(PATH, '# A, unsaved\n', '# A\n'),
-      },
+      stored: { [LAST_FILE_KEY]: PATH },
+      unsaved: { [PATH]: { text: '# A, unsaved\n', base: '# A\n' } },
       read: async () => diskFile('# A\n'),
     }).kit
     expect(ready.unsavedText.initial).toBe('# A, unsaved\n')
@@ -118,10 +161,8 @@ describe('createElectronKit start', () => {
 
   it('marks the file as changed on disk when the unsaved text began from older text', async () => {
     const ready = await setup({
-      stored: {
-        [LAST_FILE_KEY]: PATH,
-        ...unsavedEntry(PATH, '# A, mine\n', '# A\n'),
-      },
+      stored: { [LAST_FILE_KEY]: PATH },
+      unsaved: { [PATH]: { text: '# A, mine\n', base: '# A\n' } },
       read: async () => diskFile('# A, by an agent\n'),
     }).kit
     expect(ready.unsavedText.initial).toBe('# A, mine\n')
@@ -131,9 +172,18 @@ describe('createElectronKit start', () => {
     })
   })
 
-  it('falls back to the stored Document and says so when the last file is gone', async () => {
+  it('starts from the unsaved Document when there is no last file', async () => {
     const ready = await setup({
-      stored: { [LAST_FILE_KEY]: PATH, [DOCUMENT_STORAGE_KEY]: '# Stored' },
+      unsaved: { [SCRATCH_KEY]: { text: '# Typed, no file\n', base: '' } },
+    }).kit
+    expect(ready.unsavedText.initial).toBe('# Typed, no file\n')
+    expect(ready.start).toBeNull()
+  })
+
+  it('falls back to the unsaved Document and says so when the last file is gone', async () => {
+    const ready = await setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      unsaved: { [SCRATCH_KEY]: { text: '# Stored', base: '' } },
       read: async () => ({ kind: 'failed', reason: 'File not found' }),
     }).kit
     expect(ready.unsavedText.initial).toBe('# Stored')
@@ -152,13 +202,47 @@ describe('createElectronKit start', () => {
     expect(ready.notice).toBe('Could not reopen SKILL.md')
   })
 
-  it('starts the History from the text it reopened', async () => {
-    const { kit } = setup({
+  it('does not start when the main process cannot give the unsaved Document', async () => {
+    const { kit } = setup({ failUnsavedLoad: new Error('database is locked') })
+    await expect(kit).rejects.toThrow('database is locked')
+  })
+
+  it('starts the History of the last file from the text it reopened', async () => {
+    const { kit, api } = setup({
       stored: { [LAST_FILE_KEY]: PATH },
       read: async () => diskFile('# A\n'),
     })
     const ready = await kit
-    expect(ready.history.snapshot().at(-1)?.text).toBe('# A\n')
+    expect(api.historyRecord).toHaveBeenCalledWith(
+      PATH,
+      expect.objectContaining({ text: '# A\n' }),
+    )
+    const [version] = ready.history.snapshot()
+    expect(version?.cause.kind).toBe('started')
+    expect(version && (await ready.history.text(version.id))).toBe('# A\n')
+  })
+
+  it('starts the History of a Document with no file under its own key', async () => {
+    const { kit, api } = setup()
+    await kit
+    expect(api.historyRecord).toHaveBeenCalledWith(
+      SCRATCH_KEY,
+      expect.objectContaining({ text: SAMPLE_DOCUMENT }),
+    )
+  })
+
+  it('records the unsaved text it restored as an Edited Version', async () => {
+    const ready = await setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      unsaved: { [PATH]: { text: '# A, unsaved\n', base: '# A\n' } },
+      history: { [PATH]: '# A\n' },
+      read: async () => diskFile('# A\n'),
+    }).kit
+    await ready.history.settled()
+    expect(ready.history.snapshot().map(({ cause }) => cause.kind)).toEqual([
+      'started',
+      'edited',
+    ])
   })
 })
 
@@ -169,15 +253,17 @@ describe('createElectronKit when the last file is gone', () => {
   })
 
   it('says so once: the last file is forgotten', async () => {
+    const unsaved = { [SCRATCH_KEY]: { text: '# Stored', base: '' } }
     const first = setup({
-      stored: { [LAST_FILE_KEY]: PATH, [DOCUMENT_STORAGE_KEY]: '# Stored' },
+      stored: { [LAST_FILE_KEY]: PATH },
+      unsaved,
       read: gone,
     })
     expect((await first.kit).notice).toBe(
       'Could not reopen SKILL.md: File not found',
     )
     expect(first.entries()[LAST_FILE_KEY]).toBeUndefined()
-    const second = setup({ stored: first.entries(), read: gone })
+    const second = setup({ stored: first.entries(), unsaved, read: gone })
     const ready = await second.kit
     expect(ready.notice).toBeNull()
     expect(ready.start).toBeNull()
@@ -185,30 +271,30 @@ describe('createElectronKit when the last file is gone', () => {
   })
 
   it('drops the per-file unsaved text once the Document holds it', async () => {
-    const { kit, entries } = setup({
-      stored: {
-        [LAST_FILE_KEY]: PATH,
-        [DOCUMENT_STORAGE_KEY]: '# Stored, unsaved',
-        ...unsavedEntry(PATH, '# Stored, unsaved', '# Stored'),
+    const { kit, kept } = setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      unsaved: {
+        [SCRATCH_KEY]: { text: '# Stored, unsaved', base: '' },
+        [PATH]: { text: '# Stored, unsaved', base: '# Stored' },
       },
       read: gone,
     })
     const ready = await kit
     expect(ready.unsavedText.initial).toBe('# Stored, unsaved')
-    expect(entries()[`${UNSAVED_KEY_PREFIX}${PATH}`]).toBeUndefined()
+    expect(kept.has(PATH)).toBe(false)
   })
 
   it('keeps the per-file unsaved text when the Document is not that text', async () => {
-    const { kit, entries } = setup({
-      stored: {
-        [LAST_FILE_KEY]: PATH,
-        [DOCUMENT_STORAGE_KEY]: '# Something else',
-        ...unsavedEntry(PATH, '# Stored, unsaved', '# Stored'),
+    const { kit, kept } = setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      unsaved: {
+        [SCRATCH_KEY]: { text: '# Something else', base: '' },
+        [PATH]: { text: '# Stored, unsaved', base: '# Stored' },
       },
       read: gone,
     })
     await kit
-    expect(entries()[`${UNSAVED_KEY_PREFIX}${PATH}`]).toBeDefined()
+    expect(kept.has(PATH)).toBe(true)
   })
 
   it('remembers the next file that gets opened', async () => {
@@ -273,27 +359,20 @@ describe('createElectronKit changes', () => {
   })
 
   it('keeps unsaved text under the real path after the delay, with the text it started from', async () => {
-    const { kit, entries } = setup()
+    const { kit, api } = setup()
     const ready = await kit
     ready.unsavedText.changed('# A, edited\n', session('# A\n'))
-    expect(entries()[`${UNSAVED_KEY_PREFIX}${PATH}`]).toBeUndefined()
+    expect(api.unsavedSave).not.toHaveBeenCalled()
     vi.advanceTimersByTime(400)
-    expect(
-      JSON.parse(entries()[`${UNSAVED_KEY_PREFIX}${PATH}`] ?? 'null'),
-    ).toEqual({ text: '# A, edited\n', base: '# A\n' })
-  })
-
-  it('asks the main process to write the storage to disk after keeping text', async () => {
-    const { kit, flushStorage } = setup()
-    const ready = await kit
-    ready.unsavedText.changed('# A, edited\n', session('# A\n'))
-    vi.advanceTimersByTime(400)
-    expect(flushStorage).toHaveBeenCalled()
+    expect(api.unsavedSave).toHaveBeenCalledWith(PATH, {
+      text: '# A, edited\n',
+      base: '# A\n',
+    })
   })
 
   it('forgets the unsaved text once the file holds it', async () => {
-    const { kit, entries } = setup({
-      stored: unsavedEntry(PATH, '# A, edited\n', '# A\n'),
+    const { kit, api, kept } = setup({
+      unsaved: { [PATH]: { text: '# A, edited\n', base: '# A\n' } },
     })
     const ready = await kit
     ready.unsavedText.changed('# A, edited\n', {
@@ -301,27 +380,29 @@ describe('createElectronKit changes', () => {
       dirty: false,
     })
     vi.advanceTimersByTime(400)
-    expect(entries()[`${UNSAVED_KEY_PREFIX}${PATH}`]).toBeUndefined()
+    expect(api.unsavedClear).toHaveBeenCalledWith(PATH)
+    expect(kept.has(PATH)).toBe(false)
   })
 
-  it('still autosaves the Document, as the Web build does', async () => {
-    const { kit, entries } = setup()
+  it('also keeps the Document under its own key, as the Web build autosaves it', async () => {
+    const { kit, api } = setup()
     const ready = await kit
     ready.unsavedText.changed('# A, edited\n', session('# A\n'))
     vi.advanceTimersByTime(400)
-    expect(entries()[DOCUMENT_STORAGE_KEY]).toBe('# A, edited\n')
+    expect(api.unsavedSave).toHaveBeenCalledWith(SCRATCH_KEY, {
+      text: '# A, edited\n',
+      base: '',
+    })
   })
 
-  it('keeps no per-file text without a file', async () => {
-    const { kit, entries } = setup()
+  it('keeps only the Document without a file', async () => {
+    const { kit, api } = setup()
     const ready = await kit
     ready.unsavedText.changed('Untitled', null)
     vi.advanceTimersByTime(400)
-    expect(
-      Object.keys(entries()).filter((key) =>
-        key.startsWith(UNSAVED_KEY_PREFIX),
-      ),
-    ).toEqual([])
+    expect(api.unsavedSave.mock.calls.map(([key]) => key)).toEqual([
+      SCRATCH_KEY,
+    ])
   })
 
   it('remembers the file to reopen at the next start', async () => {
@@ -338,13 +419,21 @@ describe('createElectronKit changes', () => {
     expect(entries()[LAST_FILE_KEY]).toBeUndefined()
   })
 
-  it('writes the pending unsaved text when the page hides', async () => {
-    const { kit, entries, hide } = setup()
+  it('sends the pending unsaved text and History edits when the page hides', async () => {
+    const { kit, api, hide } = setup()
     const ready = await kit
+    api.historyRecord.mockClear()
     ready.unsavedText.changed('# A, edited\n', session('# A\n'))
+    ready.history.edited('# A, edited\n')
     hide.flush()
-    expect(entries()[`${UNSAVED_KEY_PREFIX}${PATH}`]).toBeDefined()
-    expect(entries()[DOCUMENT_STORAGE_KEY]).toBe('# A, edited\n')
+    expect(api.unsavedSave).toHaveBeenCalledWith(PATH, {
+      text: '# A, edited\n',
+      base: '# A\n',
+    })
+    expect(api.historyRecord).toHaveBeenCalledWith(
+      SCRATCH_KEY,
+      expect.objectContaining({ text: '# A, edited\n' }),
+    )
   })
 
   it('offers the unsaved text of a file, pending text included', async () => {
@@ -361,5 +450,106 @@ describe('createElectronKit changes', () => {
   it('reports the key status it was given', async () => {
     const ready = await setup().kit
     expect(ready.keyStatus.present).toBe(true)
+  })
+})
+
+describe('createElectronKit History per file', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('moves the History to the file that opens, recording pending edits first', async () => {
+    const { kit, api } = setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      read: async () => diskFile('# A\n'),
+    })
+    const ready = await kit
+    api.historyRecord.mockClear()
+    ready.history.edited('# A, typed\n')
+    ready.history.select(OTHER)
+    ready.history.opened({ text: '# B\n', name: 'SKILL.md' })
+    await ready.history.settled()
+    expect(
+      api.historyRecord.mock.calls.map(([key, input]) => [key, input.text]),
+    ).toEqual([
+      [PATH, '# A, typed\n'],
+      [OTHER, '# B\n'],
+    ])
+  })
+
+  it('shows the Timeline of the file it moved to, and of the one it comes back to', async () => {
+    const { kit } = setup({
+      stored: { [LAST_FILE_KEY]: PATH },
+      read: async () => diskFile('# A\n'),
+    })
+    const ready = await kit
+    ready.history.select(OTHER)
+    ready.history.opened({ text: '# B\n', name: 'SKILL.md' })
+    await ready.history.settled()
+    expect(ready.history.snapshot()).toHaveLength(1)
+    ready.history.select(PATH)
+    await ready.history.settled()
+    expect(ready.history.snapshot()).toHaveLength(1)
+    const [version] = ready.history.snapshot()
+    expect(version && (await ready.history.text(version.id))).toBe('# A\n')
+  })
+
+  it('moves a Document with no file to the file it is saved as', async () => {
+    const { kit, api } = setup()
+    const ready = await kit
+    api.historyMarkSaved.mockClear()
+    ready.history.select(PATH)
+    ready.history.saved({ text: SAMPLE_DOCUMENT, name: 'SKILL.md' })
+    await ready.history.settled()
+    expect(api.historyMarkSaved).toHaveBeenCalledWith(
+      PATH,
+      expect.objectContaining({ name: 'SKILL.md' }),
+    )
+    expect(ready.history.snapshot()).toMatchObject([
+      { cause: { kind: 'started' }, saved: 'SKILL.md' },
+    ])
+  })
+})
+
+describe('createElectronKit failures', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('reports failed unsaved writes once, however many fail', async () => {
+    const { kit, api } = setup()
+    const ready = await kit
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    api.unsavedSave.mockRejectedValue(new Error('db locked'))
+    const heard = vi.fn()
+    ready.problems.subscribe(heard)
+    for (const text of ['# One', '# Two', '# Three']) {
+      ready.unsavedText.changed(text, session('# A\n'))
+      vi.advanceTimersByTime(400)
+      await vi.advanceTimersByTimeAsync(0)
+    }
+    expect(heard).toHaveBeenCalledExactlyOnceWith('unsaved')
+    log.mockRestore()
+  })
+
+  it('reports a failed History write', async () => {
+    const { kit, api } = setup()
+    const ready = await kit
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const heard = vi.fn()
+    ready.problems.subscribe(heard)
+    api.historyRecord.mockRejectedValueOnce(new Error('disk full'))
+    ready.history.opened({ text: '# Opened', name: 'a.md' })
+    await ready.history.settled()
+    expect(heard).toHaveBeenCalledExactlyOnceWith('history')
+    log.mockRestore()
   })
 })

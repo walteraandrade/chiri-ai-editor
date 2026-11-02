@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_REVIEW_FOCUS } from '../suggestions/review'
-import { recordVersion, startHistory } from './history'
 import {
   describeVersion,
   historySummary,
@@ -8,17 +7,35 @@ import {
   markOf,
   mixedLabels,
 } from './story'
-import type { AcceptedChange, History, VersionCause } from './types'
+import type {
+  AcceptedChange,
+  VersionCause,
+  VersionList,
+  VersionSummary,
+} from './types'
 
 const time = (at: number) => `t${at}`
 
-const withVersion = (cause: VersionCause, text: string): History =>
-  recordVersion(startHistory('one two three', 1), { text, cause, at: 2 })
+const summary = (
+  id: number,
+  cause: VersionCause,
+  words: number,
+  [wordsAdded, wordsRemoved]: readonly [number, number] = [0, 0],
+): VersionSummary => ({ id, at: id, cause, words, wordsAdded, wordsRemoved })
 
-const describeLast = (history: History) => {
-  const last = history.at(-1)
+const withVersion = (
+  cause: VersionCause,
+  words: number,
+  counts: readonly [number, number] = [0, 0],
+): VersionList => [
+  summary(1, { kind: 'started' }, 3, [3, 0]),
+  summary(2, cause, words, counts),
+]
+
+const describeLast = (versions: VersionList) => {
+  const last = versions.at(-1)
   if (!last) throw new Error('empty History')
-  return describeVersion(history, last, time)
+  return describeVersion(versions, last, time)
 }
 
 const change = (overrides: Partial<AcceptedChange>): AcceptedChange => ({
@@ -30,8 +47,7 @@ const change = (overrides: Partial<AcceptedChange>): AcceptedChange => ({
 
 describe('describeVersion', () => {
   it('describes the Started Version by its length', () => {
-    const history = startHistory('one two three', 1)
-    expect(describeLast(history)).toEqual({
+    expect(describeLast([summary(1, { kind: 'started' }, 3)])).toEqual({
       author: 'file',
       label: 'Started',
       headline: 'Started with 3 words',
@@ -40,7 +56,7 @@ describe('describeVersion', () => {
 
   it('names the file of an Opened Version', () => {
     expect(
-      describeLast(withVersion({ kind: 'opened', name: 'notes.md' }, 'x')),
+      describeLast(withVersion({ kind: 'opened', name: 'notes.md' }, 1)),
     ).toEqual({
       author: 'file',
       label: 'Opened',
@@ -48,45 +64,40 @@ describe('describeVersion', () => {
     })
   })
 
-  it('counts the words of an Edited Version', () => {
-    expect(
-      describeLast(withVersion({ kind: 'edited' }, 'one 2 three four')),
-    ).toEqual({
+  it('says a Version came from outside the app', () => {
+    expect(describeLast(withVersion({ kind: 'external' }, 1))).toEqual({
+      author: 'file',
+      label: 'External',
+      headline: 'Changed outside Chiri',
+    })
+  })
+
+  it('counts the words an Edited Version added and removed', () => {
+    expect(describeLast(withVersion({ kind: 'edited' }, 4, [2, 1]))).toEqual({
       author: 'you',
       label: 'You',
       headline: 'You added 2 words and removed 1',
     })
     expect(
-      describeLast(withVersion({ kind: 'edited' }, 'one two three four')),
+      describeLast(withVersion({ kind: 'edited' }, 4, [1, 0])),
     ).toMatchObject({ headline: 'You added 1 word' })
-    expect(describeLast(withVersion({ kind: 'edited' }, 'one'))).toMatchObject({
-      headline: 'You removed 2 words',
-    })
     expect(
-      describeLast(withVersion({ kind: 'edited' }, 'one  two three')),
+      describeLast(withVersion({ kind: 'edited' }, 1, [0, 2])),
+    ).toMatchObject({ headline: 'You removed 2 words' })
+    expect(
+      describeLast(withVersion({ kind: 'edited' }, 3, [0, 0])),
     ).toMatchObject({ headline: 'You changed spacing or formatting' })
   })
 
-  it('works out the headline of an Edited Version once', () => {
-    const words = (seed: string) =>
-      Array.from({ length: 3000 }, (_, index) => `${seed}${index}`).join(' ')
-    const history = recordVersion(startHistory(words('a'), 1), {
-      text: words('b'),
-      cause: { kind: 'edited' },
-      at: 2,
-    })
-    const first = describeLast(history)
-    const started = performance.now()
-    const again = describeLast(history)
-    expect(performance.now() - started).toBeLessThan(5)
-    expect(again).toEqual(first)
+  it('reads the counts of an Edited Version off the Version itself', () => {
+    expect(
+      describeLast([summary(9, { kind: 'edited' }, 12, [2, 0])]),
+    ).toMatchObject({ headline: 'You added 2 words' })
   })
 
   it('uses the Rationale of a single accepted Suggestion', () => {
     expect(
-      describeLast(
-        withVersion({ kind: 'accepted', changes: [change({})] }, 'one'),
-      ),
+      describeLast(withVersion({ kind: 'accepted', changes: [change({})] }, 1)),
     ).toEqual({
       author: 'ai',
       label: 'AI · Shorter',
@@ -102,7 +113,7 @@ describe('describeVersion', () => {
             kind: 'accepted',
             changes: [change({ origin: 'review', instruction })],
           },
-          'one',
+          1,
         ),
       ).label
     expect(reviewed('tone')).toBe('AI · Review pass · tone')
@@ -120,7 +131,7 @@ describe('describeVersion', () => {
               change({ origin: 'review', instruction: DEFAULT_REVIEW_FOCUS }),
             ],
           },
-          'one',
+          1,
         ),
       ),
     ).toEqual({
@@ -138,22 +149,22 @@ describe('describeVersion', () => {
             kind: 'accepted',
             changes: [change({}), change({ instruction: 'Clearer' })],
           },
-          'one',
+          1,
         ),
       ),
     ).toMatchObject({ label: 'AI · Suggestions' })
   })
 
   it('points a Restored Version at the time of its source', () => {
+    expect(describeLast(withVersion({ kind: 'restored', from: 1 }, 1))).toEqual(
+      {
+        author: 'restore',
+        label: 'Restored',
+        headline: 'Restored the Version from t1',
+      },
+    )
     expect(
-      describeLast(withVersion({ kind: 'restored', from: 1 }, 'x')),
-    ).toEqual({
-      author: 'restore',
-      label: 'Restored',
-      headline: 'Restored the Version from t1',
-    })
-    expect(
-      describeLast(withVersion({ kind: 'restored', from: 99 }, 'x')),
+      describeLast(withVersion({ kind: 'restored', from: 99 }, 1)),
     ).toMatchObject({ headline: 'Restored an earlier Version' })
   })
 })
@@ -183,16 +194,13 @@ describe('mixedLabels', () => {
 
 describe('historySummary', () => {
   it('counts Versions, AI changes and your changes', () => {
-    const history = [
-      { kind: 'edited' } as const,
-      { kind: 'accepted', changes: [change({})] } as const,
-      { kind: 'restored', from: 1 } as const,
-    ].reduce<History>(
-      (current, cause, index) =>
-        recordVersion(current, { text: `v${index}`, cause, at: index + 2 }),
-      startHistory('start', 1),
-    )
-    expect(historySummary(history)).toEqual({
+    const versions: VersionList = [
+      summary(1, { kind: 'started' }, 1),
+      summary(2, { kind: 'edited' }, 1),
+      summary(3, { kind: 'accepted', changes: [change({})] }, 1),
+      summary(4, { kind: 'restored', from: 1 }, 1),
+    ]
+    expect(historySummary(versions)).toEqual({
       versions: 4,
       fromAi: 1,
       byYou: 2,
@@ -204,6 +212,7 @@ describe('markOf', () => {
   it('maps each Cause to a Timeline mark', () => {
     expect(markOf({ kind: 'started' })).toBe('file')
     expect(markOf({ kind: 'opened', name: 'a.md' })).toBe('file')
+    expect(markOf({ kind: 'external' })).toBe('file')
     expect(markOf({ kind: 'edited' })).toBe('you')
     expect(markOf({ kind: 'accepted', changes: [] })).toBe('ai')
     expect(markOf({ kind: 'restored', from: 1 })).toBe('restore')

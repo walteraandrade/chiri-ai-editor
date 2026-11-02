@@ -9,8 +9,9 @@ import type { ReviewNotice } from '../editor/review-runtime'
 import type { FailureNotice } from '../editor/suggestions'
 import { applyHistoryEvent, type HistoryEvent } from '../history/events'
 import { formatClock } from '../history/time'
-import type { Version } from '../history/types'
+import type { VersionSummary } from '../history/types'
 import type { PlatformKit } from '../platform/kit'
+import { problemMessage } from '../platform/problems'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
@@ -25,7 +26,8 @@ import { ReviewToolbar } from './ReviewToolbar'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useHistoryView } from './use-history-view'
-import { useMarkdownFile } from './use-markdown-file'
+import { type FileArrival, useMarkdownFile } from './use-markdown-file'
+import { useVersionTexts } from './use-version-texts'
 import { VersionBar } from './VersionBar'
 
 type AppProps<Ref> = {
@@ -33,7 +35,8 @@ type AppProps<Ref> = {
 }
 
 export function App<Ref>({ kit }: AppProps<Ref>) {
-  const { files, unsavedText, start, notice, history, keyStatus } = kit
+  const { files, unsavedText, start, notice, history, keyStatus, problems } =
+    kit
   const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
@@ -57,6 +60,10 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   useEffect(() => {
     if (notice !== null) showToast(notice)
   }, [notice, showToast])
+  useEffect(
+    () => problems.subscribe((kind) => showToast(problemMessage(kind))),
+    [problems, showToast],
+  )
   const onNotice = useCallback(
     (notice: SuggestionNotice) => showToast(noticeMessage(notice.kind)),
     [showToast],
@@ -88,11 +95,19 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const historyView = useHistoryView(history, focusEditor)
   const { mode, versions, close: closeHistory } = historyView
   const onOpened = useCallback(
-    (opened: { readonly text: string; readonly name: string }) => {
-      history.opened(opened)
+    ({ ref, text, name }: FileArrival<Ref>) => {
+      history.select(ref)
+      history.opened({ text, name })
       closeHistory()
     },
     [history, closeHistory],
+  )
+  const onSaved = useCallback(
+    ({ ref, text, name }: FileArrival<Ref>) => {
+      history.select(ref)
+      history.saved({ text, name })
+    },
+    [history],
   )
   const file = useMarkdownFile({
     files,
@@ -102,7 +117,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     notify: showToast,
     onOpened,
     onSaving: history.saving,
-    onSaved: history.saved,
+    onSaved,
   })
   const onChange = file.edited
 
@@ -110,6 +125,8 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     mode.kind === 'version'
       ? versions.find((version) => version.id === mode.id)
       : undefined
+  const shownTexts = useVersionTexts(history.text, shown ? [shown.id] : null)
+  const shownText = shownTexts?.[0]
   const currentText = documentControls?.text() ?? ''
   const reviewControls = useMemo(
     () => controls && beforeReviewChanges(controls, closeHistory),
@@ -117,10 +134,10 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   )
 
   const restore = useCallback(
-    (version: Version): void => {
+    (version: VersionSummary, text: string): void => {
       if (documentControls === null) return
-      documentControls.restore(version.text)
-      history.restored({ text: version.text, from: version.id })
+      documentControls.restore(text)
+      history.restored({ text, from: version.id })
       closeHistory()
       showToast(
         `Restored the Version from ${formatClock(version.at, Date.now())}`,
@@ -178,6 +195,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           <VersionBar
             versions={versions}
             version={shown}
+            text={shownText}
             currentText={currentText}
             onStep={historyView.step}
             onRestore={restore}
@@ -186,11 +204,14 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         ) : null}
       </header>
       <main className="mx-auto max-w-3xl px-6 pt-4 pb-40">
-        {shown ? <LineDiff before={currentText} after={shown.text} /> : null}
+        {shown && typeof shownText === 'string' ? (
+          <LineDiff before={currentText} after={shownText} />
+        ) : null}
         {mode.kind === 'full' ? (
           <FullHistory
             versions={versions}
             flashId={historyView.flashId}
+            loadText={history.text}
             onHover={historyView.setHovered}
             onView={historyView.view}
           />

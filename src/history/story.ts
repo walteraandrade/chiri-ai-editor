@@ -1,8 +1,10 @@
-import { countWords } from '../diff/adaptive-diff'
 import { DEFAULT_REVIEW_FOCUS } from '../suggestions/review'
-import { previousVersion } from './history'
-import { wordDelta } from './line-changes'
-import type { AcceptedChange, History, Version, VersionCause } from './types'
+import type {
+  AcceptedChange,
+  VersionCause,
+  VersionList,
+  VersionSummary,
+} from './types'
 
 export type VersionMark = 'ai' | 'you' | 'file' | 'restore'
 
@@ -47,26 +49,12 @@ export const listChanges = (
     rationale: change.rationale,
   }))
 
-const editedHeadline = (before: string, after: string): string => {
-  const { added, removed } = wordDelta(before, after)
+const editedHeadline = (added: number, removed: number): string => {
   if (added > 0 && removed > 0)
     return `You added ${plural(added, 'word')} and removed ${removed}`
   if (added > 0) return `You added ${plural(added, 'word')}`
   if (removed > 0) return `You removed ${plural(removed, 'word')}`
   return 'You changed spacing or formatting'
-}
-
-const editedHeadlines = new WeakMap<
-  Version,
-  { readonly before: string; readonly headline: string }
->()
-
-const cachedEditedHeadline = (before: string, version: Version): string => {
-  const cached = editedHeadlines.get(version)
-  if (cached?.before === before) return cached.headline
-  const headline = editedHeadline(before, version.text)
-  editedHeadlines.set(version, { before, headline })
-  return headline
 }
 
 const acceptedDescription = (
@@ -84,8 +72,8 @@ const acceptedDescription = (
 }
 
 export const describeVersion = (
-  history: History,
-  version: Version,
+  versions: VersionList,
+  version: VersionSummary,
   formatTime: (at: number) => string,
 ): VersionDescription => {
   const { cause } = version
@@ -94,7 +82,7 @@ export const describeVersion = (
       return {
         author: 'file',
         label: 'Started',
-        headline: `Started with ${plural(countWords(version.text), 'word')}`,
+        headline: `Started with ${plural(version.words, 'word')}`,
       }
     case 'opened':
       return {
@@ -106,15 +94,18 @@ export const describeVersion = (
       return {
         author: 'you',
         label: 'You',
-        headline: cachedEditedHeadline(
-          previousVersion(history, version.id)?.text ?? '',
-          version,
-        ),
+        headline: editedHeadline(version.wordsAdded, version.wordsRemoved),
+      }
+    case 'external':
+      return {
+        author: 'file',
+        label: 'External',
+        headline: 'Changed outside Chiri',
       }
     case 'accepted':
       return acceptedDescription(cause.changes)
     case 'restored': {
-      const source = history.find((item) => item.id === cause.from)
+      const source = versions.find((item) => item.id === cause.from)
       return {
         author: 'restore',
         label: 'Restored',
@@ -127,15 +118,15 @@ export const describeVersion = (
 }
 
 export const historySummary = (
-  history: History,
+  versions: VersionList,
 ): {
   readonly versions: number
   readonly fromAi: number
   readonly byYou: number
 } => ({
-  versions: history.length,
-  fromAi: history.filter((version) => markOf(version.cause) === 'ai').length,
-  byYou: history.filter((version) =>
+  versions: versions.length,
+  fromAi: versions.filter((version) => markOf(version.cause) === 'ai').length,
+  byYou: versions.filter((version) =>
     ['you', 'restore'].includes(markOf(version.cause)),
   ).length,
 })

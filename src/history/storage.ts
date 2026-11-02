@@ -1,5 +1,6 @@
 import type { StorageLike } from '../document/storage'
-import type { AcceptedChange, History, Version, VersionCause } from './types'
+import { isCause } from './cause'
+import type { History, Version } from './types'
 
 export const HISTORY_STORAGE_KEY = 'chiri.history'
 
@@ -12,28 +13,8 @@ const isRecord = (value: unknown): value is Fields =>
 
 const isString = (value: unknown): value is string => typeof value === 'string'
 
-const isChange = (value: unknown): value is AcceptedChange =>
-  isRecord(value) &&
-  (value.origin === 'ask' || value.origin === 'review') &&
-  isString(value.instruction) &&
-  isString(value.rationale)
-
-const isCause = (value: unknown): value is VersionCause => {
-  if (!isRecord(value)) return false
-  switch (value.kind) {
-    case 'started':
-    case 'edited':
-      return true
-    case 'accepted':
-      return Array.isArray(value.changes) && value.changes.every(isChange)
-    case 'opened':
-      return isString(value.name)
-    case 'restored':
-      return Number.isInteger(value.from)
-    default:
-      return false
-  }
-}
+const isCount = (value: unknown): boolean =>
+  value === undefined || (Number.isInteger(value) && Number(value) >= 0)
 
 const isVersion = (value: unknown): value is Version =>
   isRecord(value) &&
@@ -41,7 +22,9 @@ const isVersion = (value: unknown): value is Version =>
   typeof value.at === 'number' &&
   isCause(value.cause) &&
   isString(value.text) &&
-  (value.saved === undefined || isString(value.saved))
+  (value.saved === undefined || isString(value.saved)) &&
+  isCount(value.wordsAdded) &&
+  isCount(value.wordsRemoved)
 
 export const loadHistory = (storage: StorageLike | null): History | null => {
   try {

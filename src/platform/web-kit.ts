@@ -1,3 +1,4 @@
+import { createAutosave } from '../document/autosave'
 import {
   browserFileFallback,
   browserFileHost,
@@ -9,10 +10,19 @@ import {
   getLocalStorage,
   loadDocument,
   type StorageLike,
+  saveDocument,
 } from '../document/storage'
 import { createWebFiles } from '../document/web-files'
+import { createSwitchableHistory } from '../history/hub'
+import { createLocalHistoryStore } from '../history/local-store'
+import { createDocumentHistory } from '../history/session'
 import type { DocumentFiles, PlatformKit, PlatformKitFactory } from './kit'
-import { createLocalState } from './local-state'
+import { flushWhenPageHides } from './page-hide'
+import { createProblems } from './problems'
+
+const AUTOSAVE_DELAY_MS = 400
+const HISTORY_IDLE_MS = 30_000
+const HISTORY_KEY = 'document'
 
 type WebKitDeps = {
   readonly storage: StorageLike | null
@@ -22,20 +32,46 @@ type WebKitDeps = {
   readonly onHide: (flush: () => void) => void
 }
 
-export const createWebKit = ({
+export const createWebKit = async ({
   storage,
   files,
   now,
   hasApiKey,
   onHide,
-}: WebKitDeps): PlatformKit<MarkdownFileHandle> => {
+}: WebKitDeps): Promise<PlatformKit<MarkdownFileHandle>> => {
   const initialDoc = loadDocument(storage, SAMPLE_DOCUMENT)
-  const { history, autosave, flush } = createLocalState({
-    storage,
-    now,
-    initialDoc,
+  const store = createLocalHistoryStore(storage)
+  await store.record(HISTORY_KEY, {
+    at: now(),
+    cause: { kind: 'edited' },
+    text: initialDoc,
   })
-  onHide(flush)
+  const problems = createProblems()
+  const history = createSwitchableHistory<MarkdownFileHandle>({
+    keyOf: () => HISTORY_KEY,
+    create: (key, initial) =>
+      createDocumentHistory({
+        store,
+        key,
+        initial,
+        now,
+        idleMs: HISTORY_IDLE_MS,
+        onError: (error) => {
+          console.error('History write failed', error)
+          problems.failed('history')
+        },
+        onWritten: () => problems.worked('history'),
+      }),
+    first: { ref: null, initial: await store.list(HISTORY_KEY) },
+  })
+  const autosave = createAutosave({
+    save: (text) => store.makeRoomFor(() => saveDocument(storage, text)),
+    delayMs: AUTOSAVE_DELAY_MS,
+  })
+  onHide(() => {
+    autosave.flush()
+    history.flush()
+  })
   return {
     files,
     unsavedText: {
@@ -47,14 +83,8 @@ export const createWebKit = ({
     notice: null,
     history,
     keyStatus: { present: hasApiKey },
+    problems,
   }
-}
-
-const flushWhenPageHides = (flush: () => void): void => {
-  window.addEventListener('pagehide', flush)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flush()
-  })
 }
 
 export const createWebKitFactory =

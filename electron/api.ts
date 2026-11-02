@@ -1,9 +1,10 @@
+import type { HistoryApi } from './history-api'
+
 export const SHELL_INFO_CHANNEL = 'shell:info'
 export const FILE_OPEN_CHANNEL = 'file:open'
 export const FILE_READ_CHANNEL = 'file:read'
 export const FILE_SAVE_CHANNEL = 'file:save'
 export const FILE_SAVE_AS_CHANNEL = 'file:save-as'
-export const STORAGE_FLUSH_CHANNEL = 'storage:flush'
 
 export const FILE_NOT_FOUND_REASON = 'File not found'
 
@@ -50,5 +51,4 @@ export type ChiriApi = {
   readonly readFile: (path: string) => Promise<FileReadResult>
   readonly saveFile: (request: SaveFileRequest) => Promise<FileSaveResult>
   readonly saveFileAs: (request: SaveFileAsRequest) => Promise<FileSaveResult>
-  readonly flushStorage: () => Promise<void>
-}
+} & HistoryApi

@@ -1,17 +1,20 @@
 import { type ChiriApi, FILE_NOT_FOUND_REASON } from '../../electron/api'
+import type { FileSession } from '../document/file-session'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
-import { loadDocument } from '../document/storage'
 import { restoreUnsaved } from '../document/unsaved'
 import { createUnsavedKeeper } from '../document/unsaved-keeper'
+import { createElectronHistoryStore } from '../history/electron-store'
+import { createSwitchableHistory } from '../history/hub'
+import { createDocumentHistory } from '../history/session'
 import { createElectronFiles } from './electron-files'
 import {
   clearLastFile,
-  createLocalUnsavedStore,
   getRemovableStorage,
   loadLastFile,
   type RemovableStorage,
   saveLastFile,
 } from './electron-storage'
+import { createElectronUnsavedStore } from './electron-unsaved'
 import type {
   DocumentFiles,
   PlatformKit,
@@ -19,14 +22,26 @@ import type {
   StartFile,
   UnsavedStore,
 } from './kit'
-import { createLocalState } from './local-state'
+import { flushWhenPageHides } from './page-hide'
+import { createProblems } from './problems'
 
 const UNSAVED_DELAY_MS = 400
+const HISTORY_IDLE_MS = 30_000
+export const SCRATCH_KEY = 'scratch:document'
 
 type ElectronKitDeps = {
+  readonly api: Pick<
+    ChiriApi,
+    | 'historyList'
+    | 'historyText'
+    | 'historyRecord'
+    | 'historyMarkSaved'
+    | 'unsavedLoad'
+    | 'unsavedSave'
+    | 'unsavedClear'
+  >
   readonly storage: RemovableStorage | null
   readonly files: DocumentFiles<string>
-  readonly flushStorage: () => Promise<void>
   readonly now: () => number
   readonly hasApiKey: boolean
   readonly onHide: (flush: () => void) => void
@@ -46,10 +61,19 @@ const NOTHING_TO_REOPEN: Reopened = {
   gone: false,
 }
 
+const SCRATCH_SESSION: FileSession<string> = {
+  name: 'Untitled',
+  ref: SCRATCH_KEY,
+  savedText: '',
+  dirty: true,
+}
+
 const nameOf = (path: string): string => path.split('/').at(-1) ?? path
 
 const withReason = (text: string, reason: string | undefined): string =>
   reason === undefined ? text : `${text}: ${reason}`
+
+const historyKeyOf = (ref: string | null): string => ref ?? SCRATCH_KEY
 
 const reopen = async (
   files: DocumentFiles<string>,
@@ -95,32 +119,64 @@ const forgetMissing = async (
 }
 
 export const createElectronKit = async ({
+  api,
   storage,
   files,
-  flushStorage,
   now,
   hasApiKey,
   onHide,
 }: ElectronKitDeps): Promise<PlatformKit<string>> => {
-  const toDisk = (): void => {
-    flushStorage().catch(() => undefined)
-  }
-  const store = createLocalUnsavedStore(storage, toDisk)
+  const problems = createProblems()
+  const unsaved = createElectronUnsavedStore(api, {
+    failed: (error) => {
+      console.error('Unsaved text write failed', error)
+      problems.failed('unsaved')
+    },
+    worked: () => problems.worked('unsaved'),
+  })
   const lastFile = loadLastFile(storage)
   const reopened =
-    lastFile === null ? NOTHING_TO_REOPEN : await reopen(files, store, lastFile)
-  const initialDoc = reopened.text ?? loadDocument(storage, SAMPLE_DOCUMENT)
+    lastFile === null
+      ? NOTHING_TO_REOPEN
+      : await reopen(files, unsaved, lastFile)
+  const initialDoc =
+    reopened.text ?? (await unsaved.load(SCRATCH_KEY))?.text ?? SAMPLE_DOCUMENT
   if (reopened.gone && lastFile !== null)
-    await forgetMissing(store, storage, lastFile, initialDoc)
-  const { history, autosave, flush } = createLocalState({
-    storage,
-    now,
-    initialDoc,
+    await forgetMissing(unsaved, storage, lastFile, initialDoc)
+  const startRef = reopened.start?.ref ?? null
+  const historyStore = createElectronHistoryStore(api)
+  await historyStore.record(historyKeyOf(startRef), {
+    at: now(),
+    cause: { kind: 'edited' },
+    text: initialDoc,
   })
-  const keeper = createUnsavedKeeper({ store, delayMs: UNSAVED_DELAY_MS })
+  const history = createSwitchableHistory<string>({
+    keyOf: historyKeyOf,
+    create: (key, initial) =>
+      createDocumentHistory({
+        store: historyStore,
+        key,
+        initial,
+        now,
+        idleMs: HISTORY_IDLE_MS,
+        onError: (error) => {
+          console.error('History write failed', error)
+          problems.failed('history')
+        },
+        onWritten: () => problems.worked('history'),
+      }),
+    first: {
+      ref: startRef,
+      initial: await historyStore.list(historyKeyOf(startRef)),
+    },
+  })
+  const keeper = createUnsavedKeeper({
+    store: unsaved,
+    delayMs: UNSAVED_DELAY_MS,
+  })
   onHide(() => {
-    flush()
     keeper.flush()
+    history.flush()
   })
   let remembered = reopened.gone ? null : (reopened.start?.ref ?? lastFile)
   return {
@@ -128,23 +184,23 @@ export const createElectronKit = async ({
     unsavedText: {
       initial: initialDoc,
       changed: (text, file) => {
-        autosave.schedule(text)
+        keeper.track(text, SCRATCH_SESSION)
         keeper.track(text, file)
         if (file?.ref != null && file.ref !== remembered) {
           remembered = file.ref
           saveLastFile(storage, file.ref)
-          toDisk()
         }
       },
       offered: async (path) => {
         keeper.flush()
-        return store.load(path)
+        return unsaved.load(path)
       },
     },
     start: reopened.start,
     notice: reopened.notice,
     history,
     keyStatus: { present: hasApiKey },
+    problems,
   }
 }
 
@@ -152,13 +208,6 @@ const chiriApi = (): ChiriApi => {
   if (window.chiri === undefined)
     throw new Error('The Electron preload API is missing')
   return window.chiri
-}
-
-const flushWhenPageHides = (flush: () => void): void => {
-  window.addEventListener('pagehide', flush)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flush()
-  })
 }
 
 export const createElectronKitFactory =
@@ -170,9 +219,9 @@ export const browserElectronKit: PlatformKitFactory<string> =
   createElectronKitFactory(() => {
     const api = chiriApi()
     return {
+      api,
       storage: getRemovableStorage(),
       files: createElectronFiles(api),
-      flushStorage: api.flushStorage,
       now: Date.now,
       hasApiKey: __HAS_OPENROUTER_KEY__,
       onHide: flushWhenPageHides,

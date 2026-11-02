@@ -100,8 +100,38 @@ describe('loadHistory', () => {
     expect(
       loadHistory(stored({ cause: { kind: 'edited' }, at: 'noon' })),
     ).toBeNull()
+    expect(
+      loadHistory(stored({ cause: { kind: 'edited' }, wordsAdded: '2' })),
+    ).toBeNull()
+    expect(
+      loadHistory(stored({ cause: { kind: 'edited' }, wordsRemoved: -1 })),
+    ).toBeNull()
     expect(loadHistory(stored({ cause: { kind: 'edited' } }))).toEqual([
       { id: 1, at: 1, text: 'a', cause: { kind: 'edited' } },
+    ])
+  })
+
+  it('reads Versions stored with or without word counts', () => {
+    const stored = (counts: object) =>
+      createFakeStorage({
+        [HISTORY_STORAGE_KEY]: JSON.stringify({
+          versions: [
+            { id: 1, at: 1, text: 'a b', cause: { kind: 'edited' }, ...counts },
+          ],
+        }),
+      }).storage
+    expect(loadHistory(stored({}))).toEqual([
+      { id: 1, at: 1, text: 'a b', cause: { kind: 'edited' } },
+    ])
+    expect(loadHistory(stored({ wordsAdded: 2, wordsRemoved: 0 }))).toEqual([
+      {
+        id: 1,
+        at: 1,
+        text: 'a b',
+        cause: { kind: 'edited' },
+        wordsAdded: 2,
+        wordsRemoved: 0,
+      },
     ])
   })
 
