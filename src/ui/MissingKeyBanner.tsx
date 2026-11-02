@@ -7,8 +7,8 @@ export function MissingKeyBanner() {
       OpenRouter key missing. Add{' '}
       <code className="font-mono">OPENROUTER_API_KEY</code> to{' '}
       <code className="font-mono">.env</code> (see{' '}
-      <code className="font-mono">.env.example</code>) and restart{' '}
-      <code className="font-mono">pnpm dev</code>.
+      <code className="font-mono">.env.example</code>) and restart the dev
+      server.
     </div>
   )
 }

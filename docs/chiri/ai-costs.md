@@ -71,8 +71,12 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-30 | PR #23 | review document → default criteria, then Accept all | `openai/gpt-6.1-terra` → OpenAI | 975 / 324 / 0 / 0 | 0.002595 | 5412 / – / – (first 2133) | stop | 1/1, 5 Suggestions | [23-document-history.md](verification/23-document-history.md) |
 | 2026-10-30 | PR #24 | select p1–p46 → Fix grammar (46-Block Document) | `openai/gpt-6.1-terra` → OpenAI | 3962 / 3808 / 0 / 0 | 0.023992 | 45276 / 1317 / 44859 | stop | 1/1 | [24-long-target.md](verification/24-long-target.md) |
 | 2026-10-30 | PR #24 | select p1–p45 → Fix grammar (the maintainer's Document, repeated) | `openai/gpt-6.1-terra` → OpenAI | 5452 / 2827 / 90 / 5449 | 0.014410 | 32998 / – / – | stop | 1/1 | [24-long-target.md](verification/24-long-target.md) |
+| 2026-11-01 | #29 | Electron window: cursor in p5 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 529 / 60 / 0 / 0 | 0.000829 | 3278 / 1630 / 2169 | stop | 1/1, accepted | [29-electron-shell.md](verification/29-electron-shell.md) |
+| 2026-11-01 | #29 | Electron window: review document → default criteria | `openai/gpt-6.1-terra` → OpenAI | 955 / 316 / 0 / 0 | 0.002535 | 5069 / 1333 / 4791 (first 2744) | stop | 1/1 | [29-electron-shell.md](verification/29-electron-shell.md) |
+| 2026-11-01 | #29 | Web build: cursor in p5 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 529 / 59 / 0 / 0 | 0.000824 | 2885 / 1651 / 2296 | stop | 1/1, accepted | [29-electron-shell.md](verification/29-electron-shell.md) |
+| 2026-11-01 | #29 | Web build: review document → default criteria (enriched by hand after a reload lost the log) | `openai/gpt-6.1-terra` → OpenAI | 954 / 317 / 0 / 0 | 0.002539 | 4762 / 982 / 4562 (first 2461) | stop | 1/1 | [29-electron-shell.md](verification/29-electron-shell.md) |
 
-**Running total:** US$0.384 of 5.00 (the key's usage counter read US$9.172 after the PR #24 check, US$9.088 after the Document History check and US$9.083 after PR #22, against US$8.743 before slice 2; the rows add up to about 0.337, 0.323 recorded plus 0.013 estimated from the key's counters (rounded), and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20. The counter rose US$0.008 between the PR #20 note and the Document History check, and US$0.060 between that check and the PR #24 check, outside these rows)
+**Running total:** US$0.391 of 5.00 (US$0.384 before issue #29, plus its 4 recorded calls, US$0.0067; the key's counter was not re-read for #29. The rest is as of the PR #24 check: the key's usage counter read US$9.172 after the PR #24 check, US$9.088 after the Document History check and US$9.083 after PR #22, against US$8.743 before slice 2; the rows add up to about 0.337, 0.323 recorded plus 0.013 estimated from the key's counters (rounded), and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20. The counter rose US$0.008 between the PR #20 note and the Document History check, and US$0.060 between that check and the PR #24 check, outside these rows)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -121,3 +125,8 @@ Notes on PR #24 (long Targets):
 
 Notes on issue #25:
 - No model calls: the browser checks simulated the model by wrapping `window.fetch` in the page, and `/api/openrouter/**` was aborted at the network level. No rows, and the key's counter was not re-read.
+
+Notes on issue #29 (Electron shell):
+- Slice cost is US$0.0067: 4 calls, all recorded, 2 in the Electron window and 2 in the Web build, each a Shorter on the same paragraph (then Accept) and a default Review pass on the sample Document.
+- Both builds served `gpt-6.1-terra-20261026` through OpenAI. Their tokens and costs match within a few tokens.
+- The Web build's log was lost when a source edit made Vite reload the page; the Review row's OpenRouter and generation latencies come from `GET /generation?id=…` through the dev proxy, the same call the client makes.

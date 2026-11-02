@@ -17,6 +17,7 @@ ADRs are decisions, not suggestions. If an ADR blocks you, stop and report it; d
 | Runtime | Node 22+ (required by `ai@7`) |
 | Package manager | pnpm (pin with `packageManager` in `package.json`) |
 | App | Vite + React + TypeScript (strict) |
+| Desktop shell | Electron 43 built with `electron-vite` ([ADR 0013](docs/chiri/adr/0013-native-app-on-electron.md)); two builds, Web and Electron ([ADR 0016](docs/chiri/adr/0016-web-and-electron-builds.md)) |
 | Editor | CodeMirror 6, `@codemirror/lang-markdown` |
 | Styling | Tailwind v4, theme tokens in CSS via `@theme`; dark theme only; sans-serif; League Spartan for the app title |
 | AI | `ai@^7` + `@openrouter/ai-sdk-provider@^3` + `zod` |
@@ -24,7 +25,27 @@ ADRs are decisions, not suggestions. If an ADR blocks you, stop and report it; d
 | Tests | Vitest |
 | Lint/format | Biome |
 
-Commands (once slice 1 lands): `pnpm dev`, `pnpm test`, `pnpm biome check`, `pnpm build`. Slice 2 adds `pnpm bakeoff`.
+Commands:
+
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Web build: the browser app on the Vite dev server. |
+| `pnpm dev:electron` | Electron build: the window on the Vite dev server (proxy included), with a Chrome DevTools port for `agent-browser`. |
+| `pnpm test` | Vitest. |
+| `pnpm biome check` | Lint and format. |
+| `pnpm build` | Type-check (both tsconfigs), then the Web build (`dist/`) and the Electron build (`out/`). `build:web` and `build:electron` run each alone. |
+| `pnpm preview:electron` | Runs the built Electron app from `out/` (UI only; AI calls need the installed-app slice). Honors `CHIRI_USER_DATA_DIR`; opens no DevTools port. |
+| `pnpm bakeoff` | Model Bake-off. Calls the model. |
+
+Dev environment variables (all optional; parallel checkouts on one machine need their own):
+
+| Variable | Effect |
+|---|---|
+| `CHIRI_DEV_PORT` | Vite port for `pnpm dev` and `pnpm dev:electron`. When set, Vite fails instead of moving to another port. |
+| `CHIRI_CDP_PORT` | Chrome DevTools port of the dev window (default 9222). `agent-browser connect <port>` attaches to it. Dev only. |
+| `CHIRI_USER_DATA_DIR` | Absolute path for Electron's `userData` in `pnpm dev:electron` and `pnpm preview:electron` (not in a packaged app). Always set it for checks, never use the default. |
+
+Attach to the window: `CHIRI_DEV_PORT=5301 CHIRI_CDP_PORT=9301 CHIRI_USER_DATA_DIR=$(mktemp -d) pnpm dev:electron`, then `agent-browser connect 9301`.
 
 ## AI SDK
 
@@ -41,12 +62,23 @@ Commands (once slice 1 lands): `pnpm dev`, `pnpm test`, `pnpm biome check`, `pnp
 
 ```text
 src/
+├── main.web.tsx       # Web build entry: builds the Web kit, mounts App
+├── main.electron.tsx  # Electron build entry: builds the Electron kit (the Web kit for now), mounts App
+├── platform/      # PlatformKit type and async kit factory, Web kit, start.ts (mount once the factory resolves) (ADR 0016)
 ├── editor/        # CodeMirror setup, decorations, keymaps
 ├── suggestions/   # Suggestion state, lifecycle, position mapping (pure)
 ├── diff/          # adaptive diff (pure)
 ├── blocks/        # Block extraction from the syntax tree (pure)
 ├── ai/            # model client, zod schemas, prompt building, AI call records
 └── ui/            # React components
+electron/
+├── api.ts         # the preload API's types and channel names, shared by main and preload
+├── main/          # main process: window, IPC handlers, dev switches, trust checks
+└── preload/       # contextBridge API, one function per action
+config/            # Vite proxy, shared renderer config, port parsing
+index.html         # Web build page
+electron.html      # Electron build page
+electron.vite.config.ts
 scripts/
 └── bakeoff.ts
 ```
@@ -54,7 +86,7 @@ scripts/
 ## Tests
 
 - TDD (red → green → refactor) for pure modules: diff → hunks, Suggestion state and position mapping, Block extraction, prompt building, schema validation, AI call records.
-- No E2E suite. UI is verified in a real browser with the `agent-browser` skill.
+- No E2E suite. UI is verified in a real browser with the `agent-browser` skill; the Electron build is verified in its window over CDP.
 - Tests never call the real model.
 
 ## Git and PRs

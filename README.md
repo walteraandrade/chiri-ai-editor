@@ -21,6 +21,7 @@ Needs Node 22.12 or newer and pnpm (the version is pinned in `packageManager`; `
 cp .env.example .env     # then set OPENROUTER_API_KEY
 pnpm install
 pnpm dev                 # open the printed URL
+pnpm dev:electron        # or the same app in an Electron window
 ```
 
 - `OPENROUTER_MODEL` is optional and defaults to `openai/gpt-6.1-terra`.
@@ -33,7 +34,8 @@ pnpm dev                 # open the printed URL
 |---|---|
 | `pnpm test` | Vitest. Never calls the model. |
 | `pnpm biome check` | Lint and format. |
-| `pnpm build` | Type-check and production build. |
+| `pnpm dev:electron` | The app in an Electron window on the Vite dev server, so the proxy and the key work as with `pnpm dev`. `CHIRI_DEV_PORT`, `CHIRI_CDP_PORT` and `CHIRI_USER_DATA_DIR` set its ports and data folder ([AGENTS.md](AGENTS.md)). |
+| `pnpm build` | Type-check, then the production builds of the Web app (`dist/`) and the Electron app (`out/`). |
 | `pnpm bakeoff` | Calls the model: 9 models, 4 Quick actions and a Review pass each, about US$0.056. Rewrites `docs/chiri/bakeoff.md`. Needs the key. |
 | `pnpm export-sessions` | Copies the Claude Code sessions into `ai-sessions/` with OpenRouter keys masked. `--verify` compares the copy with the source. |
 

@@ -3,14 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "./out/main/index.js",
   "packageManager": "pnpm@11.17.0",
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev:electron": "electron-vite dev",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.electron.json && pnpm build:web && pnpm build:electron",
+    "build:web": "vite build",
+    "build:electron": "electron-vite build",
     "preview": "vite preview",
+    "preview:electron": "electron-vite preview --skipBuild",
     "test": "vitest run",
     "bakeoff": "tsx scripts/bakeoff.ts",
     "export-sessions": "tsx scripts/export-sessions.ts"
@@ -38,6 +43,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^43.8.6",
+    "electron-vite": "^6.0.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
