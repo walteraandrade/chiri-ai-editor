@@ -7,6 +7,7 @@ import { registerFileHandlers } from './files/register'
 import { registerHistory } from './history-main'
 import { registerLibraryHandlers } from './library/register'
 import { isAppNavigation, isTrustedFrame } from './trust'
+import { registerExternalChanges } from './watch/register'
 
 const CANVAS_COLOR = '#141417'
 const RENDERER_ENTRY = 'electron.html'
@@ -42,7 +43,7 @@ const registerIpc = (): void => {
   const isTrusted = (event: IpcMainInvokeEvent): boolean =>
     isTrustedFrame(event.senderFrame, appUrl())
   registerFileHandlers(isTrusted)
-  registerLibraryHandlers(isTrusted)
+  registerExternalChanges(isTrusted, registerLibraryHandlers(isTrusted))
 }
 
 const lockNavigation = (): void => {

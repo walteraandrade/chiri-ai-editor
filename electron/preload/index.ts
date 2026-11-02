@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   type ChiriApi,
+  EXTERNAL_CHANGES_CHANNEL,
+  type ExternalChanges,
   FILE_OPEN_CHANNEL,
   FILE_READ_CHANNEL,
   FILE_SAVE_AS_CHANNEL,
@@ -9,6 +11,7 @@ import {
   LIBRARY_LIST_CHANNEL,
   LIBRARY_REMOVE_ROOT_CHANNEL,
   SHELL_INFO_CHANNEL,
+  WATCH_FILE_CHANNEL,
 } from '../api'
 import { HISTORY_CHANNELS } from '../history-api'
 
@@ -32,6 +35,15 @@ const api: ChiriApi = {
   addLibraryRoot: () => ipcRenderer.invoke(LIBRARY_ADD_ROOT_CHANNEL),
   removeLibraryRoot: (path) =>
     ipcRenderer.invoke(LIBRARY_REMOVE_ROOT_CHANNEL, path),
+  watchFile: (path) => ipcRenderer.invoke(WATCH_FILE_CHANNEL, path),
+  onExternalChanges: (listener) => {
+    const relay = (_event: unknown, changes: ExternalChanges): void =>
+      listener(changes)
+    ipcRenderer.on(EXTERNAL_CHANGES_CHANNEL, relay)
+    return () => {
+      ipcRenderer.removeListener(EXTERNAL_CHANGES_CHANNEL, relay)
+    }
+  },
 }
 
 contextBridge.exposeInMainWorld('chiri', api)

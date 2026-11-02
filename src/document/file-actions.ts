@@ -1,4 +1,4 @@
-import type { DocumentFiles, OpenResult } from '../platform/kit'
+import type { DocumentFiles, FileContents, OpenResult } from '../platform/kit'
 import type { FileSession, FileSessionEvent } from './file-session'
 import { confirmLeave, type LeaveOptions } from './leave-guard'
 import { suggestedFileName } from './markdown-file'
@@ -7,6 +7,7 @@ import { restoreUnsaved, type Unsaved } from './unsaved'
 export type EditorText = {
   readonly text: () => string
   readonly replace: (text: string) => void
+  readonly refresh: (text: string) => void
 }
 
 export type Conflict<Ref> = {
@@ -27,7 +28,9 @@ type FileActionsOptions<Ref> = {
   readonly dispatch: (event: FileSessionEvent<Ref>) => void
   readonly notify: (text: string) => void
   readonly onSaving?: (text: string) => void
+  readonly onSaveEnded?: () => void
   readonly onOpened?: (file: FileEvent) => void
+  readonly onReloaded?: (file: FileEvent) => void
   readonly onSaved?: (file: FileEvent) => void
   readonly onConflict?: (conflict: Conflict<Ref>) => void
   readonly leave?: LeaveOptions<Ref>
@@ -38,6 +41,7 @@ export type FileActions<Ref> = {
   readonly openRef: (ref: Ref) => Promise<void>
   readonly save: (saveAs: boolean) => Promise<boolean>
   readonly reload: (conflict: Conflict<Ref>) => Promise<void>
+  readonly reloadFrom: (file: FileContents<Ref>) => void
 }
 
 const STAYED = { kind: 'cancelled' } as const
@@ -53,7 +57,9 @@ export const createFileActions = <Ref>({
   dispatch,
   notify,
   onSaving,
+  onSaveEnded,
   onOpened,
+  onReloaded,
   onSaved,
   onConflict,
   leave,
@@ -93,11 +99,13 @@ export const createFileActions = <Ref>({
       guarded,
       failure,
       done,
+      reloaded,
     }: {
       readonly keepUnsaved: boolean
       readonly guarded: boolean
       readonly failure: (reason: string | undefined) => string
       readonly done: string
+      readonly reloaded: boolean
     },
   ): Promise<void> => {
     const settled = guarded ? await afterLeaving(result, current) : result
@@ -119,7 +127,8 @@ export const createFileActions = <Ref>({
       savedText: arrival.savedText,
     })
     current.replace(arrival.text)
-    onOpened?.({ text: arrival.text, name })
+    const arrived = reloaded ? onReloaded : onOpened
+    arrived?.({ text: arrival.text, name })
     notify(
       arrival.restored
         ? `Restored unsaved changes to ${name}`
@@ -136,6 +145,7 @@ export const createFileActions = <Ref>({
       guarded: true,
       failure: (reason) => withReason('Could not open the file', reason),
       done: 'Opened',
+      reloaded: false,
     })
   }
 
@@ -147,6 +157,7 @@ export const createFileActions = <Ref>({
       guarded: true,
       failure: (reason) => withReason('Could not open the file', reason),
       done: 'Opened',
+      reloaded: false,
     })
   }
 
@@ -158,10 +169,20 @@ export const createFileActions = <Ref>({
       guarded: false,
       failure: (reason) => withReason(`Could not reload ${name}`, reason),
       done: 'Reloaded',
+      reloaded: true,
     })
   }
 
-  const save = async (saveAs: boolean): Promise<boolean> => {
+  const reloadFrom = ({ name, text, ref }: FileContents<Ref>): void => {
+    const current = editor()
+    if (current === null) return
+    dispatch({ type: 'opened', name, ref, text, savedText: text })
+    current.refresh(text)
+    onReloaded?.({ text, name })
+    notify(`Reloaded ${name}: it changed on disk`)
+  }
+
+  const writeFile = async (saveAs: boolean): Promise<boolean> => {
     const current = editor()
     if (current === null) return false
     const text = current.text()
@@ -199,5 +220,13 @@ export const createFileActions = <Ref>({
     return true
   }
 
-  return { open, openRef, save, reload }
+  const save = async (saveAs: boolean): Promise<boolean> => {
+    try {
+      return await writeFile(saveAs)
+    } finally {
+      onSaveEnded?.()
+    }
+  }
+
+  return { open, openRef, save, reload, reloadFrom }
 }

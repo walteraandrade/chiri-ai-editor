@@ -65,6 +65,14 @@ describe('createSwitchableHistory', () => {
     expect(calls).toEqual(['scratch:opened:first'])
   })
 
+  it('writes an External Version under the key of the open file', async () => {
+    const { hub, calls } = create()
+    hub.select('/notes/a.md')
+    hub.external({ text: 'by an agent' })
+    await hub.settled()
+    expect(calls).toEqual(['/notes/a.md:external:by an agent'])
+  })
+
   it('moves writes to the key of the file it switches to', async () => {
     const { hub, calls } = create()
     hub.select('/notes/a.md')

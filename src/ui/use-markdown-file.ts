@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createExternalCheck } from '../document/external-check'
 import {
   type Conflict,
   createFileActions,
@@ -11,7 +12,13 @@ import {
 } from '../document/file-session'
 import type { LeaveChoice } from '../document/leave-guard'
 import type { DocumentControls } from '../editor/document-controls'
-import type { DocumentFiles, StartFile, UnsavedText } from '../platform/kit'
+import type {
+  DocumentFiles,
+  ExternalKit,
+  FileContents,
+  StartFile,
+  UnsavedText,
+} from '../platform/kit'
 import { fileCommandOf } from './file-commands'
 import { detectApplePlatform } from './platform'
 
@@ -21,9 +28,11 @@ type MarkdownFileOptions<Ref> = {
   readonly files: DocumentFiles<Ref>
   readonly unsavedText: UnsavedText<Ref>
   readonly start: StartFile<Ref> | null
+  readonly external: ExternalKit<Ref> | undefined
   readonly controls: DocumentControls | null
   readonly notify: (text: string) => void
   readonly onOpened: (file: FileArrival<Ref>) => void
+  readonly onReloaded: (file: FileArrival<Ref>) => void
   readonly onSaving: (text: string) => void
   readonly onSaved: (file: FileArrival<Ref>) => void
   readonly askLeave: (name: string) => Promise<LeaveChoice>
@@ -53,9 +62,11 @@ export const useMarkdownFile = <Ref>({
   files,
   unsavedText,
   start,
+  external,
   controls,
   notify,
   onOpened,
+  onReloaded,
   onSaving,
   onSaved,
   askLeave,
@@ -65,16 +76,47 @@ export const useMarkdownFile = <Ref>({
   )
   const [conflict, setConflict] = useState(() => startConflict(start))
   const sessionRef = useRef(session)
-  const latest = useRef({ controls, notify, onOpened, onSaving, onSaved })
+  const reloadFromRef = useRef<(file: FileContents<Ref>) => void>(
+    () => undefined,
+  )
+  const latest = useRef({
+    controls,
+    notify,
+    onOpened,
+    onReloaded,
+    onSaving,
+    onSaved,
+  })
 
   useEffect(() => {
-    latest.current = { controls, notify, onOpened, onSaving, onSaved }
-  }, [controls, notify, onOpened, onSaving, onSaved])
+    latest.current = {
+      controls,
+      notify,
+      onOpened,
+      onReloaded,
+      onSaving,
+      onSaved,
+    }
+  }, [controls, notify, onOpened, onReloaded, onSaving, onSaved])
 
   const dispatch = useCallback((event: FileSessionEvent<Ref>) => {
     sessionRef.current = nextFileSession(sessionRef.current, event)
     setSession(sessionRef.current)
   }, [])
+
+  const check = useMemo(
+    () =>
+      external === undefined
+        ? null
+        : createExternalCheck<Ref>({
+            readDisk: external.readDisk,
+            session: () => sessionRef.current,
+            document: () => latest.current.controls?.text() ?? null,
+            reload: (file) => reloadFromRef.current(file),
+            notice: setConflict,
+          }),
+    [external],
+  )
 
   const actions = useMemo(() => {
     const announce = (): void => {
@@ -88,10 +130,24 @@ export const useMarkdownFile = <Ref>({
       session: () => sessionRef.current,
       dispatch,
       notify: (text) => latest.current.notify(text),
-      onSaving: (text) => latest.current.onSaving(text),
+      onSaving: (text) => {
+        check?.saving(text)
+        latest.current.onSaving(text)
+      },
+      onSaveEnded: () => check?.saving(null),
       onOpened: (file) => {
         setConflict(null)
+        check?.forget()
         latest.current.onOpened({
+          ...file,
+          ref: sessionRef.current?.ref ?? null,
+        })
+        announce()
+      },
+      onReloaded: (file) => {
+        setConflict(null)
+        check?.forget()
+        latest.current.onReloaded({
           ...file,
           ref: sessionRef.current?.ref ?? null,
         })
@@ -99,6 +155,7 @@ export const useMarkdownFile = <Ref>({
       },
       onSaved: (file) => {
         setConflict(null)
+        check?.forget()
         latest.current.onSaved({
           ...file,
           ref: sessionRef.current?.ref ?? null,
@@ -114,9 +171,26 @@ export const useMarkdownFile = <Ref>({
         },
       }),
     })
-  }, [files, unsavedText, dispatch, askLeave])
+  }, [files, unsavedText, dispatch, askLeave, check])
 
-  const { open, openRef, save, reload } = actions
+  const { open, openRef, save, reload, reloadFrom } = actions
+
+  useEffect(() => {
+    reloadFromRef.current = reloadFrom
+  }, [reloadFrom])
+
+  const watchedRef = session?.ref ?? null
+  useEffect(() => {
+    external?.watch(watchedRef)
+  }, [external, watchedRef])
+
+  useEffect(() => {
+    if (external === undefined || check === null) return
+    return external.subscribe((change) => {
+      const ref = sessionRef.current?.ref
+      if (ref != null && change.touches(ref)) void check.run(ref)
+    })
+  }, [external, check])
 
   const edited = useCallback(
     (text: string) => {

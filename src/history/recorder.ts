@@ -19,6 +19,7 @@ export type HistoryRecorder = {
     readonly text: string
     readonly name: string
   }) => void
+  readonly external: (input: { readonly text: string }) => void
   readonly restored: (input: {
     readonly text: string
     readonly from: VersionId
@@ -74,6 +75,7 @@ export const createHistoryRecorder = ({
     },
     replaced: settle,
     opened: ({ text, name }) => record(text, { kind: 'opened', name }),
+    external: ({ text }) => record(text, { kind: 'external' }),
     restored: ({ text, from }) => record(text, { kind: 'restored', from }),
     saving: settle,
     saved: ({ text, name }) =>

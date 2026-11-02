@@ -61,6 +61,7 @@ export const createSwitchableHistory = <Ref>({
     accepted: (input) => current.accepted(input),
     replaced: (before) => current.replaced(before),
     opened: (input) => current.opened(input),
+    external: (input) => current.external(input),
     restored: (input) => current.restored(input),
     saving: (text) => current.saving(text),
     saved: (input) => current.saved(input),

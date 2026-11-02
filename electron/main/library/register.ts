@@ -14,17 +14,24 @@ import {
   removeLibraryRoot,
 } from './handlers'
 import { nodeSkillFileSystem } from './node-skill-fs'
+import { announceRootsSaved } from './roots-events'
 import { createRootsStore } from './roots-store'
 
 type Trust = (event: IpcMainInvokeEvent) => boolean
 
-export const registerLibraryHandlers = (isTrusted: Trust): void => {
+export type LibraryHandle = {
+  readonly deps: LibraryDeps
+  readonly onRootsSaved: (listener: () => void) => () => void
+}
+
+export const registerLibraryHandlers = (isTrusted: Trust): LibraryHandle => {
   const dialogs =
     resolveDevDialogs(process.env, { packaged: app.isPackaged }) ??
     createFileDialogs()
+  const roots = announceRootsSaved(createRootsStore(app.getPath('userData')))
   const deps: LibraryDeps = {
     home: homedir(),
-    store: createRootsStore(app.getPath('userData')),
+    store: roots.store,
     fileSystem: nodeSkillFileSystem,
   }
 
@@ -47,4 +54,5 @@ export const registerLibraryHandlers = (isTrusted: Trust): void => {
   handle(LIBRARY_REMOVE_ROOT_CHANNEL, (_event, input) =>
     removeLibraryRoot(deps, input),
   )
+  return { deps, onRootsSaved: roots.subscribe }
 }

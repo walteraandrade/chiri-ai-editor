@@ -110,6 +110,23 @@ describe('createHistoryRecorder', () => {
     ])
   })
 
+  it('records the text before a replace, then the External Version', () => {
+    const { recorder, writes } = createRecorder()
+    recorder.edited('mine')
+    recorder.replaced('mine')
+    recorder.external({ text: 'by an agent' })
+    expect(writes).toEqual([
+      recorded('mine', { kind: 'edited' }),
+      recorded('by an agent', { kind: 'external' }),
+    ])
+  })
+
+  it('records an External Version and no saved mark', () => {
+    const { recorder, writes } = createRecorder()
+    recorder.external({ text: 'by an agent' })
+    expect(summary(writes)).toEqual([['external', 'by an agent']])
+  })
+
   it('records a Restored Version pointing at its source', () => {
     const { recorder, writes } = createRecorder()
     recorder.replaced('changed')

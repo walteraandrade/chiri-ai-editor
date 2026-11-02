@@ -13,6 +13,8 @@ export const FILE_SAVE_AS_CHANNEL = 'file:save-as'
 export const LIBRARY_LIST_CHANNEL = 'library:list'
 export const LIBRARY_ADD_ROOT_CHANNEL = 'library:add-root'
 export const LIBRARY_REMOVE_ROOT_CHANNEL = 'library:remove-root'
+export const WATCH_FILE_CHANNEL = 'external:watch-file'
+export const EXTERNAL_CHANGES_CHANNEL = 'external:changes'
 
 export const FILE_NOT_FOUND_REASON = 'File not found'
 
@@ -53,6 +55,11 @@ export type SaveFileAsRequest = {
   readonly suggestedName: string
 }
 
+export type ExternalChanges = {
+  readonly paths: readonly string[]
+  readonly library: boolean
+}
+
 export type ChiriApi = {
   readonly shellInfo: () => Promise<ShellInfo>
   readonly openFile: () => Promise<FileReadResult>
@@ -62,4 +69,8 @@ export type ChiriApi = {
   readonly listLibrary: () => Promise<LibrarySnapshot>
   readonly addLibraryRoot: () => Promise<AddRootResult>
   readonly removeLibraryRoot: (path: string) => Promise<RemoveRootResult>
+  readonly watchFile: (path: string | null) => Promise<void>
+  readonly onExternalChanges: (
+    listener: (changes: ExternalChanges) => void,
+  ) => () => void
 } & HistoryApi

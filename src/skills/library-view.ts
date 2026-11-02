@@ -1,4 +1,4 @@
-import type { LibraryListing } from './library'
+import type { LibraryListing, LibrarySnapshot } from './library'
 
 export type SkillChoices = Readonly<Record<string, boolean>>
 
@@ -31,3 +31,10 @@ export const skillFileLabel = (
         .map((file) => `${skill.name} / ${file.name}`),
     )
     .at(0)
+
+export const sameLibrary = (
+  left: LibrarySnapshot,
+  right: LibrarySnapshot,
+): boolean =>
+  left.problem === right.problem &&
+  JSON.stringify(left.roots) === JSON.stringify(right.roots)

@@ -82,6 +82,28 @@ export type LibraryKit<Ref> = {
   readonly addRoot: () => Promise<AddRootResult>
   readonly removeRoot: (path: string) => Promise<RemoveRootResult>
   readonly toRef: (path: string) => Ref
+  readonly subscribe: (listener: () => void) => () => void
+}
+
+export type DiskRead =
+  | {
+      readonly kind: 'text'
+      readonly name: string
+      readonly text: string
+    }
+  | { readonly kind: 'gone' }
+  | { readonly kind: 'unreadable' }
+
+export type ExternalChange<Ref> = {
+  readonly touches: (ref: Ref) => boolean
+}
+
+export type ExternalKit<Ref> = {
+  readonly watch: (ref: Ref | null) => void
+  readonly subscribe: (
+    listener: (change: ExternalChange<Ref>) => void,
+  ) => () => void
+  readonly readDisk: (ref: Ref) => Promise<DiskRead>
 }
 
 export type PlatformKit<Ref = unknown> = {
@@ -93,6 +115,7 @@ export type PlatformKit<Ref = unknown> = {
   readonly keyStatus: KeyStatus
   readonly problems: Problems
   readonly library?: LibraryKit<Ref>
+  readonly external?: ExternalKit<Ref>
 }
 
 export type PlatformKitFactory<Ref = unknown> = () => Promise<PlatformKit<Ref>>

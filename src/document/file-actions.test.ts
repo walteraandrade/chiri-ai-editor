@@ -43,6 +43,10 @@ const fakeEditor = (initial: string, calls: string[] = []) => {
       calls.push('replace')
       text = next
     }),
+    refresh: vi.fn((next: string) => {
+      calls.push('refresh')
+      text = next
+    }),
   }
   return {
     editor,
@@ -79,6 +83,7 @@ const setup = ({
   const events: FileSessionEvent<Ref>[] = []
   const notices: string[] = []
   const openedFiles: { text: string; name: string }[] = []
+  const reloadedFiles: { text: string; name: string }[] = []
   const savedFiles: { text: string; name: string }[] = []
   const conflicts: { name: string; ref: Ref }[] = []
   const savingTexts: string[] = []
@@ -104,11 +109,19 @@ const setup = ({
       notices.push(text)
     },
     onSaving: (text) => {
+      calls.push('onSaving')
       savingTexts.push(text)
+    },
+    onSaveEnded: () => {
+      calls.push('onSaveEnded')
     },
     onOpened: (file) => {
       calls.push('onOpened')
       openedFiles.push(file)
+    },
+    onReloaded: (file) => {
+      calls.push('onReloaded')
+      reloadedFiles.push(file)
     },
     onSaved: (file) => {
       savedFiles.push(file)
@@ -123,6 +136,7 @@ const setup = ({
     events,
     notices,
     openedFiles,
+    reloadedFiles,
     savedFiles,
     conflicts,
     savingTexts,
@@ -405,10 +419,64 @@ describe('save', () => {
   })
 })
 
+describe('save ending', () => {
+  const run = async (
+    save: () => Promise<SaveResult<Ref>>,
+    sessionOverride: FileSession<Ref> | null = sessionOf('# A\n', true),
+  ) => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A, edited\n', calls)
+    const { actions } = setup({
+      save,
+      editor,
+      session: sessionOverride,
+      calls,
+    })
+    const result = await actions.save(false).catch(() => 'threw')
+    return { calls: calls.filter((call) => call.startsWith('onSav')), result }
+  }
+
+  it.each([
+    ['saved', async () => savedAs()],
+    ['in conflict', async () => ({ kind: 'conflict' }) as const],
+    ['failed', async () => ({ kind: 'failed' }) as const],
+    ['cancelled', async () => ({ kind: 'cancelled' }) as const],
+  ])(
+    'tells the Save has ended after it %s, once the outcome is applied',
+    async (_label, save) => {
+      const { calls } = await run(save)
+      expect(calls).toEqual(['onSaving', 'onSaveEnded'])
+    },
+  )
+
+  it('tells the Save has ended when the write throws', async () => {
+    const { calls, result } = await run(async () => {
+      throw new Error('IPC closed')
+    })
+    expect(result).toBe('threw')
+    expect(calls).toEqual(['onSaving', 'onSaveEnded'])
+  })
+
+  it('applies a saved outcome before it says the Save has ended', async () => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A, edited\n', calls)
+    const { actions } = setup({
+      save: async () => savedAs(),
+      editor,
+      session: sessionOf('# A\n', true),
+      calls,
+    })
+    await actions.save(false)
+    expect(calls.indexOf('dispatch saved')).toBeLessThan(
+      calls.indexOf('onSaveEnded'),
+    )
+  })
+})
+
 describe('reload', () => {
   it('replaces the Document with the disk text and drops the unsaved edits', async () => {
     const { editor } = fakeEditor('# A, mine\n')
-    const { actions, session, notices, openedFiles } = setup({
+    const { actions, session, notices, reloadedFiles, openedFiles } = setup({
       read: async () => opened('# A, by an agent\n'),
       editor,
       session: sessionOf('# A\n', true),
@@ -422,9 +490,10 @@ describe('reload', () => {
       dirty: false,
     })
     expect(notices).toEqual(['Reloaded SKILL.md'])
-    expect(openedFiles).toEqual([
+    expect(reloadedFiles).toEqual([
       { text: '# A, by an agent\n', name: 'SKILL.md' },
     ])
+    expect(openedFiles).toEqual([])
   })
 
   it('does not offer the old unsaved text again', async () => {
@@ -812,5 +881,46 @@ describe('save result', () => {
   it('is false when there is no editor yet', async () => {
     const { actions } = setup({ editor: null })
     expect(await actions.save(false)).toBe(false)
+  })
+})
+
+describe('reloadFrom', () => {
+  const FILE = { name: 'SKILL.md', text: '# A, by an agent\n', ref: REF }
+
+  it('takes the text already read, keeping the cursor, and starts a clean session', () => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A\n', calls)
+    const { actions, session, notices, reloadedFiles, openedFiles, files } =
+      setup({ editor, session: sessionOf('# A\n'), calls })
+    actions.reloadFrom(FILE)
+    expect(editor.refresh).toHaveBeenCalledWith('# A, by an agent\n')
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(files.read).not.toHaveBeenCalled()
+    expect(session()).toEqual({
+      name: 'SKILL.md',
+      ref: REF,
+      savedText: '# A, by an agent\n',
+      dirty: false,
+    })
+    expect(reloadedFiles).toEqual([
+      { text: '# A, by an agent\n', name: 'SKILL.md' },
+    ])
+    expect(openedFiles).toEqual([])
+    expect(notices).toEqual(['Reloaded SKILL.md: it changed on disk'])
+  })
+
+  it('points the session at the file before the text changes, then reports it', () => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A\n', calls)
+    const { actions } = setup({ editor, session: sessionOf('# A\n'), calls })
+    actions.reloadFrom(FILE)
+    expect(calls).toEqual(['dispatch opened', 'refresh', 'onReloaded'])
+  })
+
+  it('does nothing before the editor exists', () => {
+    const { actions, events, reloadedFiles } = setup({ editor: null })
+    actions.reloadFrom(FILE)
+    expect(events).toEqual([])
+    expect(reloadedFiles).toEqual([])
   })
 })
