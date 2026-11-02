@@ -6,6 +6,7 @@ import { createUnsavedKeeper } from '../document/unsaved-keeper'
 import { createElectronHistoryStore } from '../history/electron-store'
 import { createSwitchableHistory } from '../history/hub'
 import { createDocumentHistory } from '../history/session'
+import { createElectronExternal } from './electron-external'
 import { createElectronFiles } from './electron-files'
 import { createElectronLibrary } from './electron-library'
 import {
@@ -18,6 +19,7 @@ import {
 import { createElectronUnsavedStore } from './electron-unsaved'
 import type {
   DocumentFiles,
+  ExternalKit,
   LibraryKit,
   PlatformKit,
   PlatformKitFactory,
@@ -45,6 +47,7 @@ type ElectronKitDeps = {
   readonly storage: RemovableStorage | null
   readonly files: DocumentFiles<string>
   readonly library: LibraryKit<string>
+  readonly external: ExternalKit<string>
   readonly now: () => number
   readonly hasApiKey: boolean
   readonly onHide: (flush: () => void) => void
@@ -126,6 +129,7 @@ export const createElectronKit = async ({
   storage,
   files,
   library,
+  external,
   now,
   hasApiKey,
   onHide,
@@ -208,6 +212,7 @@ export const createElectronKit = async ({
     keyStatus: { present: hasApiKey },
     problems,
     library,
+    external,
   }
 }
 
@@ -230,6 +235,7 @@ export const browserElectronKit: PlatformKitFactory<string> =
       storage: getRemovableStorage(),
       files: createElectronFiles(api),
       library: createElectronLibrary(api),
+      external: createElectronExternal(api),
       now: Date.now,
       hasApiKey: __HAS_OPENROUTER_KEY__,
       onHide: flushWhenPageHides,

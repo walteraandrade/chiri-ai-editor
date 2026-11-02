@@ -7,7 +7,7 @@ import { createLocalHistoryStore } from '../history/local-store'
 import type { HistoryStore } from '../history/store'
 import { createElectronKit, SCRATCH_KEY } from './electron-kit'
 import { LAST_FILE_KEY } from './electron-storage'
-import type { DocumentFiles, LibraryKit, OpenResult } from './kit'
+import type { DocumentFiles, ExternalKit, LibraryKit, OpenResult } from './kit'
 
 const PATH = '/skills/a/SKILL.md'
 const OTHER = '/skills/b/SKILL.md'
@@ -82,6 +82,12 @@ const fakeLibrary: LibraryKit<string> = {
   subscribe: () => () => undefined,
 }
 
+const fakeExternal: ExternalKit<string> = {
+  watch: () => undefined,
+  subscribe: () => () => undefined,
+  readDisk: async () => ({ kind: 'gone' }),
+}
+
 const setup = (
   options: {
     readonly stored?: Record<string, string>
@@ -108,6 +114,7 @@ const setup = (
     storage,
     files,
     library: fakeLibrary,
+    external: fakeExternal,
     now: () => 1000,
     hasApiKey: true,
     onHide: (flush) => {
@@ -492,6 +499,11 @@ describe('createElectronKit changes', () => {
   it('carries the Library it was given', async () => {
     const ready = await setup().kit
     expect(ready.library).toBe(fakeLibrary)
+  })
+
+  it('carries the change watcher it was given', async () => {
+    const ready = await setup().kit
+    expect(ready.external).toBe(fakeExternal)
   })
 
   it('reports the key status it was given', async () => {

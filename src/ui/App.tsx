@@ -49,6 +49,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     keyStatus,
     problems,
     library,
+    external,
   } = kit
   const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
@@ -115,6 +116,14 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     },
     [history, closeHistory],
   )
+  const onReloaded = useCallback(
+    ({ ref, text }: FileArrival<Ref>) => {
+      history.select(ref)
+      history.external({ text })
+      closeHistory()
+    },
+    [history, closeHistory],
+  )
   const onSaved = useCallback(
     ({ ref, text, name }: FileArrival<Ref>) => {
       history.select(ref)
@@ -127,9 +136,11 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     files,
     unsavedText,
     start,
+    external,
     controls: documentControls,
     notify: showToast,
     onOpened,
+    onReloaded,
     onSaving: history.saving,
     onSaved,
     askLeave: leavePrompt.ask,

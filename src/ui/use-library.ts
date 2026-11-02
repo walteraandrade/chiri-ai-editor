@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LibraryKit } from '../platform/kit'
 import type { LibraryListing } from '../skills/library'
+import { sameLibrary } from '../skills/library-view'
 
 export type LibraryState =
   | { readonly status: 'loading' }
@@ -23,16 +24,20 @@ export const useLibrary = <Ref>(
     const load = ++latestLoad.current
     const result = await library.list()
     if (load !== latestLoad.current) return
-    setState(
-      result.kind === 'listed'
-        ? { status: 'ready', roots: result.roots, problem: result.problem }
-        : { status: 'failed' },
+    setState((previous) =>
+      result.kind !== 'listed'
+        ? { status: 'failed' }
+        : previous.status === 'ready' && sameLibrary(previous, result)
+          ? previous
+          : { status: 'ready', roots: result.roots, problem: result.problem },
     )
   }, [library])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  useEffect(() => library?.subscribe(() => void refresh()), [library, refresh])
 
   const addRoot = useCallback(async () => {
     if (library === undefined) return

@@ -28,6 +28,7 @@ type FileActionsOptions<Ref> = {
   readonly dispatch: (event: FileSessionEvent<Ref>) => void
   readonly notify: (text: string) => void
   readonly onSaving?: (text: string) => void
+  readonly onSaveEnded?: () => void
   readonly onOpened?: (file: FileEvent) => void
   readonly onReloaded?: (file: FileEvent) => void
   readonly onSaved?: (file: FileEvent) => void
@@ -56,6 +57,7 @@ export const createFileActions = <Ref>({
   dispatch,
   notify,
   onSaving,
+  onSaveEnded,
   onOpened,
   onReloaded,
   onSaved,
@@ -180,7 +182,7 @@ export const createFileActions = <Ref>({
     notify(`Reloaded ${name}: it changed on disk`)
   }
 
-  const save = async (saveAs: boolean): Promise<boolean> => {
+  const writeFile = async (saveAs: boolean): Promise<boolean> => {
     const current = editor()
     if (current === null) return false
     const text = current.text()
@@ -216,6 +218,14 @@ export const createFileActions = <Ref>({
       `${result.method === 'download' ? 'Downloaded' : 'Saved'} ${result.name}`,
     )
     return true
+  }
+
+  const save = async (saveAs: boolean): Promise<boolean> => {
+    try {
+      return await writeFile(saveAs)
+    } finally {
+      onSaveEnded?.()
+    }
   }
 
   return { open, openRef, save, reload, reloadFrom }

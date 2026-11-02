@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LibraryListing, LibraryRoot } from './library'
 import {
   isSkillOpen,
+  sameLibrary,
   skillCount,
   skillFileLabel,
   skillHoldingFile,
@@ -146,5 +147,55 @@ describe('skillFileLabel', () => {
     expect(skillFileLabel([], opening('/skills/pdf-tools/SKILL.md'))).toBe(
       undefined,
     )
+  })
+})
+
+describe('sameLibrary', () => {
+  const snapshot = (
+    skills: readonly Skill[],
+    problem: string | null = null,
+  ) => ({
+    roots: [root(skills)],
+    problem,
+  })
+
+  it('is true for the same listing read twice', () => {
+    expect(
+      sameLibrary(snapshot([skill('pdf')]), snapshot([skill('pdf')])),
+    ).toBe(true)
+  })
+
+  it('is false when a skill was added, removed or renamed', () => {
+    expect(sameLibrary(snapshot([skill('pdf')]), snapshot([]))).toBe(false)
+    expect(
+      sameLibrary(
+        snapshot([skill('pdf')]),
+        snapshot([skill('pdf'), skill('docx')]),
+      ),
+    ).toBe(false)
+    expect(
+      sameLibrary(
+        snapshot([skill('pdf')]),
+        snapshot([skill('pdf', { name: 'pdf tools' })]),
+      ),
+    ).toBe(false)
+  })
+
+  it('is false when only a file of a skill changed', () => {
+    expect(
+      sameLibrary(
+        snapshot([skill('pdf')]),
+        snapshot([skill('pdf', { files: [] })]),
+      ),
+    ).toBe(false)
+  })
+
+  it('is false when the problem with the root list changed', () => {
+    expect(
+      sameLibrary(
+        snapshot([skill('pdf')]),
+        snapshot([skill('pdf')], 'Could not read library-roots.json'),
+      ),
+    ).toBe(false)
   })
 })

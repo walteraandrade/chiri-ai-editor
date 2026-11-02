@@ -109,7 +109,11 @@ const setup = ({
       notices.push(text)
     },
     onSaving: (text) => {
+      calls.push('onSaving')
       savingTexts.push(text)
+    },
+    onSaveEnded: () => {
+      calls.push('onSaveEnded')
     },
     onOpened: (file) => {
       calls.push('onOpened')
@@ -412,6 +416,60 @@ describe('save', () => {
     const { actions, files } = setup({ editor: null })
     await actions.save(false)
     expect(files.save).not.toHaveBeenCalled()
+  })
+})
+
+describe('save ending', () => {
+  const run = async (
+    save: () => Promise<SaveResult<Ref>>,
+    sessionOverride: FileSession<Ref> | null = sessionOf('# A\n', true),
+  ) => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A, edited\n', calls)
+    const { actions } = setup({
+      save,
+      editor,
+      session: sessionOverride,
+      calls,
+    })
+    const result = await actions.save(false).catch(() => 'threw')
+    return { calls: calls.filter((call) => call.startsWith('onSav')), result }
+  }
+
+  it.each([
+    ['saved', async () => savedAs()],
+    ['in conflict', async () => ({ kind: 'conflict' }) as const],
+    ['failed', async () => ({ kind: 'failed' }) as const],
+    ['cancelled', async () => ({ kind: 'cancelled' }) as const],
+  ])(
+    'tells the Save has ended after it %s, once the outcome is applied',
+    async (_label, save) => {
+      const { calls } = await run(save)
+      expect(calls).toEqual(['onSaving', 'onSaveEnded'])
+    },
+  )
+
+  it('tells the Save has ended when the write throws', async () => {
+    const { calls, result } = await run(async () => {
+      throw new Error('IPC closed')
+    })
+    expect(result).toBe('threw')
+    expect(calls).toEqual(['onSaving', 'onSaveEnded'])
+  })
+
+  it('applies a saved outcome before it says the Save has ended', async () => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A, edited\n', calls)
+    const { actions } = setup({
+      save: async () => savedAs(),
+      editor,
+      session: sessionOf('# A\n', true),
+      calls,
+    })
+    await actions.save(false)
+    expect(calls.indexOf('dispatch saved')).toBeLessThan(
+      calls.indexOf('onSaveEnded'),
+    )
   })
 })
 
