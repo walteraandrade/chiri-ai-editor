@@ -3,7 +3,11 @@ import type { LibraryKit } from './kit'
 
 export type LibraryApi = Pick<
   ChiriApi,
-  'listLibrary' | 'addLibraryRoot' | 'removeLibraryRoot' | 'onExternalChanges'
+  | 'listLibrary'
+  | 'addLibraryRoot'
+  | 'removeLibraryRoot'
+  | 'createSkill'
+  | 'onExternalChanges'
 >
 
 const UNREACHABLE = {
@@ -21,6 +25,11 @@ const orFailure = async <T>(
   }
 }
 
+const folderNameOf = (path: string): string | undefined => {
+  const folder = path.split('/').slice(0, -1).at(-1)
+  return folder === undefined || folder === '' ? undefined : folder
+}
+
 export const createElectronLibrary = (api: LibraryApi): LibraryKit<string> => ({
   list: async () => {
     try {
@@ -31,7 +40,9 @@ export const createElectronLibrary = (api: LibraryApi): LibraryKit<string> => ({
   },
   addRoot: () => orFailure(api.addLibraryRoot),
   removeRoot: (path) => orFailure(() => api.removeLibraryRoot(path)),
+  createSkill: (request) => orFailure(() => api.createSkill(request)),
   toRef: (path) => path,
+  folderNameOf,
   subscribe: (listener) =>
     api.onExternalChanges(({ library }) => {
       if (library) listener()

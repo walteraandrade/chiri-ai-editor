@@ -2,11 +2,13 @@ import { homedir } from 'node:os'
 import { app, BrowserWindow, type IpcMainInvokeEvent, ipcMain } from 'electron'
 import {
   LIBRARY_ADD_ROOT_CHANNEL,
+  LIBRARY_CREATE_SKILL_CHANNEL,
   LIBRARY_LIST_CHANNEL,
   LIBRARY_REMOVE_ROOT_CHANNEL,
 } from '../../api'
 import { resolveDevDialogs } from '../files/dev-dialogs'
 import { createFileDialogs } from '../files/dialogs'
+import { createSkill, nodeCreateSkillFs } from './create-skill'
 import {
   addLibraryRoot,
   type LibraryDeps,
@@ -53,6 +55,9 @@ export const registerLibraryHandlers = (isTrusted: Trust): LibraryHandle => {
   )
   handle(LIBRARY_REMOVE_ROOT_CHANNEL, (_event, input) =>
     removeLibraryRoot(deps, input),
+  )
+  handle(LIBRARY_CREATE_SKILL_CHANNEL, (_event, input) =>
+    createSkill({ ...deps, fileSystem: nodeCreateSkillFs }, input),
   )
   return { deps, onRootsSaved: roots.subscribe }
 }

@@ -3,6 +3,8 @@ import type { Unsaved } from '../document/unsaved'
 import type { SwitchableHistory } from '../history/hub'
 import type {
   AddRootResult,
+  CreateSkillRequest,
+  CreateSkillResult,
   LibraryListing,
   RemoveRootResult,
 } from '../skills/library'
@@ -81,7 +83,11 @@ export type LibraryKit<Ref> = {
   readonly list: () => Promise<LibraryList>
   readonly addRoot: () => Promise<AddRootResult>
   readonly removeRoot: (path: string) => Promise<RemoveRootResult>
+  readonly createSkill: (
+    request: CreateSkillRequest,
+  ) => Promise<CreateSkillResult>
   readonly toRef: (path: string) => Ref
+  readonly folderNameOf: (ref: Ref) => string | undefined
   readonly subscribe: (listener: () => void) => () => void
 }
 

@@ -21,3 +21,16 @@ export type AddRootResult =
 export type RemoveRootResult =
   | { readonly kind: 'removed' }
   | { readonly kind: 'failed'; readonly reason: string }
+
+export type CreateSkillRequest = {
+  readonly root: string
+  readonly name: string
+}
+
+export type CreateSkillResult =
+  | {
+      readonly kind: 'created'
+      readonly path: string
+      readonly name: string
+    }
+  | { readonly kind: 'failed'; readonly reason: string }
