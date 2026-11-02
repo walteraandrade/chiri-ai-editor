@@ -1,6 +1,6 @@
 # Backlog
 
-Reviewed on 2026-10-31, revised on 2026-11-01. **Priority 1: Chiri becomes the maintainer's native editor for agent skills.** Decisions: [ADR 0013](chiri/adr/0013-native-app-on-electron.md) (Electron), [ADR 0014](chiri/adr/0014-skills-on-disk.md) (skills on disk are the source of truth), [ADR 0015](chiri/adr/0015-history-in-sqlite.md) (History in SQLite), [ADR 0016](chiri/adr/0016-web-and-electron-builds.md) (Web and Electron builds).
+Reviewed on 2026-10-31, revised on 2026-11-01 and 2026-11-02. **Priority 1: full CI on GitHub.** The previous priority, Chiri as the maintainer's native editor for agent skills, is done (below). Its decisions: [ADR 0013](chiri/adr/0013-native-app-on-electron.md) (Electron), [ADR 0014](chiri/adr/0014-skills-on-disk.md) (skills on disk are the source of truth), [ADR 0015](chiri/adr/0015-history-in-sqlite.md) (History in SQLite), [ADR 0016](chiri/adr/0016-web-and-electron-builds.md) (Web and Electron builds).
 
 `main` stays frozen as submitted for the assessment. Until it opens again, every slice branches from `feat/open-save-markdown` ([PR #22](https://github.com/walteraandrade/chiri-ai-editor/pull/22)) and squash-merges back into it. Both builds live on ([0016](chiri/adr/0016-web-and-electron-builds.md)), so PR #22 can squash-merge into `main` when it reopens without losing the browser app.
 
@@ -8,9 +8,19 @@ Each slice gets a GitHub issue before it starts, as `AGENTS.md` asks. The Builds
 
 Gone from the previous list: "Remember the open file across reloads" (slice 2 reopens the last file by its path). "Multiple documents" left Out of scope: the Library (slice 4) lists them and Tabs wait below.
 
-## Priority 1: native skills editor
+## Priority 1: full CI on GitHub
 
-Slices run in order; each one leaves both builds working. Slice 7 is optional: `pnpm dev:electron` covers daily use from the repo, and slice 7 is what lets Chiri run without the repo, a terminal and `.env`.
+Nothing runs on GitHub today: every check in a PR body is a command an agent ran by hand and pasted in. CI runs the same commands on every PR, so a red check stops the merge instead of a reviewer trusting the paste. Slices run in order.
+
+| # | Slice | Branch | Builds | Scope | Done when | Context |
+|---|---|---|---|---|---|---|
+| CI 1 | Checks on every PR | `chore/ci-checks` | Both | `.github/workflows/ci.yml` on `pull_request` and `push` for `main` and `feat/open-save-markdown`. Ubuntu runner; pnpm from `packageManager`; Node from `engines` (`node:sqlite` in `electron/main/history-db.ts` sets the floor); `pnpm install --frozen-lockfile` with the pnpm store cached. Steps: `pnpm biome check`, `pnpm test`, `pnpm build` (both `tsc`, `dist/`, `out/`), `pnpm check:externals`. No secrets and no `.env`: tests never call the model. Actions pinned by commit SHA, `permissions: contents: read`, `concurrency` cancels an older run of the same PR. `AGENTS.md`: Definition of done items 1–2 point to the check, and PR bodies link the run instead of pasting output | The check runs green on a PR into `feat/open-save-markdown`; a throwaway PR with a failing test, one with a Biome error and one with a type error each turn it red (closed unmerged); run time noted | `AGENTS.md` (Definition of done), [0016](chiri/adr/0016-web-and-electron-builds.md) |
+| CI 2 | Required check | `chore/ci-required-check` | – | A ruleset on `main` and `feat/open-save-markdown`: the CI 1 check must pass before a merge, squash merge only. Applied with `gh api`, its JSON committed under `.github/` so it can be read and re-applied | GitHub refuses to merge a PR whose check is red or missing; a green PR still squash-merges | `AGENTS.md` (Git and PRs) |
+| CI 3 | Linux package as an artifact | `chore/ci-package` | Electron | A job on `workflow_dispatch` and on `v*` tags: `pnpm package`, the `.pacman` uploaded as a run artifact and, on a tag, attached to a GitHub Release. The `pacman` target may need system packages on Ubuntu; the slice finds out and says so in the workflow | The `.pacman` from a run installs with `pacman -U` on the maintainer's machine and opens a `.md` from the desktop | [0013](chiri/adr/0013-native-app-on-electron.md), [PR #42](https://github.com/walteraandrade/chiri-ai-editor/pull/42), [PR #46](https://github.com/walteraandrade/chiri-ai-editor/pull/46) |
+
+## Done: native skills editor
+
+All seven slices are merged into `feat/open-save-markdown`: slice 1 in [#36](https://github.com/walteraandrade/chiri-ai-editor/pull/36) through slice 7 in [#42](https://github.com/walteraandrade/chiri-ai-editor/pull/42) (issues #29–#35). The table stays because the lists below name its slices by number.
 
 | # | Slice | Branch | Builds | Scope | Done when | Context |
 |---|---|---|---|---|---|---|
@@ -46,6 +56,8 @@ Context links point to where the related code, decision or evidence lives. A mer
 | Keep the margin card in view at the viewport edges | The card hangs from the Suggestion's first line on a fixed side, so it stays level with it. When that line scrolls under the sticky header the card goes with it, and a Suggestion near the bottom leaves its buttons below the fold until you scroll. Letting it flip would keep it in view but leave it misaligned after scrolling. Tab still reaches the buttons and scrolls to them | [PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16) |
 | Floating Card keeps the side it was created on | CodeMirror keeps a tooltip's side while its view lives. A floating Card created while its line is above the viewport (a Review pass streaming with the page scrolled down) flips below the line and stays there after scrolling back, covering the next lines. Rebuilding the Card when the Active Suggestion changes or after a reveal fixes it; it touches `suggestion-cards.ts`, which PR #19 also changes | [PR #20](https://github.com/walteraandrade/chiri-ai-editor/pull/20), [PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16) |
 | Keep the typed Refine Instruction when the card changes placement | Crossing the ~1312px width while typing a Refine Instruction rebuilds the card, which clears the box and drops focus. Needs a window resize mid-typing; keeping it means sharing the form between card views and restoring focus after mount | [PR #16](https://github.com/walteraandrade/chiri-ai-editor/pull/16) |
+| Start the built Electron app in CI | CI 1 cannot see a build that type-checks and then opens a blank window, the failure PR #22's Merge Danger names for `app://` and the key store. A start check needs `xvfb` and a keyring on the runner, and comes close to the end-to-end tests ruled out below | [PR #22](https://github.com/walteraandrade/chiri-ai-editor/pull/22), [0013](chiri/adr/0013-native-app-on-electron.md) |
+| Dependency updates (Dependabot or Renovate) | SHA-pinned actions and the lockfile go stale with nobody watching. Worth it once CI 2 makes each update PR prove itself | CI 1, CI 2 |
 
 ## Out of scope, by choice
 
