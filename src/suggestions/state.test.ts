@@ -1,6 +1,7 @@
 import { ChangeSet } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
 import type { ClientError } from '../ai/errors'
+import { findFrontmatter } from '../blocks/frontmatter'
 import { adaptiveDiff } from '../diff/adaptive-diff'
 import {
   acceptSuggestion,
@@ -453,6 +454,29 @@ describe('mapSuggestions', () => {
 
   it('discards a Suggestion when its whole range is replaced', () => {
     expect(idsOf(mapSuggestions(open(), change(20, 40, 'new')))).toEqual(['b'])
+  })
+
+  it('discards a Suggestion that ends up inside a frontmatter, keeps the rest', () => {
+    const frontmatter = findFrontmatter(`---\nx: ${'y'.repeat(37)}\n---\n`)
+    if (!frontmatter) throw new Error('no frontmatter')
+    const next = mapSuggestions(open(), change(95, 95, 'z'), frontmatter)
+    expect(idsOf(next)).toEqual(['b'])
+    expect(next.notice?.kind).toBe('text-changed')
+  })
+
+  it('discards a Suggestion that overlaps the start of a frontmatter', () => {
+    const frontmatter = findFrontmatter(`---\nx: ${'y'.repeat(27)}\n---\n`)
+    if (!frontmatter) throw new Error('no frontmatter')
+    const next = mapSuggestions(open(), change(95, 95, 'z'), frontmatter)
+    expect(idsOf(next)).toEqual(['b'])
+  })
+
+  it('keeps Suggestions after a frontmatter', () => {
+    const frontmatter = findFrontmatter('---\na: 1\n---\n')
+    if (!frontmatter) throw new Error('no frontmatter')
+    const next = mapSuggestions(open(), change(95, 95, 'z'), frontmatter)
+    expect(idsOf(next)).toEqual(['a', 'b'])
+    expect(next.notice).toBeNull()
   })
 
   it('discards a pending Suggestion when its Target is edited', () => {

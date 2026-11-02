@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { MarkdownFileHandle } from '../document/file-access'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import { DOCUMENT_STORAGE_KEY, type StorageLike } from '../document/storage'
 import { HISTORY_STORAGE_KEY } from '../history/storage'
+import type { DocumentFiles } from './kit'
 import { createWebKit, createWebKitFactory } from './web-kit'
+
+const fakeFiles = (): DocumentFiles<MarkdownFileHandle> => ({
+  open: async () => ({ kind: 'cancelled' }),
+  read: async () => ({ kind: 'cancelled' }),
+  save: async () => ({ kind: 'cancelled' }),
+})
 
 const createFakeStorage = (
   initial: Record<string, string> = {},
@@ -22,15 +30,17 @@ const build = (
   options: { readonly hasApiKey?: boolean } = {},
 ) => {
   const hide: { flush: () => void } = { flush: () => undefined }
+  const files = fakeFiles()
   const kit = createWebKit({
     storage,
+    files,
     now: () => 1000,
     hasApiKey: options.hasApiKey ?? true,
     onHide: (flush) => {
       hide.flush = flush
     },
   })
-  return { kit, hide }
+  return { kit, hide, files }
 }
 
 describe('createWebKit', () => {
@@ -62,7 +72,7 @@ describe('createWebKit', () => {
   it('saves the Document after the autosave delay', () => {
     const storage = createFakeStorage()
     const { kit } = build(storage)
-    kit.unsavedText.changed('# Changed')
+    kit.unsavedText.changed('# Changed', null)
     expect(storage.entries()[DOCUMENT_STORAGE_KEY]).toBeUndefined()
     vi.advanceTimersByTime(400)
     expect(storage.entries()[DOCUMENT_STORAGE_KEY]).toBe('# Changed')
@@ -71,7 +81,7 @@ describe('createWebKit', () => {
   it('saves the Document and the History when the page hides', () => {
     const storage = createFakeStorage()
     const { kit, hide } = build(storage)
-    kit.unsavedText.changed('# Changed')
+    kit.unsavedText.changed('# Changed', null)
     kit.history.edited('# Changed')
     hide.flush()
     expect(storage.entries()[DOCUMENT_STORAGE_KEY]).toBe('# Changed')
@@ -84,6 +94,35 @@ describe('createWebKit', () => {
     expect(storage.entries()[HISTORY_STORAGE_KEY]).toContain('"kind":"started"')
   })
 
+  it('hands over the files it was given', () => {
+    const { kit, files } = build(null)
+    expect(kit.files).toBe(files)
+  })
+
+  it('starts with no file, no notice and no unsaved text to offer', async () => {
+    const { kit } = build(null)
+    expect(kit.start).toBeNull()
+    expect(kit.notice).toBeNull()
+    expect(await kit.unsavedText.offered({} as MarkdownFileHandle)).toBeNull()
+  })
+
+  it('ignores the file when saving the Document: one autosave for the Web build', () => {
+    const storage = createFakeStorage()
+    const { kit } = build(storage)
+    kit.unsavedText.changed('# Changed', {
+      name: 'a.md',
+      ref: null,
+      savedText: '# A',
+      dirty: true,
+    })
+    vi.advanceTimersByTime(400)
+    expect(storage.entries()[DOCUMENT_STORAGE_KEY]).toBe('# Changed')
+    expect(Object.keys(storage.entries()).sort()).toEqual([
+      DOCUMENT_STORAGE_KEY,
+      HISTORY_STORAGE_KEY,
+    ])
+  })
+
   it('reports the key status it was given', () => {
     expect(build(null, { hasApiKey: false }).kit.keyStatus.present).toBe(false)
     expect(build(null, { hasApiKey: true }).kit.keyStatus.present).toBe(true)
@@ -93,6 +132,7 @@ describe('createWebKit', () => {
 describe('createWebKitFactory', () => {
   const deps = (storage: StorageLike | null, hasApiKey = true) => ({
     storage,
+    files: fakeFiles(),
     now: () => 1000,
     hasApiKey,
     onHide: () => undefined,

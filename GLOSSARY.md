@@ -30,7 +30,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Draft** | (Backlog) Streamed, not-yet-validated Replacement text shown without a diff. |
 | **Skill** | (Backlog) A folder with a `SKILL.md` under a skill root, as agents read it. The Library shows it by its frontmatter `name` ([ADR 0014](docs/chiri/adr/0014-skills-on-disk.md)). |
 | **Library** | (Backlog) The sidebar listing the skill roots, their Skills and each Skill's files. |
-| **External change** | (Backlog) A change to a file made outside the app (an agent, another editor, `git pull`). Recorded as an External Version. |
+| **External change** | (Backlog) A change to a file made outside the app (an agent, another editor, `git pull`). Recorded as an External Version. The External change notice offers "Reload from disk" or "Keep mine"; Save shows it when the disk no longer holds the text last read or written. |
 | **Web build** | (Backlog) The browser app as submitted: a tab on the Vite dev server, `pnpm dev`. Gets shared code, no new platform features ([ADR 0016](docs/chiri/adr/0016-web-and-electron-builds.md)). |
 | **Electron build** | (Backlog) The native app: an Electron window, `pnpm dev:electron` ([ADR 0013](docs/chiri/adr/0013-native-app-on-electron.md)). The Library, the watcher and `history.sqlite` exist only here. |
 | **Bake-off** | Scripted comparison of candidate models on the same requests ([ADR 0010](docs/chiri/adr/0010-model-bakeoff.md)). |

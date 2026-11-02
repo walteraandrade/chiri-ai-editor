@@ -44,6 +44,7 @@ Dev environment variables (all optional; parallel checkouts on one machine need 
 | `CHIRI_DEV_PORT` | Vite port for `pnpm dev` and `pnpm dev:electron`. When set, Vite fails instead of moving to another port. |
 | `CHIRI_CDP_PORT` | Chrome DevTools port of the dev window (default 9222). `agent-browser connect <port>` attaches to it. Dev only. |
 | `CHIRI_USER_DATA_DIR` | Absolute path for Electron's `userData` in `pnpm dev:electron` and `pnpm preview:electron` (not in a packaged app). Always set it for checks, never use the default. |
+| `CHIRI_DEV_PICK_FILE` | Absolute path of a text file. In `pnpm dev:electron` only (an unpackaged app with the dev server), Open and Save as skip the native dialog and use the path in that file, read at each dialog. For checks, because `agent-browser` cannot drive a GTK dialog; say in the record which checks used it. |
 
 Attach to the window: `CHIRI_DEV_PORT=5301 CHIRI_CDP_PORT=9301 CHIRI_USER_DATA_DIR=$(mktemp -d) pnpm dev:electron`, then `agent-browser connect 9301`.
 
@@ -63,8 +64,9 @@ Attach to the window: `CHIRI_DEV_PORT=5301 CHIRI_CDP_PORT=9301 CHIRI_USER_DATA_D
 ```text
 src/
 ├── main.web.tsx       # Web build entry: builds the Web kit, mounts App
-├── main.electron.tsx  # Electron build entry: builds the Electron kit (the Web kit for now), mounts App
-├── platform/      # PlatformKit type and async kit factory, Web kit, start.ts (mount once the factory resolves) (ADR 0016)
+├── main.electron.tsx  # Electron build entry: builds the Electron kit, mounts App
+├── platform/      # PlatformKit type and async kit factory, Web kit, Electron kit (files through the preload API, unsaved text per file), start.ts (mount once the factory resolves) (ADR 0016)
+├── document/      # Open and Save: file actions, file session, Web DocumentFiles adapter, unsaved text
 ├── editor/        # CodeMirror setup, decorations, keymaps
 ├── suggestions/   # Suggestion state, lifecycle, position mapping (pure)
 ├── diff/          # adaptive diff (pure)
@@ -74,6 +76,7 @@ src/
 electron/
 ├── api.ts         # the preload API's types and channel names, shared by main and preload
 ├── main/          # main process: window, IPC handlers, dev switches, trust checks
+│   └── files/     # Markdown read, atomic save, native dialogs, request validation
 └── preload/       # contextBridge API, one function per action
 config/            # Vite proxy, shared renderer config, port parsing
 index.html         # Web build page

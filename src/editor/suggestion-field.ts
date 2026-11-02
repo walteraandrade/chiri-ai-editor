@@ -29,6 +29,7 @@ import type {
   SuggestionId,
   SuggestionsState,
 } from '../suggestions/types'
+import { frontmatterOfDoc } from './current-target'
 
 export const beginEffect = StateEffect.define<SuggestionDraft>()
 export const resolveEffect = StateEffect.define<{
@@ -100,10 +101,19 @@ export const suggestionsField = StateField.define<SuggestionsState>({
           ? effect.value
           : [],
     )
+    const frontmatter =
+      transaction.docChanged && value.items.length > 0
+        ? frontmatterOfDoc(transaction.newDoc)
+        : undefined
     const mapped =
       acceptedIds.length > 0
-        ? acceptSuggestions(value, acceptedIds, transaction.changes)
-        : mapSuggestions(value, transaction.changes)
+        ? acceptSuggestions(
+            value,
+            acceptedIds,
+            transaction.changes,
+            frontmatter,
+          )
+        : mapSuggestions(value, transaction.changes, frontmatter)
     return transaction.effects.reduce(applyEffect, mapped)
   },
 })

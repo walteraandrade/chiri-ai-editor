@@ -1,41 +1,42 @@
-export type FileSession<H> = {
+export type FileSession<Ref> = {
   readonly name: string
-  readonly handle: H | null
+  readonly ref: Ref | null
   readonly savedText: string
   readonly dirty: boolean
 }
 
-export type FileSessionEvent<H> =
+export type FileSessionEvent<Ref> =
   | {
       readonly type: 'opened'
       readonly name: string
-      readonly handle: H | null
+      readonly ref: Ref | null
       readonly text: string
+      readonly savedText: string
     }
   | {
       readonly type: 'saved'
       readonly name: string
-      readonly handle: H | null
+      readonly ref: Ref | null
       readonly text: string
       readonly current: string
     }
   | { readonly type: 'edited'; readonly text: string }
 
-export const nextFileSession = <H>(
-  session: FileSession<H> | null,
-  event: FileSessionEvent<H>,
-): FileSession<H> | null => {
+export const nextFileSession = <Ref>(
+  session: FileSession<Ref> | null,
+  event: FileSessionEvent<Ref>,
+): FileSession<Ref> | null => {
   if (event.type === 'opened')
     return {
       name: event.name,
-      handle: event.handle,
-      savedText: event.text,
-      dirty: false,
+      ref: event.ref,
+      savedText: event.savedText,
+      dirty: event.text !== event.savedText,
     }
   if (event.type === 'saved')
     return {
       name: event.name,
-      handle: event.handle,
+      ref: event.ref,
       savedText: event.text,
       dirty: event.current !== event.text,
     }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DocumentControls } from '../editor/document-controls'
 import {
   beforeReviewChanges,
@@ -14,6 +14,7 @@ import type { PlatformKit } from '../platform/kit'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
+import { ExternalChangeNotice } from './ExternalChangeNotice'
 import { FileControls } from './FileControls'
 import { FileName } from './FileName'
 import { FullHistory } from './FullHistory'
@@ -27,16 +28,13 @@ import { useHistoryView } from './use-history-view'
 import { useMarkdownFile } from './use-markdown-file'
 import { VersionBar } from './VersionBar'
 
-type AppProps = {
-  readonly kit: PlatformKit
+type AppProps<Ref> = {
+  readonly kit: PlatformKit<Ref>
 }
 
-export function App({ kit }: AppProps) {
-  const {
-    unsavedText: { initial: initialDoc, changed: onDocumentChange },
-    history,
-    keyStatus,
-  } = kit
+export function App<Ref>({ kit }: AppProps<Ref>) {
+  const { files, unsavedText, start, notice, history, keyStatus } = kit
+  const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
   const [controls, setControls] = useState<ReviewControls | null>(null)
@@ -56,6 +54,9 @@ export function App({ kit }: AppProps) {
       setToast({ id: ++toastId.current, text, actions }),
     [],
   )
+  useEffect(() => {
+    if (notice !== null) showToast(notice)
+  }, [notice, showToast])
   const onNotice = useCallback(
     (notice: SuggestionNotice) => showToast(noticeMessage(notice.kind)),
     [showToast],
@@ -94,20 +95,16 @@ export function App({ kit }: AppProps) {
     [history, closeHistory],
   )
   const file = useMarkdownFile({
+    files,
+    unsavedText,
+    start,
     controls: documentControls,
     notify: showToast,
     onOpened,
     onSaving: history.saving,
     onSaved: history.saved,
   })
-  const { edited } = file
-  const onChange = useCallback(
-    (doc: string) => {
-      onDocumentChange(doc)
-      edited(doc)
-    },
-    [onDocumentChange, edited],
-  )
+  const onChange = file.edited
 
   const shown =
     mode.kind === 'version'
@@ -152,7 +149,6 @@ export function App({ kit }: AppProps) {
             <Hint />
             <FileControls
               disabled={documentControls === null}
-              inputRef={file.inputRef}
               onOpen={file.open}
               onSave={file.save}
             />
@@ -163,6 +159,13 @@ export function App({ kit }: AppProps) {
             />
           </div>
         </div>
+        {file.conflict ? (
+          <ExternalChangeNotice
+            name={file.conflict.name}
+            onReload={file.reloadFromDisk}
+            onKeep={file.keepMine}
+          />
+        ) : null}
         <Timeline
           versions={versions}
           mode={mode}

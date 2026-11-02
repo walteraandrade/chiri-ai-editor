@@ -4,6 +4,7 @@ import {
   type FileHost,
   type MarkdownFileHandle,
   openMarkdownFile,
+  readHandle,
   saveMarkdownFile,
   supportsFileHandles,
 } from './file-access'
@@ -109,6 +110,17 @@ describe('openMarkdownFile', () => {
   it('returns null when the file input is cancelled', async () => {
     const { fallback } = fakeFallback(null)
     expect(await openMarkdownFile({}, fallback)).toBeNull()
+  })
+})
+
+describe('readHandle', () => {
+  it('reads the file behind a handle again, decoded', async () => {
+    const { handle } = fakeHandle('notes.md', '# Notes\r\n')
+    expect(await readHandle(handle)).toEqual({
+      name: 'notes.md',
+      text: '# Notes\n',
+      handle,
+    })
   })
 })
 

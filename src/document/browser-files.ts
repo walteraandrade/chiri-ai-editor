@@ -1,4 +1,5 @@
 import type { FileFallback, FileHost } from './file-access'
+import { MARKDOWN_ACCEPT } from './markdown-file'
 
 const REVOKE_DELAY_MS = 30_000
 
@@ -36,6 +37,17 @@ export const downloadText = (name: string, text: string): void => {
   link.download = name
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS)
+}
+
+export const createFileInput = (): HTMLInputElement => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = MARKDOWN_ACCEPT
+  input.hidden = true
+  input.tabIndex = -1
+  input.setAttribute('aria-hidden', 'true')
+  document.body.append(input)
+  return input
 }
 
 export const browserFileFallback = (

@@ -1,4 +1,4 @@
+import { browserElectronKit } from './platform/electron-kit'
 import { mountApp } from './platform/mount'
-import { browserWebKit } from './platform/web-kit'
 
-mountApp(browserWebKit)
+mountApp(browserElectronKit)

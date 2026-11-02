@@ -31,7 +31,7 @@ export type ReviewNotice = {
   readonly retry?: () => void
 }
 
-export type ReviewDropReason = DropReason | 'text-changed'
+export type ReviewDropReason = DropReason | 'text-changed' | 'frontmatter'
 
 export type ReviewDrop = {
   readonly blockId: string

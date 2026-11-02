@@ -351,3 +351,127 @@ describe('targetFromRange', () => {
     ])
   })
 })
+
+describe('resolveTarget with a frontmatter', () => {
+  const doc =
+    '---\nname: demo\ndescription: Does a thing.\n---\n\n# Demo\n\nBody one.\n\nBody two.\n'
+  const docBlocks = extractBlocks(doc)
+  const end = doc.indexOf('---\n\n') + 3
+  const bodyOne = doc.indexOf('Body one.')
+  const resolve = (from: number, to = from) =>
+    resolveTarget(docBlocks, doc, { from, to })
+
+  it('refuses a cursor anywhere inside it', () => {
+    expect(resolve(0)).toBeUndefined()
+    expect(resolve(8)).toBeUndefined()
+    expect(resolve(doc.indexOf('description') + 4)).toBeUndefined()
+    expect(resolve(end)).toBeUndefined()
+  })
+
+  it('refuses a selection inside it', () => {
+    expect(resolve(6, 10)).toBeUndefined()
+    expect(resolve(0, end)).toBeUndefined()
+  })
+
+  it('clips a selection that extends past it to start after it', () => {
+    const target = resolve(6, bodyOne + 4)
+    expect(target).toMatchObject({
+      source: 'selection',
+      from: doc.indexOf('# Demo'),
+      to: bodyOne + 4,
+      text: '# Demo\n\nBody',
+    })
+    expect(target?.blocks.map((block) => block.text)).toEqual([
+      '# Demo',
+      'Body one.',
+    ])
+  })
+
+  it('clips Select All to everything after it', () => {
+    const target = resolve(0, doc.length)
+    expect(target).toMatchObject({
+      source: 'selection',
+      from: doc.indexOf('# Demo'),
+      to: doc.length - 1,
+      text: '# Demo\n\nBody one.\n\nBody two.',
+    })
+    expect(target?.blocks.map((block) => block.id)).toEqual(['p1', 'p2', 'p3'])
+  })
+
+  it('clips a reversed selection the same way', () => {
+    expect(resolve(bodyOne + 4, 6)).toEqual(resolve(6, bodyOne + 4))
+  })
+
+  it('clips a selection that starts at the very beginning', () => {
+    expect(resolve(0, bodyOne + 4)).toEqual(resolve(6, bodyOne + 4))
+  })
+
+  it('keeps a clipped Target out of the frontmatter', () => {
+    const target = resolve(0, doc.length)
+    expect(target?.from).toBeGreaterThan(end)
+    expect(target?.blocks.every((block) => block.from > end)).toBe(true)
+  })
+
+  it('refuses a selection that reaches only the line breaks after it', () => {
+    expect(resolve(0, end + 1)).toBeUndefined()
+    expect(resolve(6, end + 2)).toBeUndefined()
+  })
+
+  it('allows a selection after it', () => {
+    expect(resolve(bodyOne, bodyOne + 4)).toMatchObject({
+      source: 'selection',
+      text: 'Body',
+    })
+  })
+
+  it('allows a selection that begins at the line break after it', () => {
+    expect(resolve(end, bodyOne + 9)).toMatchObject({
+      source: 'selection',
+      from: doc.indexOf('# Demo'),
+      text: '# Demo\n\nBody one.',
+    })
+  })
+
+  it('picks the first Block for a cursor on the blank line after it', () => {
+    expect(resolve(end + 1)).toMatchObject({
+      source: 'block',
+      text: '# Demo',
+    })
+  })
+
+  it('allows a cursor in a Block after it', () => {
+    expect(resolve(bodyOne + 2)).toMatchObject({
+      source: 'block',
+      text: 'Body one.',
+    })
+  })
+
+  it('refuses everything in a Document that is only a frontmatter', () => {
+    const only = '---\nname: demo\n---\n'
+    const onlyBlocks = extractBlocks(only)
+    const resolveOnly = (from: number, to: number) =>
+      resolveTarget(onlyBlocks, only, { from, to })
+    expect(resolveOnly(6, 6)).toBeUndefined()
+    expect(resolveOnly(0, 18)).toBeUndefined()
+    expect(resolveOnly(0, only.length)).toBeUndefined()
+  })
+
+  it('does not refuse anything for an unclosed frontmatter', () => {
+    const open = '---\nname: demo\n\nBody.\n'
+    expect(
+      resolveTarget(extractBlocks(open), open, { from: 6, to: 6 }),
+    ).toBeDefined()
+  })
+
+  it('does not put the frontmatter in the neighbors', () => {
+    const target = resolve(doc.indexOf('# Demo'))
+    if (!target) throw new Error('no target')
+    const neighbors = getNeighbors(docBlocks, target)
+    expect(neighbors.before).toEqual([])
+    expect(neighbors.title).toBe('Demo')
+    expect(neighbors.after.map((block) => block.text)).toEqual([
+      'Body one.',
+      'Body two.',
+    ])
+  })
+})

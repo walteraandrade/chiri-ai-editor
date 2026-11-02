@@ -1,23 +1,41 @@
 import { describe, expect, it } from 'vitest'
 import { type FileSession, nextFileSession } from './file-session'
 
-const HANDLE = { kind: 'handle' }
+const REF = { kind: 'ref' }
 
-const opened = (): FileSession<typeof HANDLE> | null =>
-  nextFileSession<typeof HANDLE>(null, {
+const opened = (): FileSession<typeof REF> | null =>
+  nextFileSession<typeof REF>(null, {
     type: 'opened',
     name: 'notes.md',
-    handle: HANDLE,
+    ref: REF,
     text: 'Hello',
+    savedText: 'Hello',
   })
 
 describe('nextFileSession', () => {
   it('starts a clean session when a file is opened', () => {
     expect(opened()).toEqual({
       name: 'notes.md',
-      handle: HANDLE,
+      ref: REF,
       savedText: 'Hello',
       dirty: false,
+    })
+  })
+
+  it('starts dirty when the Document shows unsaved text over the file', () => {
+    expect(
+      nextFileSession<typeof REF>(null, {
+        type: 'opened',
+        name: 'notes.md',
+        ref: REF,
+        text: 'Hello, unsaved',
+        savedText: 'Hello',
+      }),
+    ).toEqual({
+      name: 'notes.md',
+      ref: REF,
+      savedText: 'Hello',
+      dirty: true,
     })
   })
 
@@ -45,18 +63,18 @@ describe('nextFileSession', () => {
     expect(nextFileSession(null, { type: 'edited', text: 'Hi' })).toBeNull()
   })
 
-  it('takes the name and handle a save returns', () => {
+  it('takes the name and ref a save returns', () => {
     const other = { kind: 'other' }
     const saved = nextFileSession<object>(null, {
       type: 'saved',
       name: 'draft.md',
-      handle: other,
+      ref: other,
       text: 'Draft',
       current: 'Draft',
     })
     expect(saved).toEqual({
       name: 'draft.md',
-      handle: other,
+      ref: other,
       savedText: 'Draft',
       dirty: false,
     })
@@ -66,21 +84,21 @@ describe('nextFileSession', () => {
     const saved = nextFileSession(opened(), {
       type: 'saved',
       name: 'notes.md',
-      handle: HANDLE,
+      ref: REF,
       text: 'Hello!',
       current: 'Hello!?',
     })
     expect(saved).toMatchObject({ savedText: 'Hello!', dirty: true })
   })
 
-  it('keeps a download without a handle', () => {
+  it('keeps a download without a ref', () => {
     const saved = nextFileSession(opened(), {
       type: 'saved',
       name: 'notes.md',
-      handle: null,
+      ref: null,
       text: 'Hello',
       current: 'Hello',
     })
-    expect(saved?.handle).toBeNull()
+    expect(saved?.ref).toBeNull()
   })
 })

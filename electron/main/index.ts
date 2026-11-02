@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { SHELL_INFO_CHANNEL, type ShellInfo } from '../api'
 import { resolveDevOptions } from './dev-options'
+import { registerFileHandlers } from './files/register'
 import { isAppNavigation, isTrustedFrame } from './trust'
 
 const CANVAS_COLOR = '#141417'
@@ -36,6 +37,7 @@ const registerIpc = (): void => {
       platform: process.platform,
     }
   })
+  registerFileHandlers((event) => isTrustedFrame(event.senderFrame, appUrl()))
 }
 
 const lockNavigation = (): void => {
