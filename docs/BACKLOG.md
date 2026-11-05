@@ -32,6 +32,7 @@ Context links point to where the related code, decision or evidence lives. A mer
 
 | Item | Why it waits | Context |
 |---|---|---|
+| Redesign the ask bubble | Six Quick action chips (four prose, two skill-only) wrap into a wall of buttons above the AI input. Needs a design pass: grouping, a menu, order | [PR #68](https://github.com/walteraandrade/chiri-ai-editor/pull/68) |
 | Tabs | Needs a design first: `useMarkdownFile` and the History hub assume one Document. One Document at a time covers editing one skill. Tabs matter when a skill spans several files (`SKILL.md` plus references) | [0014](chiri/adr/0014-skills-on-disk.md) |
 | One window per file | A second `.md` from the desktop replaces the Document in the open window (#45). Two windows side by side need a watcher per window: `watchFile` follows one open file for the whole app | [0013](chiri/adr/0013-native-app-on-electron.md), [#45](https://github.com/walteraandrade/chiri-ai-editor/issues/45) |
 | Edit files other than Markdown | Scripts and JSON in a skill folder are listed, not opened. The Suggestion flow was built for prose | [0014](chiri/adr/0014-skills-on-disk.md) |
