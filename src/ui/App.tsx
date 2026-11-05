@@ -49,6 +49,7 @@ import { ReviewToolbar } from './ReviewToolbar'
 import { ThemeToggle } from './ThemeToggle'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
+import { useDescriptionAi } from './use-description-ai'
 import { useFrontmatterReport } from './use-frontmatter-report'
 import { useHistoryView } from './use-history-view'
 import { useKeyState } from './use-key-state'
@@ -79,6 +80,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [modelOpen, setModelOpen] = useState(false)
+  const descriptionAi = useDescriptionAi()
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
   const [controls, setControls] = useState<ReviewControls | null>(null)
   const [documentControls, setDocumentControls] =
@@ -373,6 +375,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             panelRef={frontmatterPanel}
             onEdit={editFrontmatter}
             onHistory={(command) => documentControls?.[command]()}
+            descriptionAi={descriptionAi}
           />
           <EditorPane
             initialDoc={initialDoc}
