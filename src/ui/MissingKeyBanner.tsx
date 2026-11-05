@@ -6,7 +6,7 @@ export function MissingKeyBanner({ onSetKey }: MissingKeyBannerProps) {
   return (
     <div
       role="status"
-      className="fixed inset-x-0 bottom-0 z-50 bg-raised px-6 py-3 text-center text-ink text-sm"
+      className="pointer-events-auto bg-raised px-6 py-3 text-center text-ink text-sm"
     >
       {onSetKey ? (
         <>

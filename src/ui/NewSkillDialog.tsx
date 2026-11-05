@@ -55,7 +55,7 @@ export function NewSkillDialog({
     <dialog
       ref={dialog}
       aria-labelledby="new-skill-title"
-      className="m-auto w-[min(30rem,calc(100vw-3rem))] bg-raised p-6 text-ink shadow-lg backdrop:bg-black/60"
+      className="m-auto w-[min(30rem,calc(100vw-3rem))] bg-raised p-6 border border-hairline text-ink backdrop:bg-canvas"
       onCancel={(event) => {
         event.preventDefault()
         if (!busy) onClose()
@@ -155,7 +155,7 @@ export function NewSkillDialog({
           </button>
           <button
             type="submit"
-            className="cm-ai-button bg-accent-tint! text-accent-soft! disabled:bg-fill! disabled:text-ink-faint!"
+            className="cm-ai-button bg-accent-tint! text-accent-soft! disabled:bg-transparent! disabled:text-ink-faint!"
             disabled={!draft.ready || busy}
             aria-busy={busy || undefined}
           >

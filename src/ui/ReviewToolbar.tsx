@@ -107,7 +107,7 @@ export function ReviewToolbar({
           id={popoverId}
           role="dialog"
           aria-label="Review the Document"
-          className="popover-in absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 border border-hairline bg-raised p-2 shadow-float"
+          className="popover-in absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 border border-hairline bg-raised p-2"
           onSubmit={(event) => {
             event.preventDefault()
             submit()

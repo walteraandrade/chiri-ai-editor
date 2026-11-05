@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { Plugin, ViteDevServer } from 'vite'
+import { mixHex } from '../src/theme/color.ts'
 import {
   OMARCHY_THEME_EVENT,
   OMARCHY_THEME_MODULE,
@@ -54,17 +55,25 @@ export const omarchyTokens = (
   const ink = hexOf(colors, 'foreground')
   const accent = hexOf(colors, 'accent')
   if (bg === null || ink === null || accent === null) return null
+  const mode = modeOf(colors, bg)
   return {
     name,
-    mode: modeOf(colors, bg),
-    bg,
-    raised: hexOf(colors, 'lighter_background'),
-    ink,
-    inkStrong: hexOf(colors, 'bright_foreground') ?? ink,
-    accent,
-    ai: accent,
-    danger: hexOf(colors, 'red'),
-    selection: hexOf(colors, 'selection'),
+    mode,
+    roles: {
+      canvas: bg,
+      raised: hexOf(colors, 'lighter_background') ?? mixHex(bg, ink, 0.09),
+      ink,
+      faint: mixHex(bg, ink, 0.7),
+      accent,
+      ai: accent,
+      danger:
+        hexOf(colors, 'red') ?? (mode === 'light' ? '#b42318' : '#f87171'),
+      selection: hexOf(colors, 'selection') ?? mixHex(bg, accent, 0.28),
+      fill: mixHex(bg, ink, 0.06),
+      fillHover: mixHex(bg, ink, 0.11),
+      hairline: mixHex(bg, ink, 0.09),
+      scrollbar: mixHex(bg, ink, 0.16),
+    },
   }
 }
 

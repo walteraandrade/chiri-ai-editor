@@ -126,6 +126,7 @@ const setup = (
     take: async () => options.launched ?? null,
     subscribe: () => () => undefined,
   }
+  const preferencesRequests = (): (() => void) => () => undefined
   const kit = createElectronKit({
     api,
     storage,
@@ -133,13 +134,14 @@ const setup = (
     library: fakeLibrary,
     external: fakeExternal,
     launches,
+    preferencesRequests,
     now: () => 1000,
     hasApiKey: true,
     onHide: (flush) => {
       hide.flush = flush
     },
   })
-  return { kit, api, kept, entries, hide, files, launches }
+  return { kit, api, kept, entries, hide, files, launches, preferencesRequests }
 }
 
 const session = (savedText: string, ref: string | null = PATH) => ({
@@ -350,6 +352,11 @@ describe('createElectronKit launched with a file', () => {
   it('carries the launches it was given', async () => {
     const { kit, launches } = setup()
     expect((await kit).launches).toBe(launches)
+  })
+
+  it('carries the Preferences requests it was given', async () => {
+    const { kit, preferencesRequests } = setup()
+    expect((await kit).preferencesRequests).toBe(preferencesRequests)
   })
 })
 

@@ -51,6 +51,7 @@ type ElectronKitDeps = {
   readonly library: LibraryKit<string>
   readonly external: ExternalKit<string>
   readonly launches: LaunchKit<string>
+  readonly preferencesRequests: (listener: () => void) => () => void
   readonly now: () => number
   readonly hasApiKey: boolean
   readonly onHide: (flush: () => void) => void
@@ -135,6 +136,7 @@ export const createElectronKit = async ({
   library,
   external,
   launches,
+  preferencesRequests,
   now,
   hasApiKey,
   onHide,
@@ -229,6 +231,7 @@ export const createElectronKit = async ({
     library,
     external,
     launches,
+    preferencesRequests,
   }
 }
 
@@ -253,6 +256,7 @@ export const browserElectronKit: PlatformKitFactory<string> =
       library: createElectronLibrary(api),
       external: createElectronExternal(api),
       launches: createElectronLaunches(api),
+      preferencesRequests: api.onPreferencesRequest,
       now: Date.now,
       hasApiKey: __HAS_OPENROUTER_KEY__,
       onHide: flushWhenPageHides,

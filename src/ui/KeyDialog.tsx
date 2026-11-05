@@ -71,7 +71,7 @@ export function KeyDialog({
     <dialog
       ref={dialogRef}
       aria-labelledby="key-dialog-title"
-      className="m-auto w-[min(34rem,calc(100vw-3rem))] bg-surface p-6 text-ink backdrop:bg-black/60"
+      className="m-auto w-[min(34rem,calc(100vw-3rem))] bg-surface p-6 border border-hairline text-ink backdrop:bg-canvas"
       onClose={onClose}
     >
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -95,12 +95,12 @@ export function KeyDialog({
             spellCheck={false}
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            className="bg-fill px-3 py-2 font-mono text-ink-strong outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            className="border border-hairline bg-fill px-3 py-2 font-mono text-ink-strong outline-none focus-visible:outline-2 focus-visible:outline-accent"
             placeholder="Paste the key"
           />
         </label>
         {offersPlainText(state) ? (
-          <div className="flex flex-col gap-2 bg-accent-tint p-3 text-sm">
+          <div className="flex flex-col gap-2 border border-hairline bg-accent-tint p-3 text-sm">
             <p>
               No system keyring is available. Storing the key as plain text
               keeps it across restarts, but anyone who can read your files can

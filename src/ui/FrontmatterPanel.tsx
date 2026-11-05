@@ -125,7 +125,7 @@ function DescriptionAssist({
   return (
     <div className="text-xs">
       {state.kind === 'ready' ? (
-        <div className="bg-accent-tint px-3 py-2">
+        <div className="border border-hairline bg-accent-tint px-3 py-2">
           <p className="text-ink-strong">{state.description}</p>
           <p className="mt-1 text-ink-muted">{state.rationale}</p>
           <div className="mt-2 flex gap-2">

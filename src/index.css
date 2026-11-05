@@ -4,19 +4,18 @@
 @import "./editor/suggestions.css";
 
 :root {
-  --theme-bg: #141417;
-  --theme-ink-strong: #f1f1f3;
-  --theme-ink: color-mix(in oklab, var(--theme-ink-strong) 82%, transparent);
-  --theme-raised: color-mix(
-    in oklab,
-    var(--theme-bg),
-    var(--theme-ink-strong) 9%
-  );
-  --theme-accent: #e37545;
-  --theme-ai: var(--theme-accent);
-  --theme-danger: #f87171;
-  --theme-selection: color-mix(in oklab, var(--theme-accent) 28%, transparent);
-  --theme-shadow: rgb(0 0 0 / 0.5);
+  --theme-canvas: #051230;
+  --theme-raised: #1e0e3f;
+  --theme-ink: #ffdd00;
+  --theme-faint: #a6a159;
+  --theme-accent: #a6a159;
+  --theme-ai: #f68c50;
+  --theme-danger: #d46d7a;
+  --theme-selection: #1e0e3f;
+  --theme-fill: #1e0e3f;
+  --theme-fill-hover: #051230;
+  --theme-hairline: #a6a159;
+  --theme-scrollbar: #a6a159;
 
   --motion-press: 120ms;
   --motion-state: 180ms;
@@ -27,90 +26,38 @@
   --motion-settle: 420ms;
 }
 
-:root[data-theme-mode="light"] {
-  --theme-shadow: rgb(24 24 40 / 0.16);
-}
-
 @theme static {
-  --color-canvas: var(--theme-bg);
-  --color-surface: color-mix(
-    in oklab,
-    var(--theme-bg),
-    var(--theme-ink-strong) 4.5%
-  );
+  --color-canvas: var(--theme-canvas);
+  --color-surface: var(--theme-raised);
   --color-raised: var(--theme-raised);
-  --color-ink-strong: var(--theme-ink-strong);
+  --color-ink-strong: var(--theme-ink);
   --color-ink: var(--theme-ink);
-  --color-ink-muted: color-mix(
-    in oklab,
-    var(--theme-ink-strong) 62%,
-    transparent
-  );
-  --color-ink-faint: color-mix(
-    in oklab,
-    var(--theme-ink-strong) 40%,
-    transparent
-  );
+  --color-ink-muted: var(--theme-ink);
+  --color-ink-faint: var(--theme-faint);
   --color-accent: var(--theme-accent);
-  --color-accent-soft: color-mix(
-    in oklab,
-    var(--theme-accent) 72%,
-    var(--theme-ink-strong)
-  );
-  --color-accent-tint: color-mix(
-    in oklab,
-    var(--theme-accent) 12%,
-    transparent
-  );
+  --color-accent-soft: var(--theme-accent);
+  --color-accent-tint: var(--theme-raised);
   --color-danger: var(--theme-danger);
-  --color-shadow: var(--theme-shadow);
+  --color-danger-tint: var(--theme-raised);
 
-  --color-fill: color-mix(in oklab, var(--theme-ink-strong) 6%, transparent);
-  --color-fill-hover: color-mix(
-    in oklab,
-    var(--theme-ink-strong) 11%,
-    transparent
-  );
-  --color-hairline: color-mix(
-    in oklab,
-    var(--theme-ink-strong) 9%,
-    transparent
-  );
-  --color-code-bg: color-mix(in oklab, var(--theme-ink-strong) 5%, transparent);
-  --color-scrollbar: color-mix(
-    in oklab,
-    var(--theme-ink-strong) 16%,
-    transparent
-  );
-  --color-scrollbar-hover: color-mix(
-    in oklab,
-    var(--theme-ink-strong) 32%,
-    transparent
-  );
+  --color-fill: var(--theme-fill);
+  --color-fill-hover: var(--theme-fill-hover);
+  --color-hairline: var(--theme-hairline);
+  --color-code-bg: var(--theme-selection);
+  --color-scrollbar: var(--theme-scrollbar);
+  --color-scrollbar-hover: var(--theme-ink);
   --color-selection: var(--theme-selection);
-  --color-danger-tint: color-mix(
-    in oklab,
-    var(--theme-danger) 10%,
-    transparent
-  );
 
   --color-ai: var(--theme-ai);
-  --color-ai-text: color-mix(
-    in oklab,
-    var(--theme-ai) 72%,
-    var(--theme-ink-strong)
-  );
-  --color-ai-tint: color-mix(in oklab, var(--theme-ai) 12%, transparent);
-  --color-ai-wash: color-mix(in oklab, var(--theme-ai) 6%, transparent);
-  --color-ai-glow: color-mix(in oklab, var(--theme-ai) 28%, transparent);
-  --color-ai-ink: var(--theme-bg);
+  --color-ai-text: var(--theme-ai);
+  --color-ai-tint: var(--theme-raised);
+  --color-ai-glow: var(--theme-ai);
+  --color-ai-ink: var(--theme-canvas);
 
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "League Spartan Variable", var(--font-sans);
   --font-mono:
     ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
-
-  --shadow-float: 0 10px 32px var(--theme-shadow);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
@@ -164,17 +111,39 @@
   animation-timing-function: var(--ease-in-out-sine);
 }
 
-.theme-swatch {
-  display: inline-block;
-  width: 0.55rem;
-  height: 0.55rem;
-  margin-right: 0.45rem;
-  box-shadow: inset 0 0 0 1px var(--color-ink-faint);
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.5rem;
+  cursor: pointer;
   transition: background-color var(--motion-state) var(--ease-out-quart);
 }
 
-.theme-toggle[aria-pressed="true"] .theme-swatch {
-  box-shadow: none;
+.theme-option:hover,
+.theme-option:has(:checked) {
+  background: var(--color-canvas);
+}
+
+.theme-option-mark {
+  appearance: none;
+  flex: none;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin: 0;
+  border: 1px solid var(--color-ink-faint);
+  background: transparent;
+  cursor: pointer;
+}
+
+.theme-option-mark:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.theme-option:has(:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }
 
 .popover-in {

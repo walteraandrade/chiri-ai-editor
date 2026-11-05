@@ -21,7 +21,8 @@
 }
 
 .cm-ai-suggestion.cm-ai-active {
-  background: var(--color-fill);
+  background: var(--color-raised);
+  border-bottom: 1px solid var(--color-ai);
 }
 
 .cm-ai-refine-failed {
@@ -87,7 +88,6 @@
 
 .cm-ai-pending,
 .cm-ai-refining {
-  background-color: var(--color-ai-wash);
   background-image: var(--cm-ai-sweep);
   background-size: 300% 100%;
   animation: cm-ai-shimmer 1.8s linear infinite;
@@ -179,7 +179,6 @@
   width: 2px;
   margin-left: -1px;
   background: var(--color-ai);
-  box-shadow: 0 0 10px var(--color-ai-glow);
   transition: height var(--motion-travel) var(--ease-out-expo);
   animation: cm-ai-breathe 1.6s var(--ease-in-out-sine) infinite;
 }
@@ -239,7 +238,6 @@
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.4;
-  box-shadow: var(--shadow-float);
 }
 
 .cm-editor .cm-tooltip.cm-ai-bubble {
@@ -292,7 +290,6 @@
 .cm-editor .cm-tooltip.cm-ai-card-margin {
   --enter-rise: 0px;
   --enter-slide: -8px;
-  box-shadow: none;
 }
 
 .cm-editor .cm-tooltip.cm-ai-card-hover {
@@ -319,7 +316,7 @@
   flex: 1;
   min-width: 0;
   padding: 0.4rem 0.65rem;
-  border: 0;
+  border: 1px solid var(--color-hairline);
   background: var(--color-fill);
   color: var(--color-ink-strong);
   font: inherit;
@@ -339,7 +336,7 @@
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.65rem;
-  border: 0;
+  border: 1px solid var(--color-hairline);
   background: var(--color-fill);
   color: var(--color-ink);
   font: inherit;
@@ -371,14 +368,10 @@
   transform: scale(0.96);
 }
 
-.cm-ai-button-primary {
-  background: color-mix(in oklab, var(--color-ai) 18%, transparent);
-  color: var(--color-ink-strong);
-}
-
+.cm-ai-button-primary,
 .cm-ai-button-primary:hover {
-  background: color-mix(in oklab, var(--color-ai) 28%, transparent);
-  color: var(--color-ink-strong);
+  background: var(--color-ai);
+  color: var(--color-ai-ink);
 }
 
 .cm-ai-bubble-input:focus-visible,
@@ -392,13 +385,12 @@
   outline: none;
 }
 
-.cm-ai-button:disabled {
+.cm-ai-button:disabled,
+.cm-ai-button:disabled:hover {
+  border-style: dashed;
+  background: transparent;
   color: var(--color-ink-faint);
   cursor: default;
-}
-
-.cm-ai-button:disabled:hover {
-  background-color: var(--color-fill);
 }
 
 .cm-ai-button[aria-busy="true"] {
@@ -472,6 +464,10 @@
   font-size: 0.75rem;
 }
 
+.cm-ai-button-primary .cm-ai-kbd {
+  color: inherit;
+}
+
 .cm-ai-rationale {
   margin: 0;
   padding: 0.15rem 0.35rem 0;
@@ -489,7 +485,6 @@
   height: 0.95em;
   margin-right: 0.55rem;
   background: var(--color-ai);
-  box-shadow: 0 0 8px var(--color-ai-glow);
   animation: cm-ai-breathe 1.6s var(--ease-in-out-sine) infinite;
 }
 
