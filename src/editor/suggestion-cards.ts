@@ -621,17 +621,23 @@ const cardCreator =
     }
   }
 
-const creators: Readonly<
-  Record<CardPlacement, Record<CardKind, (view: EditorView) => TooltipView>>
-> = {
-  floating: {
-    active: cardCreator('active', 'floating'),
-    hover: cardCreator('hover', 'floating'),
-  },
-  margin: {
-    active: cardCreator('active', 'margin'),
-    hover: cardCreator('hover', 'margin'),
-  },
+const CREATOR_CACHE_LIMIT = 64
+
+const creatorCache = new Map<string, (view: EditorView) => TooltipView>()
+
+const creatorFor = (
+  kind: CardKind,
+  placement: CardPlacement,
+  id: SuggestionId,
+): ((view: EditorView) => TooltipView) => {
+  const key = `${placement}:${kind}:${id}`
+  const created = creatorCache.get(key) ?? cardCreator(kind, placement)
+  creatorCache.delete(key)
+  creatorCache.set(key, created)
+  const [oldest] = creatorCache.keys()
+  if (creatorCache.size > CREATOR_CACHE_LIMIT && oldest !== undefined)
+    creatorCache.delete(oldest)
+  return created
 }
 
 const tooltipFor = (kind: CardKind, state: EditorState): Tooltip | null => {
@@ -644,7 +650,7 @@ const tooltipFor = (kind: CardKind, state: EditorState): Tooltip | null => {
         ? firstChangeAt(content.suggestion)
         : content.suggestion.from,
     clip: false,
-    create: creators[placement][kind],
+    create: creatorFor(kind, placement, content.suggestion.id),
     ...placements[placement].side,
   }
 }
