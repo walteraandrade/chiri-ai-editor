@@ -1,7 +1,6 @@
 import { useEffect, useEffectEvent, useRef } from 'react'
+import { appClient } from '../ai/app-client'
 import { appendReviewDrop } from '../ai/dev-log'
-import { createLazyModelClient } from '../ai/lazy-client'
-import { MODEL_CHANGED_EVENT } from '../ai/model-choice'
 import { createEditorView } from '../editor/create-editor-view'
 import {
   bindDocumentControls,
@@ -64,11 +63,7 @@ export function EditorPane({
   useEffect(() => {
     const parent = parentRef.current
     if (!parent) return undefined
-    const client = createLazyModelClient(() =>
-      import('../ai/browser-client').then((module) =>
-        module.createBrowserModelClient(),
-      ),
-    )
+    const client = appClient
     const view = createEditorView({
       parent,
       doc: initialDocRef.current,
@@ -94,10 +89,7 @@ export function EditorPane({
     emitReviewControls(bindReviewControls(view))
     emitDocumentControls(bindDocumentControls(view))
     const cancelPreload = whenIdle(client.preload)
-    const onModelChanged = () => client.reset()
-    window.addEventListener(MODEL_CHANGED_EVENT, onModelChanged)
     return () => {
-      window.removeEventListener(MODEL_CHANGED_EVENT, onModelChanged)
       cancelPreload()
       emitReviewControls(null)
       emitDocumentControls(null)

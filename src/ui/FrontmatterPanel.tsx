@@ -9,6 +9,7 @@ import {
 import type { SkillField } from '../skills/skill-frontmatter'
 import { type HistoryCommand, historyCommandOf } from './history-keys'
 import { detectApplePlatform } from './platform'
+import type { DescriptionAi } from './use-description-ai'
 
 type FrontmatterPanelProps = {
   readonly report: FrontmatterReport
@@ -16,6 +17,7 @@ type FrontmatterPanelProps = {
   readonly panelRef: RefObject<HTMLElement | null>
   readonly onEdit: (field: SkillField, value: string) => void
   readonly onHistory: (command: HistoryCommand) => void
+  readonly descriptionAi?: DescriptionAi
 }
 
 type ProblemListProps = {
@@ -101,6 +103,61 @@ function SkillFieldInput({
   )
 }
 
+function DescriptionAssist({
+  ai,
+  disabled,
+  name,
+  description,
+  onAccept,
+}: {
+  readonly ai: DescriptionAi
+  readonly disabled: boolean
+  readonly name: string
+  readonly description: string
+  readonly onAccept: (value: string) => void
+}) {
+  const { state } = ai
+  return (
+    <div className="text-xs">
+      {state.kind === 'ready' ? (
+        <div className="bg-accent-tint px-3 py-2">
+          <p className="text-ink-strong">{state.description}</p>
+          <p className="mt-1 text-ink-muted">{state.rationale}</p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              className="cm-ai-button"
+              onClick={() => {
+                onAccept(state.description)
+                ai.dismiss()
+              }}
+            >
+              Accept
+            </button>
+            <button type="button" className="cm-ai-button" onClick={ai.dismiss}>
+              Reject
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="cm-ai-button"
+          disabled={disabled || state.kind === 'working'}
+          onClick={() => ai.ask(name, description)}
+        >
+          {state.kind === 'working' ? 'Improving…' : 'Improve description'}
+        </button>
+      )}
+      {state.kind === 'failed' ? (
+        <p role="alert" className="mt-1 text-danger">
+          {state.message}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 function LiveStatus({ text }: { readonly text: string }) {
   return (
     <p aria-live="polite" aria-atomic="true" className="sr-only">
@@ -115,6 +172,7 @@ export function FrontmatterPanel({
   panelRef,
   onEdit,
   onHistory,
+  descriptionAi,
 }: FrontmatterPanelProps) {
   const othersId = useId()
   if (report.kind === 'none') return null
@@ -173,6 +231,15 @@ export function FrontmatterPanel({
               onEdit={onEdit}
               onHistory={onHistory}
             />
+            {descriptionAi === undefined ? null : (
+              <DescriptionAssist
+                ai={descriptionAi}
+                disabled={disabled || report.description.trim() === ''}
+                onAccept={(value) => onEdit('description', value)}
+                name={report.name}
+                description={report.description}
+              />
+            )}
             <ProblemList id={othersId} problems={otherProblems(report)} />
           </div>
         </>
