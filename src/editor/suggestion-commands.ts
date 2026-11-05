@@ -1,6 +1,7 @@
 import { isolateHistory } from '@codemirror/commands'
 import type { EditorState, TransactionSpec } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
+import { stepSuggestion } from '../suggestions/navigation'
 import {
   acceptAllPlan,
   firstReviewSuggestion,
@@ -93,3 +94,19 @@ export const rejectAtCursor = (handle: EditorHandle): boolean => {
   const found = suggestionAtCursor(handle.state)
   return found === undefined ? false : rejectSuggestionById(handle, found.id)
 }
+
+export const stepSuggestionFromCursor =
+  (direction: 1 | -1) =>
+  (handle: EditorHandle): boolean => {
+    const anchor = stepSuggestion(
+      suggestionsOf(handle.state),
+      handle.state.selection.main.head,
+      direction,
+    )
+    if (anchor === undefined) return false
+    handle.dispatch({
+      selection: { anchor },
+      effects: EditorView.scrollIntoView(anchor, { y: 'center' }),
+    })
+    return true
+  }

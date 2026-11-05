@@ -1,3 +1,4 @@
+import { invertedEffects } from '@codemirror/commands'
 import { type EditorState, StateEffect, StateField } from '@codemirror/state'
 import type { SuggestionResult } from '../ai/edits'
 import type { ClientError } from '../ai/errors'
@@ -11,11 +12,13 @@ import {
   emptySuggestions,
   failRefine,
   failSuggestion,
+  findSuggestion,
   mapSuggestions,
   rejectReviewSuggestions,
   rejectSuggestion,
   resolveRefine,
   resolveSuggestion,
+  restoreSuggestion,
   retryRefine,
   retrySuggestion,
   showVersion,
@@ -63,6 +66,13 @@ export const rejectEffect = StateEffect.define<SuggestionId>()
 export const acceptEffect = StateEffect.define<SuggestionId>()
 export const acceptManyEffect = StateEffect.define<readonly SuggestionId[]>()
 export const rejectReviewEffect = StateEffect.define<null>()
+export const restoreEffect = StateEffect.define<ReadySuggestion>({
+  map: (suggestion, changes) => ({
+    ...suggestion,
+    from: changes.mapPos(suggestion.from, 1),
+    to: changes.mapPos(suggestion.to, -1),
+  }),
+})
 export const clearSuggestionsEffect = StateEffect.define<null>()
 
 const applyEffect = (
@@ -91,32 +101,61 @@ const applyEffect = (
   return state
 }
 
-export const suggestionsField = StateField.define<SuggestionsState>({
-  create: () => emptySuggestions,
-  update: (value, transaction) => {
-    const acceptedIds = transaction.effects.flatMap((effect) =>
-      effect.is(acceptEffect)
-        ? [effect.value]
-        : effect.is(acceptManyEffect)
-          ? effect.value
-          : [],
+const fieldRef = (): StateField<SuggestionsState> => suggestionsField
+
+const undoableReject = invertedEffects.of((transaction) =>
+  transaction.effects.flatMap((effect): StateEffect<unknown>[] => {
+    if (effect.is(restoreEffect)) return [rejectEffect.of(effect.value.id)]
+    if (!effect.is(rejectEffect)) return []
+    const found = findSuggestion(
+      transaction.startState.field(fieldRef()),
+      effect.value,
     )
-    const frontmatter =
-      transaction.docChanged && value.items.length > 0
-        ? frontmatterOfDoc(transaction.newDoc)
-        : undefined
-    const mapped =
-      acceptedIds.length > 0
-        ? acceptSuggestions(
-            value,
-            acceptedIds,
-            transaction.changes,
-            frontmatter,
-          )
-        : mapSuggestions(value, transaction.changes, frontmatter)
-    return transaction.effects.reduce(applyEffect, mapped)
-  },
-})
+    return found?.status === 'ready' ? [restoreEffect.of(found)] : []
+  }),
+)
+
+export const suggestionsField: StateField<SuggestionsState> =
+  StateField.define<SuggestionsState>({
+    create: () => emptySuggestions,
+    update: (value, transaction) => {
+      const acceptedIds = transaction.effects.flatMap((effect) =>
+        effect.is(acceptEffect)
+          ? [effect.value]
+          : effect.is(acceptManyEffect)
+            ? effect.value
+            : [],
+      )
+      const frontmatter =
+        transaction.docChanged && value.items.length > 0
+          ? frontmatterOfDoc(transaction.newDoc)
+          : undefined
+      const mapped =
+        acceptedIds.length > 0
+          ? acceptSuggestions(
+              value,
+              acceptedIds,
+              transaction.changes,
+              frontmatter,
+            )
+          : mapSuggestions(value, transaction.changes, frontmatter)
+      return transaction.effects.reduce(
+        (state, effect) =>
+          effect.is(restoreEffect)
+            ? restoreSuggestion(
+                state,
+                effect.value,
+                transaction.newDoc.sliceString(
+                  effect.value.from,
+                  effect.value.to,
+                ),
+              )
+            : applyEffect(state, effect),
+        mapped,
+      )
+    },
+    provide: () => undoableReject,
+  })
 
 export const suggestionsOf = (state: EditorState): SuggestionsState =>
   state.field(suggestionsField)
