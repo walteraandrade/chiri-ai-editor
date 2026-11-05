@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { adaptiveDiff } from '../diff/adaptive-diff'
-import { changeLabel, changeRanges, showsChanges, stepChange } from './changes'
+import {
+  changeLabel,
+  changeRanges,
+  firstChangeAt,
+  showsChanges,
+  stepChange,
+} from './changes'
 
 const at = (from: number, original: string, replacement: string) => ({
   from,
@@ -104,5 +110,23 @@ describe('showsChanges', () => {
 
   it('stays out of the way for one change in one line', () => {
     expect(showsChanges(at(0, 'one two three', 'one 2 three'))).toBe(false)
+  })
+})
+
+describe('firstChangeAt', () => {
+  it('points at the first change, not the start of the Target', () => {
+    expect(
+      firstChangeAt(
+        at(
+          100,
+          'The team review their work and it matter a lot.',
+          'The team reviews their work and it matters a lot.',
+        ),
+      ),
+    ).toBe(109)
+  })
+
+  it('falls back to the start of the Target when nothing changed', () => {
+    expect(firstChangeAt(at(5, 'same', 'same'))).toBe(5)
   })
 })
