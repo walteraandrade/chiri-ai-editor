@@ -34,6 +34,9 @@ export const changeRanges = ({
   }))
 }
 
+export const firstChangeAt = (source: ChangeSource): number =>
+  changeRanges(source)[0]?.from ?? source.from
+
 export const stepChange = (
   ranges: readonly ChangeRange[],
   cursor: number,

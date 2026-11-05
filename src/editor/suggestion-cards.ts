@@ -10,6 +10,7 @@ import {
   type ChangeRange,
   changeLabel,
   changeRanges,
+  firstChangeAt,
   showsChanges,
   stepChange,
 } from '../suggestions/changes'
@@ -630,7 +631,10 @@ const tooltipFor = (kind: CardKind, state: EditorState): Tooltip | null => {
   if (!content) return null
   const placement = cardPlacementOf(state)
   return {
-    pos: content.suggestion.from,
+    pos:
+      placement === 'margin'
+        ? firstChangeAt(content.suggestion)
+        : content.suggestion.from,
     clip: false,
     create: creators[placement][kind],
     ...placements[placement].side,
