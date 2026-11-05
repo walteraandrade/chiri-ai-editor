@@ -1,4 +1,4 @@
-import { history, undo } from '@codemirror/commands'
+import { history, redo, undo } from '@codemirror/commands'
 import { EditorState, type TransactionSpec } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
 import type { SuggestionResult } from '../ai/edits'
@@ -493,5 +493,41 @@ describe('revealFirstReviewSuggestion', () => {
 
     expect(revealFirstReviewSuggestion(handle)).toBe(false)
     expect(handle.state.selection.main.head).toBe(DOC.length)
+  })
+})
+
+describe('undoable Reject', () => {
+  const rejected = () => {
+    const handle = createHandle()
+    open(handle, 'a', 0, 21)
+    rejectSuggestionById(handle, 'a')
+    return handle
+  }
+
+  it('brings a rejected Suggestion back with one undo', () => {
+    const handle = rejected()
+    expect(findSuggestion(suggestionsOf(handle.state), 'a')).toBeUndefined()
+    undo({ state: handle.state, dispatch: (tr) => handle.dispatch(tr) })
+    expect(findSuggestion(suggestionsOf(handle.state), 'a')?.status).toBe(
+      'ready',
+    )
+  })
+
+  it('rejects it again with redo', () => {
+    const handle = rejected()
+    undo({ state: handle.state, dispatch: (tr) => handle.dispatch(tr) })
+    redo({ state: handle.state, dispatch: (tr) => handle.dispatch(tr) })
+    expect(findSuggestion(suggestionsOf(handle.state), 'a')).toBeUndefined()
+  })
+
+  it('does not bring it back over text that changed meanwhile', () => {
+    const handle = rejected()
+    handle.dispatch({ changes: { from: 2, to: 4, insert: 'XX' } })
+    undo({ state: handle.state, dispatch: (tr) => handle.dispatch(tr) })
+    undo({ state: handle.state, dispatch: (tr) => handle.dispatch(tr) })
+    expect(handle.state.doc.toString()).toBe(DOC)
+    expect(findSuggestion(suggestionsOf(handle.state), 'a')?.status).toBe(
+      'ready',
+    )
   })
 })

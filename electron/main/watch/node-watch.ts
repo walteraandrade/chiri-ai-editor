@@ -12,12 +12,18 @@ export const nodeDirectoryWatch: DirectoryWatch = (dir, listener) => {
   return { close: () => watcher.close() }
 }
 
+export const identityKey = (info: {
+  readonly dev: number | bigint
+  readonly ino: number | bigint
+  readonly birthtimeMs: number
+}): string => `${info.dev}:${info.ino}:${info.birthtimeMs}`
+
 export const directoryIdentity = async (
   dir: string,
 ): Promise<string | null> => {
   try {
     const info = await stat(dir)
-    return info.isDirectory() ? `${info.dev}:${info.ino}` : null
+    return info.isDirectory() ? identityKey(info) : null
   } catch {
     return null
   }
