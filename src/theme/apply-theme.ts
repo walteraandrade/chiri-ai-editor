@@ -6,7 +6,11 @@ import {
   type ThemeTokens,
   themeVariables,
 } from './tokens'
-import { currentVariantKey, variantByKey } from './wada-prototype'
+import {
+  currentVariantKey,
+  SOLID_TOKEN_NAMES,
+  variantByKey,
+} from './wada-prototype'
 
 const setVariables = (root: HTMLElement, tokens: ThemeTokens | null): void => {
   for (const name of THEME_VARIABLE_NAMES) root.style.removeProperty(name)
@@ -14,6 +18,10 @@ const setVariables = (root: HTMLElement, tokens: ThemeTokens | null): void => {
     tokens ? themeVariables(tokens) : {},
   ))
     root.style.setProperty(name, value)
+  for (const name of SOLID_TOKEN_NAMES) root.style.removeProperty(name)
+  for (const [name, value] of Object.entries(tokens?.solid ?? {}))
+    root.style.setProperty(name, value)
+  root.toggleAttribute('data-hard-rule', Boolean(tokens?.solid))
   root.dataset.themeMode = tokens?.mode ?? 'dark'
 }
 

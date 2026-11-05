@@ -223,3 +223,45 @@
   }
 }
 /* biome-ignore-end lint/complexity/noImportantStyles: reduced motion has to beat every component animation */
+
+/* PROTOTYPE, throwaway: hard rule, nothing at rest but exact palette codes. */
+html[data-hard-rule] *,
+html[data-hard-rule] *::before,
+html[data-hard-rule] *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+html[data-hard-rule] .shadow-float,
+html[data-hard-rule] .shadow-lg,
+html[data-hard-rule] .cm-ai-button,
+html[data-hard-rule] .cm-tooltip {
+  border: 1px solid var(--color-hairline);
+}
+
+html[data-hard-rule] .theme-swatch {
+  display: none;
+}
+
+html[data-hard-rule] dialog::backdrop {
+  background: var(--color-canvas);
+}
+
+html[data-hard-rule] .bg-accent\/10,
+html[data-hard-rule] .bg-accent\/20 {
+  background: var(--color-fill);
+}
+
+html[data-hard-rule] .cm-ai-button-primary,
+html[data-hard-rule] .cm-ai-button-primary:hover {
+  background: var(--color-ai);
+  color: var(--color-ai-ink);
+}
+
+html[data-hard-rule] .cm-ai-button-primary * {
+  color: inherit;
+}
+
+html[data-hard-rule] .cm-ai-suggestion.cm-ai-active {
+  background: var(--color-raised);
+}

@@ -11,6 +11,7 @@ export type ThemeTokens = {
   readonly ai: string
   readonly danger: string | null
   readonly selection: string | null
+  readonly solid?: Readonly<Record<string, string>>
 }
 
 const VARIABLES = {

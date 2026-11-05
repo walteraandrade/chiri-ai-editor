@@ -52,7 +52,9 @@ export function WadaPrototypeBar({ current, onChange }: WadaPrototypeBarProps) {
       </button>
       <span className="whitespace-nowrap">
         {KEYS.indexOf(current) + 1}/{KEYS.length}{' '}
-        {variant?.source ?? 'Current theme'}
+        {variant
+          ? `${variant.title} · ${variant.source} · ${variant.mode}`
+          : 'Current theme'}
       </span>
       {variant ? (
         <span className="flex">
