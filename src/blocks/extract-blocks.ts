@@ -1,4 +1,5 @@
 import { markdownLanguage } from '@codemirror/lang-markdown'
+import { blankFrontmatter } from './frontmatter'
 
 export type BlockKind =
   | 'heading'
@@ -47,6 +48,7 @@ const classify = (nodeName: string): Classification => {
   return { kind: SIMPLE_KINDS[nodeName] ?? 'other' }
 }
 
+// `tree` must be parsed from `blankFrontmatter(text)`; offsets are those of `text`.
 export const extractBlocksFromTree = (
   tree: MarkdownTree,
   text: string,
@@ -69,4 +71,7 @@ export const extractBlocksFromTree = (
 }
 
 export const extractBlocks = (text: string): readonly Block[] =>
-  extractBlocksFromTree(markdownLanguage.parser.parse(text), text)
+  extractBlocksFromTree(
+    markdownLanguage.parser.parse(blankFrontmatter(text)),
+    text,
+  )

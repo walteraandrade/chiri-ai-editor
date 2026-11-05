@@ -1,5 +1,6 @@
 node_modules/
 dist/
+out/
 .env
 .env.*
 !.env.example
@@ -7,3 +8,4 @@ dist/
 .claude/worktrees/
 .claude/settings.local.json
 .export-sessions-*
+release/

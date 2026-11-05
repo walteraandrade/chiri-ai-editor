@@ -1,36 +1,28 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { type RefObject, useEffect, useId, useRef, useState } from 'react'
 import type { ReviewControls } from '../editor/review-controls'
 import type { ReviewStatus } from '../editor/review-field'
 
 type ReviewToolbarProps = {
   readonly status: ReviewStatus
   readonly controls: ReviewControls | null
+  readonly triggerRef: RefObject<HTMLButtonElement | null>
 }
 
 const FOCUS_PLACEHOLDER = 'Focus (optional): tone, concision…'
 
-const progressLabel = (added: number): string =>
-  added === 0
-    ? 'Reviewing…'
-    : `Reviewing… ${added} ${added === 1 ? 'suggestion' : 'suggestions'}`
+const countLabel = (added: number): string =>
+  `${added} ${added === 1 ? 'suggestion' : 'suggestions'}`
 
-export function ReviewToolbar({ status, controls }: ReviewToolbarProps) {
+export function ReviewToolbar({
+  status,
+  controls,
+  triggerRef,
+}: ReviewToolbarProps) {
   const [open, setOpen] = useState(false)
   const [focus, setFocus] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
-  const triggerRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const popoverId = useId()
-  const wasRunning = useRef(false)
-
-  useEffect(() => {
-    if (wasRunning.current && !status.running) {
-      const revealed = controls?.revealFirst() ?? false
-      if (!revealed && document.activeElement === document.body)
-        triggerRef.current?.focus()
-    }
-    wasRunning.current = status.running
-  }, [status.running, controls])
 
   useEffect(() => {
     if (open) inputRef.current?.focus()
@@ -65,51 +57,57 @@ export function ReviewToolbar({ status, controls }: ReviewToolbarProps) {
         <>
           <button
             type="button"
-            className="cm-ai-button"
+            className="cm-ai-button cm-ai-button-primary rise-in"
             onClick={() => controls?.acceptAll()}
           >
             Accept all
           </button>
           <button
             type="button"
-            className="cm-ai-button"
+            className="cm-ai-button rise-in"
             onClick={() => controls?.rejectAll()}
           >
             Reject all
           </button>
         </>
       ) : null}
-      {status.running ? (
-        <button
-          type="button"
-          className="cm-ai-button"
-          aria-busy="true"
-          title="Stop the Review pass"
-          onClick={() => controls?.stop()}
-        >
-          {progressLabel(status.added)}
-          <span className="ml-2 text-ink-strong">Stop</span>
-        </button>
-      ) : (
-        <button
-          ref={triggerRef}
-          type="button"
-          className="cm-ai-button"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          aria-controls={open ? popoverId : undefined}
-          disabled={controls === null}
-          onClick={() => setOpen((value) => !value)}
-        >
-          Review
-        </button>
-      )}
+      <button
+        ref={triggerRef}
+        type="button"
+        className="cm-ai-button"
+        aria-busy={status.running || undefined}
+        aria-haspopup={status.running ? undefined : 'dialog'}
+        aria-expanded={status.running ? undefined : open}
+        aria-controls={!status.running && open ? popoverId : undefined}
+        title={status.running ? 'Stop the Review pass' : undefined}
+        disabled={controls === null}
+        onClick={
+          status.running
+            ? () => controls?.stop()
+            : () => setOpen((value) => !value)
+        }
+      >
+        {status.running ? (
+          <>
+            <span className="cm-ai-pulse" aria-hidden="true" />
+            Reviewing…
+            {status.added > 0 ? (
+              <span key={status.added} className="cm-ai-count ml-1">
+                {countLabel(status.added)}
+              </span>
+            ) : null}
+            <span className="ml-2 text-ink-strong">Stop</span>
+          </>
+        ) : (
+          'Review'
+        )}
+      </button>
       {open && !status.running ? (
         <form
           id={popoverId}
           role="dialog"
           aria-label="Review the Document"
-          className="absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 bg-raised p-2 shadow-lg"
+          className="popover-in absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 border border-hairline bg-raised p-2 shadow-float"
           onSubmit={(event) => {
             event.preventDefault()
             submit()

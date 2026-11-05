@@ -1,9 +1,11 @@
 import type { ChangeDesc } from '@codemirror/state'
 import type { SuggestionResult } from '../ai/edits'
 import type { ClientError } from '../ai/errors'
+import { type Frontmatter, touchesFrontmatter } from '../blocks/frontmatter'
 import { adaptiveDiff } from '../diff/adaptive-diff'
 import { matchEdgeWhitespace } from './replacement'
 import type {
+  FailedSuggestion,
   Instruction,
   NoticeKind,
   ReadySuggestion,
@@ -272,6 +274,9 @@ export const rejectSuggestions = (
   return items.length === state.items.length ? state : { ...state, items }
 }
 
+export const clearSuggestions = (state: SuggestionsState): SuggestionsState =>
+  state.items.length === 0 ? state : { ...state, items: [] }
+
 export const rejectReviewSuggestions = (
   state: SuggestionsState,
 ): SuggestionsState => {
@@ -299,19 +304,22 @@ const touchesInterior = (item: Suggestion, changes: ChangeDesc): boolean => {
 export const mapSuggestions = (
   state: SuggestionsState,
   changes: ChangeDesc,
+  frontmatter?: Frontmatter,
 ): SuggestionsState => {
   if (changes.empty || state.items.length === 0) return state
-  const survivors = state.items.filter(
-    (item) => !touchesInterior(item, changes),
+  const mapped = state.items
+    .filter((item) => !touchesInterior(item, changes))
+    .map(
+      (item): Suggestion => ({
+        ...item,
+        from: changes.mapPos(item.from, 1),
+        to: changes.mapPos(item.to, -1),
+      }),
+    )
+  const survivors = mapped.filter(
+    (item) => !touchesFrontmatter(frontmatter, item),
   )
-  const mapped = survivors.map(
-    (item): Suggestion => ({
-      ...item,
-      from: changes.mapPos(item.from, 1),
-      to: changes.mapPos(item.to, -1),
-    }),
-  )
-  const next: SuggestionsState = { ...state, items: mapped }
+  const next: SuggestionsState = { ...state, items: survivors }
   return survivors.length === state.items.length
     ? next
     : withNotice(next, 'text-changed')
@@ -321,7 +329,9 @@ export const acceptSuggestions = (
   state: SuggestionsState,
   ids: readonly SuggestionId[],
   changes: ChangeDesc,
-): SuggestionsState => mapSuggestions(rejectSuggestions(state, ids), changes)
+  frontmatter?: Frontmatter,
+): SuggestionsState =>
+  mapSuggestions(rejectSuggestions(state, ids), changes, frontmatter)
 
 export const acceptSuggestion = (
   state: SuggestionsState,
@@ -337,6 +347,16 @@ export const inFlightSuggestionIds = (
   state: SuggestionsState,
 ): readonly SuggestionId[] =>
   state.items.filter(isInFlight).map((item) => item.id)
+
+export const newlyFailed = (
+  before: SuggestionsState,
+  after: SuggestionsState,
+): readonly FailedSuggestion[] =>
+  after.items.filter(
+    (item): item is FailedSuggestion =>
+      item.status === 'error' &&
+      findSuggestion(before, item.id)?.status !== 'error',
+  )
 
 const contains = (item: Suggestion, position: number): boolean =>
   item.from <= position && position <= item.to

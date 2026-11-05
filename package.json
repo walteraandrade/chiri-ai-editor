@@ -2,18 +2,29 @@
   "name": "chiri-ai-editor",
   "private": true,
   "version": "0.0.0",
+  "description": "Markdown editor with an AI co-author",
+  "author": "Walter Andrade",
+  "homepage": "https://github.com/walteraandrade/chiri-ai-editor",
   "type": "module",
+  "main": "./out/main/index.js",
   "packageManager": "pnpm@11.17.0",
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev:electron": "electron-vite dev",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.electron.json && pnpm build:web && pnpm build:electron",
+    "build:web": "vite build",
+    "build:electron": "electron-vite build",
     "preview": "vite preview",
+    "preview:electron": "electron-vite preview --skipBuild",
     "test": "vitest run",
     "bakeoff": "tsx scripts/bakeoff.ts",
-    "export-sessions": "tsx scripts/export-sessions.ts"
+    "export-sessions": "tsx scripts/export-sessions.ts",
+    "package": "pnpm build:electron && pnpm check:externals && electron-builder --linux",
+    "package:dir": "pnpm build:electron && pnpm check:externals && electron-builder --linux dir",
+    "check:externals": "tsx scripts/check-externals.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -29,6 +40,7 @@
     "diff": "^9.0.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "yaml": "^2.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -38,10 +50,14 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^43.8.6",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
-  }
+  },
+  "desktopName": "chiri-ai-editor.desktop"
 }

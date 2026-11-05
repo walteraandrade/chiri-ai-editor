@@ -1,17 +1,25 @@
 import type { EditorState, Text } from '@codemirror/state'
 import { type Block, extractBlocks } from '../blocks/extract-blocks'
+import { type Frontmatter, findFrontmatter } from '../blocks/frontmatter'
 import { resolveTarget, type Target } from '../blocks/target'
 
 const textCache = new WeakMap<Text, string>()
 const blockCache = new WeakMap<Text, readonly Block[]>()
 
-export const textOf = (state: EditorState): string => {
-  const cached = textCache.get(state.doc)
+export const textOfDoc = (doc: Text): string => {
+  const cached = textCache.get(doc)
   if (cached !== undefined) return cached
-  const text = state.doc.toString()
-  textCache.set(state.doc, text)
+  const text = doc.toString()
+  textCache.set(doc, text)
   return text
 }
+
+export const textOf = (state: EditorState): string => textOfDoc(state.doc)
+
+export const frontmatterOfDoc = (doc: Text): Frontmatter | undefined =>
+  doc.line(1).text.startsWith('---')
+    ? findFrontmatter(textOfDoc(doc))
+    : undefined
 
 export const blocksOf = (state: EditorState): readonly Block[] => {
   const cached = blockCache.get(state.doc)

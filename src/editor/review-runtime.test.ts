@@ -7,7 +7,8 @@ import type { ClientError } from '../ai/errors'
 import { type Block, extractBlocks } from '../blocks/extract-blocks'
 import { quickActionInstruction } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
-import { reviewRunOf, reviewStatusOf } from './review-field'
+import { replaceDocument } from './document-commands'
+import { type ReviewRun, reviewRunOf, reviewStatusOf } from './review-field'
 import {
   createReviewRuntime,
   type ReviewDrop,
@@ -126,11 +127,13 @@ const setup = (doc = DOC) => {
   const fake = createFakeClient()
   const notices: ReviewNotice[] = []
   const drops: ReviewDrop[] = []
+  const ends: (ReviewRun | null)[] = []
   let counter = 0
   const runtime = createReviewRuntime({
     client: fake.client,
     onNotice: (notice) => notices.push(notice),
     onDrop: (drop) => drops.push(drop),
+    onEnd: () => ends.push(reviewRunOf(state)),
     createId: () => `r${++counter}`,
   })
   let state = EditorState.create({
@@ -145,7 +148,7 @@ const setup = (doc = DOC) => {
       state = state.update(spec).state
     },
   }
-  return { ...fake, runtime, handle, notices, drops }
+  return { ...fake, runtime, handle, notices, drops, ends }
 }
 
 const only = <T>(items: readonly T[]): T => {
@@ -223,8 +226,34 @@ describe('start', () => {
     expect(reviewRunOf(handle.state)?.focus).toBe('tone')
   })
 
-  it('makes no model call when every Block is code or occupied', () => {
+  it('leaves a frontmatter out of the Blocks it sends', () => {
+    const { runtime, handle, streams } = setup(
+      '---\nname: demo\n---\n\n# Demo\n\nFirst paragraph here.\n',
+    )
+
+    runtime.actions.start(handle, '')
+
+    const { request } = only(streams)
+    expect(request.blocks.map((entry) => [entry.id, entry.text])).toEqual([
+      ['p1', '# Demo'],
+      ['p2', 'First paragraph here.'],
+    ])
+  })
+
+  it('makes no model call for a Document that is only a frontmatter', () => {
     const { runtime, handle, streams, notices } = setup(
+      '---\nname: demo\ndescription: Does a thing.\n---\n',
+    )
+
+    runtime.actions.start(handle, '')
+
+    expect(streams).toEqual([])
+    expect(reviewRunOf(handle.state)).toBeNull()
+    expect(notices).toEqual([{ text: 'Review: no suggestions' }])
+  })
+
+  it('makes no model call when every Block is code or occupied', () => {
+    const { runtime, handle, streams, notices, ends } = setup(
       '```js\nconst a = 1\n```',
     )
 
@@ -233,6 +262,7 @@ describe('start', () => {
     expect(streams).toEqual([])
     expect(reviewRunOf(handle.state)).toBeNull()
     expect(notices).toEqual([{ text: 'Review: no suggestions' }])
+    expect(ends).toEqual([])
   })
 })
 
@@ -293,6 +323,18 @@ describe('streaming', () => {
       added: 0,
       open: 2,
     })
+  })
+
+  it('tells the editor once when the pass ends, after the run is cleared', async () => {
+    const { runtime, handle, streams, ends } = setup()
+    runtime.actions.start(handle, '')
+    const stream = only(streams)
+    await stream.push(editEvent(SECOND, 'Second one.'))
+    expect(ends).toEqual([])
+
+    await stream.push(doneEvent({ validated: 1 }))
+
+    expect(ends).toEqual([null])
   })
 
   it('says "no suggestions" when nothing came back', async () => {
@@ -408,6 +450,23 @@ describe('edits made while the pass streams', () => {
     expect(drops).toEqual([{ blockId: SECOND.id, reason: 'text-changed' }])
   })
 
+  it('drops an edit whose Block the user turned into a frontmatter', async () => {
+    const { runtime, handle, streams, drops } = setup()
+    runtime.actions.start(handle, '')
+    handle.dispatch({
+      changes: [
+        { from: 0, insert: '---\nname: demo\n' },
+        { from: FIRST.to, insert: '\n---' },
+      ],
+    })
+
+    await only(streams).push(editEvent(FIRST, 'First one.'))
+
+    expect(idsOf(handle)).toEqual([])
+    expect(reviewRunOf(handle.state)).toMatchObject({ added: 0, dropped: 1 })
+    expect(drops).toEqual([{ blockId: FIRST.id, reason: 'frontmatter' }])
+  })
+
   it('still places the edits for Blocks the user did not touch', async () => {
     const { runtime, handle, streams } = setup()
     runtime.actions.start(handle, '')
@@ -490,6 +549,17 @@ describe('Stop', () => {
     expect(notices).toEqual([{ text: 'Review stopped: 1 suggestion' }])
   })
 
+  it('tells the editor once on Stop', async () => {
+    const { runtime, handle, streams, ends } = setup()
+    runtime.actions.start(handle, '')
+    const stream = only(streams)
+
+    runtime.actions.stop(handle)
+    await stream.push(doneEvent())
+
+    expect(ends).toEqual([null])
+  })
+
   it('ignores edits and the final event that arrive after Stop', async () => {
     const { runtime, handle, streams, notices } = setup()
     runtime.actions.start(handle, '')
@@ -518,9 +588,30 @@ describe('Stop', () => {
   })
 
   it('does nothing when no pass is running', () => {
-    const { runtime, handle, notices } = setup()
+    const { runtime, handle, notices, ends } = setup()
     runtime.actions.stop(handle)
     expect(notices).toEqual([])
+    expect(ends).toEqual([])
+  })
+})
+
+describe('opening a file while a pass streams', () => {
+  it('stops the pass, drops its Suggestions and keeps late edits out', async () => {
+    const { runtime, handle, streams, notices } = setup()
+    runtime.actions.start(handle, '')
+    const stream = only(streams)
+    await stream.push(editEvent(SECOND, 'Second one.'))
+
+    replaceDocument(handle, '# Opened\n\nFrom a file.\n')
+
+    expect(stream.request.signal?.aborted).toBe(true)
+    expect(reviewRunOf(handle.state)).toBeNull()
+    expect(idsOf(handle)).toEqual([])
+    await stream.push(editEvent(THIRD, 'Late.'))
+    await stream.finish()
+    expect(idsOf(handle)).toEqual([])
+    expect(handle.state.doc.toString()).toBe('# Opened\n\nFrom a file.\n')
+    expect(notices).toEqual([{ text: 'Review stopped: 1 suggestion' }])
   })
 })
 
@@ -531,7 +622,7 @@ describe('errors', () => {
   })
 
   it('before any Suggestion, shows the message with Retry that runs the same Focus again', async () => {
-    const { runtime, handle, streams, notices } = setup()
+    const { runtime, handle, streams, notices, ends } = setup()
     runtime.actions.start(handle, 'tone')
     await only(streams).push(
       failWith({ type: 'out-of-credit', message: 'No credit' }),
@@ -540,6 +631,7 @@ describe('errors', () => {
     const notice = only(notices)
     expect(notice.text).toMatch(/out of credit/i)
     expect(reviewRunOf(handle.state)).toBeNull()
+    expect(ends).toEqual([null])
     expect(notice.retry).toBeTypeOf('function')
 
     notice.retry?.()
@@ -560,7 +652,7 @@ describe('errors', () => {
   })
 
   it('aborts a running pass on destroy and starts nothing afterwards', () => {
-    const { runtime, handle, streams } = setup()
+    const { runtime, handle, streams, ends } = setup()
     runtime.actions.start(handle, '')
     const { request } = only(streams)
 
@@ -569,6 +661,7 @@ describe('errors', () => {
 
     expect(request.signal?.aborted).toBe(true)
     expect(streams).toHaveLength(1)
+    expect(ends).toEqual([])
   })
 
   it('shows a different message per error type', async () => {

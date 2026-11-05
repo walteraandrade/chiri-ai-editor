@@ -94,6 +94,39 @@ describe('createLazyModelClient', () => {
     expect(load).toHaveBeenCalledTimes(2)
   })
 
+  it('preloads the client once, and later requests reuse it', async () => {
+    const load = vi.fn(async () => ({
+      requestSuggestion: async () => answer,
+      refineSuggestion: async () => answer,
+      reviewDocument: noReview,
+    }))
+    const client = createLazyModelClient(load)
+
+    client.preload()
+    client.preload()
+    expect(await client.requestSuggestion(request)).toBe(answer)
+
+    expect(load).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a failed preload quiet and loads again on the next request', async () => {
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue({
+        requestSuggestion: async () => answer,
+        refineSuggestion: async () => answer,
+        reviewDocument: noReview,
+      })
+    const client = createLazyModelClient(load)
+
+    client.preload()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(await client.requestSuggestion(request)).toBe(answer)
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+
   it('loads the client for a Refine and forwards the request', async () => {
     const refineSuggestion = vi.fn(async () => answer)
     const load = vi.fn(async () => ({

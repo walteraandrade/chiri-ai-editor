@@ -17,5 +17,11 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src", "config", "scripts", "vite.config.ts"]
+  "include": [
+    "src",
+    "config",
+    "scripts",
+    "vite.config.ts",
+    "electron.vite.config.ts"
+  ]
 }

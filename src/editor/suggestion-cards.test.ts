@@ -175,6 +175,58 @@ describe('version arrows', () => {
   })
 })
 
+describe('change count', () => {
+  const wholeDocument = (anchor: number) =>
+    EditorState.create({
+      doc: DOC,
+      selection: { anchor },
+      extensions: [
+        suggestionsField,
+        interactionField,
+        refineInputField,
+        placementField,
+        suggestionCards,
+      ],
+    })
+      .update({
+        effects: beginEffect.of({
+          id: 'w',
+          from: 0,
+          to: DOC.length,
+          source: 'selection',
+          original: DOC,
+          instruction: quickActionInstruction('fix-grammar'),
+        }),
+      })
+      .state.update({
+        effects: resolveEffect.of({
+          id: 'w',
+          result: {
+            replacement: 'First paragraph here.\n\nSecond paragraph there.',
+            rationale: 'Fixed a word.',
+            unchanged: false,
+          },
+        }),
+      }).state
+
+  it('counts the changes of a Suggestion over more than one line', () => {
+    expect(contentFor('active', wholeDocument(DOC.length))?.changes).toBe(
+      '1 change',
+    )
+  })
+
+  it('says which change the cursor is on', () => {
+    const spot = DOC.indexOf('here.', 23)
+    expect(contentFor('active', wholeDocument(spot))?.changes).toBe(
+      'Change 1 of 1',
+    )
+  })
+
+  it('stays off a one-line Suggestion with a single change', () => {
+    expect(contentFor('active', stateWith(0))?.changes).toBeNull()
+  })
+})
+
 describe('versionKeyOffset', () => {
   const key = (value: string, modifiers: Partial<KeyboardEvent> = {}) => ({
     key: value,

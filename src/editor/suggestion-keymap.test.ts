@@ -23,9 +23,13 @@ import {
 
 const DOC = 'First paragraph here.\n\nSecond paragraph here.'
 
-const createHandle = (anchor: number, head = anchor): EditorHandle => {
+const createHandle = (
+  anchor: number,
+  head = anchor,
+  doc = DOC,
+): EditorHandle => {
   let state = EditorState.create({
-    doc: DOC,
+    doc,
     selection: { anchor, head },
     extensions: [
       suggestionsField,
@@ -170,6 +174,32 @@ describe('openAskOrRefine', () => {
     expect(openAskOrRefine(handle)).toBe(true)
 
     expect(handle.state.field(refineInputField)).toBeNull()
+    expect(askOpen(handle)).toBe(true)
+  })
+
+  it('does not open the Ask field with the cursor or selection inside a frontmatter', () => {
+    const doc = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+    for (const [anchor, head] of [
+      [6, 6],
+      [2, 10],
+    ] as const) {
+      const handle = createHandle(anchor, head, doc)
+      expect(openAskOrRefine(handle)).toBe(false)
+      expect(askOpen(handle)).toBe(false)
+    }
+  })
+
+  it('opens the Ask field for Select All on a document with a frontmatter', () => {
+    const doc = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+    const handle = createHandle(0, doc.length, doc)
+    expect(openAskOrRefine(handle)).toBe(true)
+    expect(askOpen(handle)).toBe(true)
+  })
+
+  it('opens the Ask field after a frontmatter', () => {
+    const doc = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+    const handle = createHandle(doc.indexOf('First') + 2, undefined, doc)
+    expect(openAskOrRefine(handle)).toBe(true)
     expect(askOpen(handle)).toBe(true)
   })
 

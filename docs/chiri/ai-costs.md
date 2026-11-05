@@ -65,8 +65,22 @@ Budget: US$5.00, the cap on the OpenRouter key. Every Bake-off run and every ver
 | 2026-10-29 | PR #20 | review document → default criteria | `openai/gpt-6.1-terra` → OpenAI | 975 / 325 / 0 / 0 | 0.002600 | – / 869 / 4378 | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
 | 2026-10-29 | PR #20 | review document → focus: tone | `openai/gpt-6.1-terra` → OpenAI | 969 / 227 / 48 / 0 | 0.002104 | – / 1735 / 3329 | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
 | 2026-10-29 | PR #20 | review document → default criteria (keyboard check) | `openai/gpt-6.1-terra` → OpenAI | 975 / 328 / 0 / 0 | 0.002615 | 5720 / 1578 / 5114 (first 2666) | stop | 1/1 | [20-review-cursor-first.md](verification/20-review-cursor-first.md) |
+| 2026-10-30 | PR #22 | review document → default criteria, aborted by Open | `openai/gpt-6.1-terra` → – | – / – / – / – | 0.001328 (daily counter) | 2786 / – / – (first 2704) | – | 0/1, aborted | [22-open-save-markdown.md](verification/22-open-save-markdown.md) |
+| 2026-10-30 | PR #23 | cursor at the Document start → More formal (title Block; record lost on a reload) | `openai/gpt-6.1-terra` → – | – / – / – / – | ~0.0013 (daily counter) | – | – | 1/1, accepted | [23-document-history.md](verification/23-document-history.md) |
+| 2026-10-30 | PR #23 | review document → default criteria (started by mistake on a 6-word Document) | `openai/gpt-6.1-terra` → OpenAI | 416 / 22 / 9 / 0 | 0.000526 | 2435 / 1754 / 1855 | stop | 1/1, no Suggestions | [23-document-history.md](verification/23-document-history.md) |
+| 2026-10-30 | PR #23 | review document → default criteria, then Accept all | `openai/gpt-6.1-terra` → OpenAI | 975 / 324 / 0 / 0 | 0.002595 | 5412 / – / – (first 2133) | stop | 1/1, 5 Suggestions | [23-document-history.md](verification/23-document-history.md) |
+| 2026-10-30 | PR #24 | select p1–p46 → Fix grammar (46-Block Document) | `openai/gpt-6.1-terra` → OpenAI | 3962 / 3808 / 0 / 0 | 0.023992 | 45276 / 1317 / 44859 | stop | 1/1 | [24-long-target.md](verification/24-long-target.md) |
+| 2026-10-30 | PR #24 | select p1–p45 → Fix grammar (the maintainer's Document, repeated) | `openai/gpt-6.1-terra` → OpenAI | 5452 / 2827 / 90 / 5449 | 0.014410 | 32998 / – / – | stop | 1/1 | [24-long-target.md](verification/24-long-target.md) |
+| 2026-11-01 | #29 | Electron window: cursor in p5 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 529 / 60 / 0 / 0 | 0.000829 | 3278 / 1630 / 2169 | stop | 1/1, accepted | [29-electron-shell.md](verification/29-electron-shell.md) |
+| 2026-11-01 | #29 | Electron window: review document → default criteria | `openai/gpt-6.1-terra` → OpenAI | 955 / 316 / 0 / 0 | 0.002535 | 5069 / 1333 / 4791 (first 2744) | stop | 1/1 | [29-electron-shell.md](verification/29-electron-shell.md) |
+| 2026-11-01 | #29 | Web build: cursor in p5 → Shorter | `openai/gpt-6.1-terra` → OpenAI | 529 / 59 / 0 / 0 | 0.000824 | 2885 / 1651 / 2296 | stop | 1/1, accepted | [29-electron-shell.md](verification/29-electron-shell.md) |
+| 2026-11-01 | #29 | Web build: review document → default criteria (enriched by hand after a reload lost the log) | `openai/gpt-6.1-terra` → OpenAI | 954 / 317 / 0 / 0 | 0.002539 | 4762 / 982 / 4562 (first 2461) | stop | 1/1 | [29-electron-shell.md](verification/29-electron-shell.md) |
+| 2026-11-01 | #30 | Electron window: review document → default criteria, on a `SKILL.md` with frontmatter (the pass leaves the frontmatter alone) | `openai/gpt-6.1-terra` → OpenAI | 699 / 323 / 41 / 0 | 0.001992 | – / 1720 / 3869 | stop | not read | [30-main-process-files.md](verification/30-main-process-files.md) |
+| 2026-11-01 | #30 | Web build: review document → default criteria, same `SKILL.md` text | `openai/gpt-6.1-terra` → OpenAI | 632 / 209 / 0 / 0 | 0.001620 | – / 1044 / 3034 | stop | not read | [30-main-process-files.md](verification/30-main-process-files.md) |
+| 2026-11-01 | #31 | Electron window (headless gamescope): cursor in the last Block of a `SKILL.md` → Shorter, then Accept (an AI Version in that file's History) | `openai/gpt-6.1-terra` → OpenAI | 301 / 147 / 40 / 0 | 0.000726 | – / 1919 / 2808 | stop | accepted, not read | [31-history-sqlite.md](verification/31-history-sqlite.md) |
+| 2026-11-01 | #31 | Web build: cursor in the last paragraph → Shorter, then Accept | `openai/gpt-6.1-terra` → OpenAI | 375 / 46 / 0 / 0 | 0.000610 | – / 1174 / 1692 | stop | accepted, not read | [31-history-sqlite.md](verification/31-history-sqlite.md) |
 
-**Running total:** US$0.331 of 5.00 (the key's usage counter read US$9.074 after PR #20, against US$8.743 before slice 2; the rows add up to 0.292, 0.281 recorded plus 0.011 estimated, and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20)
+**Running total:** US$0.396 of 5.00 (US$0.395 before issue #31, plus its 2 recorded calls, US$0.0013; US$0.391 before issue #30, plus its 2 recorded calls, US$0.0036; US$0.384 before issue #29, plus its 4 recorded calls, US$0.0067; the key's counter was not re-read for #29. The rest is as of the PR #24 check: the key's usage counter read US$9.172 after the PR #24 check, US$9.088 after the Document History check and US$9.083 after PR #22, against US$8.743 before slice 2; the rows add up to about 0.337, 0.323 recorded plus 0.013 estimated from the key's counters (rounded), and the rest is the requests OpenRouter did not report and the use noted under PR #16 and PR #20. The counter rose US$0.008 between the PR #20 note and the Document History check, and US$0.060 between that check and the PR #24 check, outside these rows)
 
 Notes on slice 2:
 - The first nine rows are the final Bake-off run, the one in [bakeoff.md](bakeoff.md): US$0.0559, well under the US$0.50 budget. The other rows are what it took to get the prompts right (two full runs, prompt checks, dry runs), so the slice total is about US$0.23.
@@ -102,3 +116,44 @@ Notes on PR #20:
 - Slice cost is about US$0.0073: 3 Review passes. The three forced failures never reached OpenRouter.
 - The in-page log of the first two passes was lost on a page reload, so those rows come from `/generation` by id and have no client latency; the third pass was saved right away.
 - The counter rose about US$0.026 since PR #16's reading (9.048 → 9.074). These rows explain 0.0073 and issue #18's checks (PR #19) 0.0062; the rest is the maintainer's own check of the PR #19 build in the same hour, which is not recorded here, so it stays in the upper bound only.
+
+Notes on PR #23 (Document History):
+- Slice cost is about US$0.0044: 3 calls. Two are recorded from `window.__aiCalls`; the first (More formal) was lost when the page reloaded to check persistence, before the log was read.
+- Its cost is estimated from the key's `usage_daily` counter: US$0.005754 after the check, minus PR #22's US$0.001328 and the two recorded rows.
+- The lifetime counter rose about US$0.0046 since PR #22 (9.083 → 9.0876), which matches.
+
+Notes on PR #24 (long Targets):
+- Slice cost is US$0.0384: 2 real calls, recorded. The forced failures never reached OpenRouter. The second call repeated the maintainer's Fix grammar on their Document to see why it "did nothing" (3 changes, none on screen).
+- The key's usage counter rose exactly that much across the first call (9.148292 → 9.172283). Between it and the repeat it rose another US$0.0254 (→ 9.197672): the maintainer's own run of the same request, outside these rows.
+- Before the check, the counter had risen US$0.060 since the Document History check. That is the maintainer's own use, including the timed-out `select p1–p45 → Fix grammar` that led to this fix, which OpenRouter billed but did not report. It stays in the upper bound only.
+
+Notes on issue #25:
+- No model calls: the browser checks simulated the model by wrapping `window.fetch` in the page, and `/api/openrouter/**` was aborted at the network level. No rows, and the key's counter was not re-read.
+
+Notes on issue #29 (Electron shell):
+- Slice cost is US$0.0067: 4 calls, all recorded, 2 in the Electron window and 2 in the Web build, each a Shorter on the same paragraph (then Accept) and a default Review pass on the sample Document.
+- Both builds served `gpt-6.1-terra-20261026` through OpenAI. Their tokens and costs match within a few tokens.
+- The Web build's log was lost when a source edit made Vite reload the page; the Review row's OpenRouter and generation latencies come from `GET /generation?id=…` through the dev proxy, the same call the client makes.
+
+Notes on issue #30 (Files through DocumentFiles):
+- Slice cost is US$0.0036: 2 calls, a default Review pass on the same `SKILL.md` in the Electron window and in the Web build. Neither pass touched the frontmatter. The rest of the checks (Open, Save, conflict, restart, killed process) call no model.
+- `window.__aiCalls` was not read, because the permission system refused `agent-browser eval`. The generation ids came from `agent-browser network requests` and the records from `GET /api/openrouter/generation?id=…` through the dev proxy, so client latency, time to the first Suggestion and the retry flag are missing.
+- The key's counter was not re-read.
+- The review fixes of PR #37 were re-checked without a model call.
+
+Notes on issue #31 (History store):
+- Slice cost is US$0.0013: 2 calls, a Shorter on a paragraph and its Accept, in the Electron window and in the Web build, to put an AI Version into a per-file History and into the Web History. The other checks (Versions, Restore, file switch, restart, `kill -9`, changed on disk) call no model.
+- `window.__aiCalls` was not read, because the permission system refused `agent-browser eval`. The generation ids came from `agent-browser network requests` and the records from `GET /api/openrouter/generation?id=…` through the dev proxy, so client latency and the retry flag are missing.
+- The key's counter was not re-read.
+
+Notes on issue #32 (Library):
+- Slice cost is US$0: no check called the model (listing, opening, saving and switching files, the questions, the unreadable roots file and the Web build comparison). The running total is unchanged from issue #31.
+
+Notes on issue #33 (External changes):
+- Slice cost is US$0: no check called the model. The agent's edits were simulated by writing the files from a shell (in place, and as a temporary file renamed over the target), and the pull was a real pull between two temporary clones. The running total is unchanged from issue #32.
+
+Notes on issue #34 (Skill checks):
+- Slice cost is US$0: no check called the model (the frontmatter panel, the checks, the editor styling and New skill do not use it). The running total is unchanged from issue #33.
+
+Notes on issue #45 (Open from the desktop):
+- Slice cost is US$0: no check called the model (file arguments, second launches, the Save / Discard / Cancel question, the missing file, the Key dialog with a dummy key). The running total is unchanged.

@@ -8,7 +8,6 @@ import {
 } from './client'
 import type { AiCallRecord } from './records'
 import {
-  chatCompletion,
   chatStream,
   createFakeOpenRouter,
   errorResponse,
@@ -63,9 +62,7 @@ const collect = async (events: AsyncIterable<ReviewEvent>) => {
 
 describe('request body', () => {
   it('sends a strict JSON schema with require_parameters for Target requests', async () => {
-    const { fake, client } = setup([
-      () => chatCompletion(suggestionJson('Short.')),
-    ])
+    const { fake, client } = setup([() => chatStream(suggestionJson('Short.'))])
     await client.requestSuggestion(targetRequest())
     const [request] = fake.chatRequests()
     expect(request?.url).toBe(
@@ -87,8 +84,8 @@ describe('request body', () => {
       },
       provider: { require_parameters: true },
       reasoning: { effort: 'low' },
+      stream: true,
     })
-    expect(request?.body).not.toHaveProperty('stream')
   })
 
   it('sends the array wrapper as a strict JSON schema for the Review pass', async () => {
@@ -126,7 +123,7 @@ describe('request body', () => {
 
   it('can leave reasoning at the model default', async () => {
     const { fake, client } = setup(
-      [() => chatCompletion(suggestionJson('Short.'))],
+      [() => chatStream(suggestionJson('Short.'))],
       { reasoning: 'default' },
     )
     await client.requestSuggestion(targetRequest())
@@ -134,9 +131,7 @@ describe('request body', () => {
   })
 
   it('puts the fixed rules and the Instruction in the messages', async () => {
-    const { fake, client } = setup([
-      () => chatCompletion(suggestionJson('Short.')),
-    ])
+    const { fake, client } = setup([() => chatStream(suggestionJson('Short.'))])
     await client.requestSuggestion(targetRequest('Make it shorter.'))
     const body = fake.chatRequests()[0]?.body as { messages: unknown[] }
     const text = JSON.stringify(body.messages)
@@ -148,7 +143,7 @@ describe('request body', () => {
 
 describe('requestSuggestion', () => {
   it('returns the validated Suggestion', async () => {
-    const { client } = setup([() => chatCompletion(suggestionJson('Short.'))])
+    const { client } = setup([() => chatStream(suggestionJson('Short.'))])
     const result = await client.requestSuggestion(targetRequest())
     expect(result).toEqual({
       ok: true,
@@ -158,7 +153,7 @@ describe('requestSuggestion', () => {
 
   it('flags a Replacement equal to the original', async () => {
     const { client } = setup([
-      () => chatCompletion(suggestionJson('Second paragraph is a bit longer.')),
+      () => chatStream(suggestionJson('Second paragraph is a bit longer.')),
     ])
     const result = await client.requestSuggestion(targetRequest())
     expect(result).toMatchObject({ ok: true, value: { unchanged: true } })
@@ -166,8 +161,8 @@ describe('requestSuggestion', () => {
 
   it('retries once silently on invalid output', async () => {
     const { fake, client, records } = setup([
-      () => chatCompletion('{"replacement": 5}', { id: 'gen-a' }),
-      () => chatCompletion(suggestionJson('Short.'), { id: 'gen-b' }),
+      () => chatStream('{"replacement": 5}', { id: 'gen-a' }),
+      () => chatStream(suggestionJson('Short.'), { id: 'gen-b' }),
     ])
     const result = await client.requestSuggestion(targetRequest())
     await client.flush()
@@ -187,8 +182,8 @@ describe('requestSuggestion', () => {
 
   it('treats an empty Replacement as invalid output', async () => {
     const { fake, client } = setup([
-      () => chatCompletion(suggestionJson('  ')),
-      () => chatCompletion(suggestionJson('Short.')),
+      () => chatStream(suggestionJson('  ')),
+      () => chatStream(suggestionJson('Short.')),
     ])
     const result = await client.requestSuggestion(targetRequest())
     expect(result.ok).toBe(true)
@@ -196,7 +191,7 @@ describe('requestSuggestion', () => {
   })
 
   it('fails with invalid-output after the retry also fails', async () => {
-    const { fake, client } = setup([() => chatCompletion('not json at all')])
+    const { fake, client } = setup([() => chatStream('not json at all')])
     const result = await client.requestSuggestion(targetRequest())
     expect(result).toMatchObject({
       ok: false,
@@ -259,7 +254,7 @@ describe('requestSuggestion', () => {
     const { fake, client } = setup(
       [
         () => errorResponse(503, 'Unavailable'),
-        () => chatCompletion(suggestionJson('Short.')),
+        () => chatStream(suggestionJson('Short.')),
       ],
       { maxRetries: 1 },
     )
@@ -267,6 +262,93 @@ describe('requestSuggestion', () => {
     expect(result.ok).toBe(true)
     expect(fake.chatRequests()).toHaveLength(2)
   }, 10_000)
+})
+
+const paragraphs = (count: number) =>
+  Array.from(
+    { length: count },
+    (_, index) => `Paragraph ${index + 1} has a few plain words in it.`,
+  ).join('\n\n')
+
+const wholeDocumentRequest = (doc: string) => {
+  const docBlocks = extractBlocks(doc)
+  const target = resolveTarget(docBlocks, doc, { from: 0, to: doc.length })
+  if (!target) throw new Error('no target')
+  return {
+    target,
+    neighbors: getNeighbors(docBlocks, target),
+    instruction: 'Fix grammar.',
+  }
+}
+
+describe('output token limit', () => {
+  const maxTokensFor = async (request: ReturnType<typeof targetRequest>) => {
+    const { fake, client } = setup([() => chatStream(suggestionJson('Short.'))])
+    await client.requestSuggestion(request)
+    const body = fake.chatRequests()[0]?.body as
+      | { readonly max_tokens?: number }
+      | undefined
+    return body?.max_tokens
+  }
+
+  it('keeps the base limit for a short Target', async () => {
+    expect(await maxTokensFor(targetRequest())).toBe(4096)
+  })
+
+  it('grows with a long Target', async () => {
+    const request = wholeDocumentRequest(paragraphs(300))
+    const maxTokens = await maxTokensFor(request)
+    expect(maxTokens).toBeGreaterThan(4096)
+    expect(maxTokens).toBeGreaterThanOrEqual(request.target.text.length / 2)
+  })
+
+  it('stops growing at the ceiling', async () => {
+    expect(await maxTokensFor(wholeDocumentRequest(paragraphs(3000)))).toBe(
+      32_768,
+    )
+  })
+})
+
+describe('Target stall timeout', () => {
+  it('keeps waiting while the model keeps writing', async () => {
+    const { client } = setup(
+      [
+        () =>
+          chatStream(suggestionJson('Short.'), { chunkSize: 4, delayMs: 40 }),
+      ],
+      {
+        stallMs: { firstChunk: 100, chunk: 100 },
+        timeoutsMs: { target: 5000, review: 5000 },
+      },
+    )
+    const started = performance.now()
+    const result = await client.requestSuggestion(targetRequest())
+    expect(result.ok).toBe(true)
+    expect(performance.now() - started).toBeGreaterThan(200)
+  })
+
+  it('times out when the model sends nothing', async () => {
+    const { fake, client } = setup(
+      [() => chatStream(suggestionJson('Short.'), { stallAfter: 0 })],
+      { stallMs: { firstChunk: 60, chunk: 5000 } },
+    )
+    const result = await client.requestSuggestion(targetRequest())
+    expect(result).toMatchObject({ ok: false, error: { type: 'timeout' } })
+    expect(fake.chatRequests()).toHaveLength(1)
+  })
+
+  it('times out when the model goes silent mid-answer', async () => {
+    const { fake, client } = setup(
+      [
+        () =>
+          chatStream(suggestionJson('Short.'), { chunkSize: 4, stallAfter: 3 }),
+      ],
+      { stallMs: { firstChunk: 5000, chunk: 60 } },
+    )
+    const result = await client.requestSuggestion(targetRequest())
+    expect(result).toMatchObject({ ok: false, error: { type: 'timeout' } })
+    expect(fake.chatRequests()).toHaveLength(1)
+  })
 })
 
 describe('shared deadline', () => {
@@ -290,7 +372,7 @@ describe('shared deadline', () => {
     (advance: (ms: number) => void, ms: number): FakeHandler =>
     () => {
       advance(ms)
-      return chatCompletion('not json at all')
+      return chatStream('not json at all')
     }
 
   const slowInvalidStream =
@@ -303,7 +385,7 @@ describe('shared deadline', () => {
   it('does not retry a Target request once the deadline has passed', async () => {
     const { fake, client } = withClock((advance) => [
       slowInvalid(advance, 400),
-      () => chatCompletion(suggestionJson('Short.')),
+      () => chatStream(suggestionJson('Short.')),
     ])
     const result = await client.requestSuggestion(targetRequest())
     expect(result).toMatchObject({ ok: false, error: { type: 'timeout' } })
@@ -337,7 +419,7 @@ describe('shared deadline', () => {
   it('shares the deadline across Refine and its retry', async () => {
     const { fake, client } = withClock((advance) => [
       slowInvalid(advance, 400),
-      () => chatCompletion(suggestionJson('Short.')),
+      () => chatStream(suggestionJson('Short.')),
     ])
     const result = await client.refineSuggestion({
       ...targetRequest('Warmer.'),
@@ -379,9 +461,7 @@ describe('shared deadline', () => {
 
 describe('refineSuggestion', () => {
   it('sends the history and the latest Replacement', async () => {
-    const { fake, client } = setup([
-      () => chatCompletion(suggestionJson('Tiny.')),
-    ])
+    const { fake, client } = setup([() => chatStream(suggestionJson('Tiny.'))])
     const result = await client.refineSuggestion({
       ...targetRequest('Warmer.'),
       history: ['Make it shorter.'],
@@ -399,7 +479,7 @@ describe('AI call records', () => {
   it('records the call right away from telemetry', async () => {
     const { client, records, enriched } = setup([
       () =>
-        chatCompletion(suggestionJson('Short.'), {
+        chatStream(suggestionJson('Short.'), {
           id: 'gen-rec',
           usage: usage({
             prompt_tokens: 300,
@@ -438,7 +518,7 @@ describe('AI call records', () => {
 
   it('enriches the record with the generation endpoint later', async () => {
     const { client, enriched } = setup(
-      [() => chatCompletion(suggestionJson('Short.'), { id: 'gen-rec' })],
+      [() => chatStream(suggestionJson('Short.'), { id: 'gen-rec' })],
       {},
       () =>
         generationResponse({
@@ -461,7 +541,7 @@ describe('AI call records', () => {
 
   it('asks the generation endpoint with the response id', async () => {
     const { fake, client } = setup(
-      [() => chatCompletion(suggestionJson('Short.'), { id: 'gen-xyz' })],
+      [() => chatStream(suggestionJson('Short.'), { id: 'gen-xyz' })],
       {},
       () => generationResponse({ id: 'gen-xyz' }),
     )
@@ -477,7 +557,7 @@ describe('AI call records', () => {
 
   it('does not poll the generation endpoint when nobody listens', async () => {
     const { fake, client } = setup(
-      [() => chatCompletion(suggestionJson('Short.'))],
+      [() => chatStream(suggestionJson('Short.'))],
       { onRecordEnriched: undefined },
     )
     await client.requestSuggestion(targetRequest())
@@ -489,7 +569,7 @@ describe('AI call records', () => {
 
   it('keeps the preliminary record when the generation endpoint has nothing', async () => {
     const { client, records, enriched } = setup([
-      () => chatCompletion(suggestionJson('Short.'), { id: 'gen-404' }),
+      () => chatStream(suggestionJson('Short.'), { id: 'gen-404' }),
     ])
     await client.requestSuggestion(targetRequest())
     await client.flush()
@@ -499,7 +579,7 @@ describe('AI call records', () => {
 
   it('survives a record callback that throws', async () => {
     const { client } = setup(
-      [() => chatCompletion(suggestionJson('Short.'), { id: 'gen-x' })],
+      [() => chatStream(suggestionJson('Short.'), { id: 'gen-x' })],
       {
         onRecord: () => {
           throw new Error('listener bug')
@@ -523,7 +603,7 @@ describe('AI call records', () => {
 
   it('uses a default task label when none is given', async () => {
     const { client, records } = setup([
-      () => chatCompletion(suggestionJson('Short.')),
+      () => chatStream(suggestionJson('Short.')),
     ])
     await client.requestSuggestion(targetRequest('Make it shorter.'))
     await client.flush()

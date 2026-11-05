@@ -15,7 +15,7 @@ Slices run **sequentially**. Each builds on the previous one, and running them i
 
 ## Loop per slice
 
-1. Branch from up-to-date `main`, using the name in the table below.
+1. Branch from up-to-date `main`, using the name in the table below. While `main` is frozen for the assessment, branch from `feat/open-save-markdown` (PR #22) and merge back into it; the current slices are in [BACKLOG.md](BACKLOG.md).
 2. Implementer: TDD the pure modules the issue lists, then the UI.
 3. Run the definition of done ([AGENTS.md](../AGENTS.md#definition-of-done-every-slice)): tests, Biome, build.
 4. Verify the acceptance criteria in a real browser with `agent-browser`. Record the AI calls and screenshots ([AGENTS.md](../AGENTS.md#ai-call-records)) and update [chiri/ai-costs.md](chiri/ai-costs.md).

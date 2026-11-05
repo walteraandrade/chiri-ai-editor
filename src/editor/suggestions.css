@@ -1,5 +1,23 @@
+@property --cm-ai-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  --cm-ai-sweep: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 38%,
+    var(--color-ai-glow) 50%,
+    transparent 62%,
+    transparent 100%
+  );
+  --cm-ai-strike: linear-gradient(currentColor, currentColor);
+}
+
 .cm-ai-suggestion {
-  background: rgb(241 241 243 / 0.03);
+  background: var(--color-code-bg);
 }
 
 .cm-ai-suggestion.cm-ai-active {
@@ -13,17 +31,28 @@
 }
 
 .cm-ai-deleted {
-  color: var(--color-ink-faint);
-  text-decoration: line-through;
-  text-decoration-color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
+  text-decoration: none;
+  background-image: var(--cm-ai-strike);
+  background-repeat: no-repeat;
+  background-position: 0 56%;
+  background-size: 100% 1px;
+}
+
+.cm-ai-deleted.cm-ai-enter {
+  animation: cm-ai-strike var(--motion-reveal) var(--ease-out-quart) backwards;
 }
 
 .cm-ai-inserted,
 .cm-ai-replacement ins {
-  color: var(--color-accent-soft);
-  background: var(--color-accent-tint);
+  color: var(--color-ai-text);
+  background: var(--color-ai-tint);
   text-decoration: none;
   white-space: pre-wrap;
+}
+
+.cm-ai-inserted.cm-ai-enter {
+  animation: cm-ai-tint-in var(--motion-reveal) var(--ease-out-quart) backwards;
 }
 
 .cm-ai-inserted-separated {
@@ -33,49 +62,52 @@
 .cm-ai-replacement {
   margin: 0.2rem 0 0.9rem;
   padding: 0.35rem 0.75rem;
-  background: var(--color-accent-tint);
-  color: var(--color-accent-soft);
+  background: var(--color-ai-tint);
+  color: var(--color-ai-text);
   white-space: pre-wrap;
+}
+
+.cm-ai-replacement.cm-ai-enter {
+  animation: cm-ai-drop-in var(--motion-reveal) var(--ease-out-expo) backwards;
 }
 
 .cm-ai-replacement ins {
   background: transparent;
 }
 
+.cm-ai-enter .cm-ai-word {
+  animation: cm-ai-word-in 420ms var(--ease-out-quart) backwards;
+  animation-delay: var(--word-delay, 0ms);
+}
+
 .cm-ai-target-preview {
   background: var(--color-accent-tint);
+  animation: cm-ai-tint-in var(--motion-enter) var(--ease-out-quart);
 }
 
 .cm-ai-pending,
 .cm-ai-refining {
-  background-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent 38%,
-    var(--color-shimmer) 50%,
-    transparent 62%,
-    transparent 100%
-  );
+  background-color: var(--color-ai-wash);
+  background-image: var(--cm-ai-sweep);
   background-size: 300% 100%;
   animation: cm-ai-shimmer 1.8s linear infinite;
 }
 
-@keyframes cm-ai-shimmer {
-  from {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: 0% 0;
-  }
+.cm-ai-deleted.cm-ai-refining {
+  background-image: var(--cm-ai-strike), var(--cm-ai-sweep);
+  background-repeat: no-repeat, repeat;
+  background-size:
+    100% 1px,
+    300% 100%;
+  animation: cm-ai-shimmer-struck 1.8s linear infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cm-ai-pending,
-  .cm-ai-refining {
-    animation: none;
-    background-image: none;
-    background-color: var(--color-shimmer);
-  }
+.cm-ai-landed {
+  animation: cm-ai-land var(--motion-land) var(--ease-out-quart) backwards;
+}
+
+.cm-ai-settled {
+  animation: cm-ai-settle var(--motion-settle) var(--ease-out-quart) backwards;
 }
 
 .cm-ai-failed {
@@ -96,6 +128,7 @@
   font-family: var(--font-sans);
   font-size: 0.875rem;
   line-height: 1.45;
+  animation: cm-ai-drop-in var(--motion-enter) var(--ease-out-expo);
 }
 
 .cm-ai-error-actions {
@@ -104,17 +137,109 @@
   gap: 0.4rem;
 }
 
+.cm-ai-flag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.05rem;
+  padding: 0 0.3rem;
+  background: var(--color-ai);
+  color: var(--color-ai-ink);
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.cm-ai-flag-name {
+  font-weight: 700;
+}
+
+.cm-ai-caret {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    transform var(--motion-travel) var(--ease-out-expo),
+    opacity var(--motion-state) var(--ease-out-quart);
+}
+
+.cm-ai-caret.is-visible {
+  opacity: 1;
+}
+
+.cm-ai-caret-bar {
+  display: block;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-ai);
+  box-shadow: 0 0 10px var(--color-ai-glow);
+  transition: height var(--motion-travel) var(--ease-out-expo);
+  animation: cm-ai-breathe 1.6s var(--ease-in-out-sine) infinite;
+}
+
+.cm-ai-caret.is-placing,
+.cm-ai-caret.is-placing .cm-ai-caret-bar {
+  transition: none;
+}
+
+.cm-ai-caret-flag {
+  position: absolute;
+  bottom: 100%;
+  left: -1px;
+  max-width: 15rem;
+  transform-origin: bottom left;
+  animation: cm-ai-flag-in var(--motion-enter) var(--ease-out-expo) backwards;
+}
+
+.cm-ai-caret.is-flipped .cm-ai-caret-flag {
+  right: -1px;
+  left: auto;
+  transform-origin: bottom right;
+}
+
+.cm-ai-caret-label {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+.cm-ai-dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.cm-ai-dots i {
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  animation: cm-ai-dot 1.2s var(--ease-in-out-sine) infinite;
+}
+
+.cm-ai-dots i:nth-child(2) {
+  animation-delay: 160ms;
+}
+
+.cm-ai-dots i:nth-child(3) {
+  animation-delay: 320ms;
+}
+
 .cm-editor .cm-tooltip.cm-ai-bubble,
 .cm-editor .cm-tooltip.cm-ai-card {
   z-index: 20;
-  border: 0;
+  border: 1px solid var(--color-hairline);
   background: var(--color-raised);
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.4;
-  box-shadow: 0 8px 28px rgb(0 0 0 / 0.5);
-  animation: cm-ai-fade-in 120ms ease-out;
+  box-shadow: var(--shadow-float);
 }
 
 .cm-editor .cm-tooltip.cm-ai-bubble {
@@ -123,6 +248,36 @@
   gap: 0.5rem;
   width: min(26rem, 90vw);
   padding: 0.5rem;
+  animation: surface-in var(--motion-enter) var(--ease-out-expo);
+}
+
+.cm-editor .cm-tooltip-above.cm-ai-bubble,
+.cm-editor .cm-tooltip-above.cm-ai-card {
+  --enter-rise: 6px;
+  transform-origin: bottom left;
+}
+
+.cm-editor .cm-tooltip-below.cm-ai-bubble,
+.cm-editor .cm-tooltip-below.cm-ai-card {
+  --enter-rise: -6px;
+  transform-origin: top left;
+}
+
+.cm-editor .cm-tooltip.cm-ai-bubble:focus-within {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--color-raised), var(--color-raised)) padding-box,
+    conic-gradient(
+      from var(--cm-ai-angle),
+      var(--color-hairline) 0deg,
+      var(--color-ai) 70deg,
+      var(--color-hairline) 140deg,
+      var(--color-hairline) 360deg
+    )
+    border-box;
+  animation:
+    surface-in var(--motion-enter) var(--ease-out-expo),
+    cm-ai-orbit 3.6s linear infinite;
 }
 
 .cm-editor .cm-tooltip.cm-ai-card {
@@ -131,9 +286,12 @@
   gap: 0.4rem;
   max-width: min(28rem, 90vw);
   padding: 0.4rem;
+  animation: surface-in var(--motion-enter) var(--ease-out-expo);
 }
 
 .cm-editor .cm-tooltip.cm-ai-card-margin {
+  --enter-rise: 0px;
+  --enter-slide: -8px;
   box-shadow: none;
 }
 
@@ -141,12 +299,6 @@
   pointer-events: none;
   animation-delay: 160ms;
   animation-fill-mode: backwards;
-}
-
-@keyframes cm-ai-fade-in {
-  from {
-    opacity: 0;
-  }
 }
 
 .cm-ai-bubble-actions,
@@ -158,6 +310,9 @@
 
 .cm-ai-bubble-ask {
   display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.15rem;
 }
 
 .cm-ai-bubble-input {
@@ -168,10 +323,15 @@
   background: var(--color-fill);
   color: var(--color-ink-strong);
   font: inherit;
+  transition: background-color var(--motion-state) var(--ease-out-quart);
+}
+
+.cm-ai-bubble-input:focus {
+  background: var(--color-fill-hover);
 }
 
 .cm-ai-bubble-input::placeholder {
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
 }
 
 .cm-ai-chip,
@@ -184,6 +344,15 @@
   color: var(--color-ink);
   font: inherit;
   cursor: pointer;
+  transition:
+    background-color var(--motion-state) var(--ease-out-quart),
+    color var(--motion-state) var(--ease-out-quart),
+    transform var(--motion-press) var(--ease-out-quart);
+}
+
+.cm-ai-chip {
+  animation: rise-in var(--motion-enter) var(--ease-out-expo) backwards;
+  animation-delay: calc(40ms + var(--i, 0) * 35ms);
 }
 
 .cm-ai-chip:hover,
@@ -192,11 +361,35 @@
   color: var(--color-ink-strong);
 }
 
+.cm-ai-chip:hover {
+  background: var(--color-ai-tint);
+  color: var(--color-ai-text);
+}
+
+.cm-ai-chip:active,
+.cm-ai-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.cm-ai-button-primary {
+  background: color-mix(in oklab, var(--color-ai) 18%, transparent);
+  color: var(--color-ink-strong);
+}
+
+.cm-ai-button-primary:hover {
+  background: color-mix(in oklab, var(--color-ai) 28%, transparent);
+  color: var(--color-ink-strong);
+}
+
 .cm-ai-bubble-input:focus-visible,
 .cm-ai-chip:focus-visible,
 .cm-ai-button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
+}
+
+.cm-ai-bubble .cm-ai-bubble-input:focus-visible {
+  outline: none;
 }
 
 .cm-ai-button:disabled {
@@ -209,28 +402,14 @@
 }
 
 .cm-ai-button[aria-busy="true"] {
-  background-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent 38%,
-    var(--color-shimmer) 50%,
-    transparent 62%,
-    transparent 100%
-  );
+  background-image: var(--cm-ai-sweep);
   background-size: 300% 100%;
   animation: cm-ai-shimmer 1.8s linear infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cm-ai-button[aria-busy="true"] {
-    animation: none;
-    background-image: none;
-    background-color: var(--color-shimmer);
-  }
-}
-
 .cm-ai-refine {
   display: flex;
+  animation: rise-in var(--motion-enter) var(--ease-out-expo);
 }
 
 .cm-ai-version {
@@ -240,7 +419,7 @@
   min-width: 0;
 }
 
-.cm-ai-version-step {
+.cm-ai-step {
   justify-content: center;
   min-width: 1.75rem;
   padding: 0.1rem 0.4rem;
@@ -263,6 +442,18 @@
   white-space: nowrap;
 }
 
+.cm-ai-changes {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cm-ai-changes-count {
+  flex: 1;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .cm-ai-card-error {
   display: flex;
   align-items: center;
@@ -271,11 +462,12 @@
   padding: 0.35rem 0.5rem;
   background: var(--color-danger-tint);
   color: var(--color-danger);
+  animation: rise-in var(--motion-enter) var(--ease-out-expo);
 }
 
 .cm-ai-kbd {
   margin-left: 0.5rem;
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
   font: inherit;
   font-size: 0.75rem;
 }
@@ -286,6 +478,143 @@
   color: var(--color-ink-muted);
 }
 
-.toast-in {
-  animation: cm-ai-fade-in 160ms ease-out;
+.cm-ai-rationale .cm-ai-flag {
+  margin-right: 0.45rem;
+  vertical-align: 0.1em;
+}
+
+.cm-ai-pulse {
+  display: inline-block;
+  width: 2px;
+  height: 0.95em;
+  margin-right: 0.55rem;
+  background: var(--color-ai);
+  box-shadow: 0 0 8px var(--color-ai-glow);
+  animation: cm-ai-breathe 1.6s var(--ease-in-out-sine) infinite;
+}
+
+.cm-ai-count {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  animation: rise-in var(--motion-enter) var(--ease-out-expo);
+}
+
+@keyframes cm-ai-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
+@keyframes cm-ai-shimmer-struck {
+  from {
+    background-position:
+      0 56%,
+      100% 0;
+  }
+  to {
+    background-position:
+      0 56%,
+      0% 0;
+  }
+}
+
+@keyframes cm-ai-strike {
+  from {
+    color: var(--color-ink);
+    background-size: 0% 1px;
+  }
+}
+
+@keyframes cm-ai-tint-in {
+  from {
+    background-color: transparent;
+  }
+}
+
+@keyframes cm-ai-word-in {
+  from {
+    opacity: 0;
+    text-shadow: 0 0 10px var(--color-ai);
+  }
+}
+
+@keyframes cm-ai-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes cm-ai-land {
+  from,
+  30% {
+    color: var(--color-ai-text);
+    background-color: var(--color-ai-tint);
+    text-shadow: 0 0 12px var(--color-ai-glow);
+  }
+}
+
+@keyframes cm-ai-settle {
+  from {
+    background-color: var(--color-fill-hover);
+  }
+}
+
+@keyframes cm-ai-flag-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.92);
+  }
+}
+
+@keyframes cm-ai-orbit {
+  to {
+    --cm-ai-angle: 360deg;
+  }
+}
+
+@keyframes cm-ai-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes cm-ai-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-ai-pending,
+  .cm-ai-refining,
+  .cm-ai-button[aria-busy="true"] {
+    background-image: none;
+    background-color: var(--color-ai-glow);
+  }
+
+  .cm-ai-deleted.cm-ai-refining {
+    background-image: var(--cm-ai-strike);
+  }
+
+  .cm-editor .cm-tooltip.cm-ai-bubble:focus-within {
+    border-color: var(--color-ai);
+    background: var(--color-raised);
+  }
+
+  .cm-ai-landed {
+    color: var(--color-ai-text);
+    background-color: var(--color-ai-tint);
+  }
+
+  .cm-ai-settled {
+    background-color: var(--color-fill-hover);
+  }
 }

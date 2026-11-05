@@ -1,6 +1,7 @@
 import { ChangeSet } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
 import type { ClientError } from '../ai/errors'
+import { findFrontmatter } from '../blocks/frontmatter'
 import { adaptiveDiff } from '../diff/adaptive-diff'
 import {
   acceptSuggestion,
@@ -9,6 +10,7 @@ import {
   beginRefine,
   beginSuggestion,
   cancelRefine,
+  clearSuggestions,
   discardSuggestion,
   emptySuggestions,
   failRefine,
@@ -17,6 +19,7 @@ import {
   inFlightSuggestionIds,
   instructionHistory,
   mapSuggestions,
+  newlyFailed,
   rejectReviewSuggestions,
   rejectSuggestion,
   rejectSuggestions,
@@ -256,6 +259,35 @@ describe('failSuggestion and retrySuggestion', () => {
   })
 })
 
+describe('newlyFailed', () => {
+  const error: ClientError = { type: 'timeout', message: 'slow' }
+  const ids = (items: readonly { readonly id: string }[]) =>
+    items.map((item) => item.id)
+
+  it('lists the Suggestions that failed in this step', () => {
+    const before = begun(draft('a', 0, 5))
+    expect(
+      ids(newlyFailed(before, failSuggestion(before, 'a', error))),
+    ).toEqual(['a'])
+  })
+
+  it('ignores Suggestions that had already failed', () => {
+    const failed = failSuggestion(begun(draft('a', 0, 5)), 'a', error)
+    const next = beginSuggestion(failed, draft('b', 10, 15))
+    expect(newlyFailed(failed, next)).toEqual([])
+  })
+
+  it('lists a Suggestion again when its retry fails', () => {
+    const retried = retrySuggestion(
+      failSuggestion(begun(draft('a', 0, 5)), 'a', error),
+      'a',
+    )
+    expect(
+      ids(newlyFailed(retried, failSuggestion(retried, 'a', error))),
+    ).toEqual(['a'])
+  })
+})
+
 describe('reject and discard', () => {
   it('reject removes the Suggestion without a notice', () => {
     const state = rejectSuggestion(ready(begun(draft('a', 0, 10)), 'a'), 'a')
@@ -305,6 +337,26 @@ describe('rejectSuggestions', () => {
   it('returns the same state when nothing matches', () => {
     const state = begun(draft('a', 0, 10))
     expect(rejectSuggestions(state, ['x'])).toBe(state)
+  })
+})
+
+describe('clearSuggestions', () => {
+  const withDiscardNotice = () =>
+    mapSuggestions(
+      begun(draft('a', 0, 10), draft('b', 20, 30)),
+      ChangeSet.of({ from: 2, to: 3, insert: 'y' }, 100),
+    )
+
+  it('drops every Suggestion and keeps the sequence and the last notice', () => {
+    const state = withDiscardNotice()
+    const next = clearSuggestions(state)
+    expect(next.items).toEqual([])
+    expect(next.nextSequence).toBe(state.nextSequence)
+    expect(next.notice).toBe(state.notice)
+  })
+
+  it('returns the same state without Suggestions', () => {
+    expect(clearSuggestions(emptySuggestions)).toBe(emptySuggestions)
   })
 })
 
@@ -402,6 +454,29 @@ describe('mapSuggestions', () => {
 
   it('discards a Suggestion when its whole range is replaced', () => {
     expect(idsOf(mapSuggestions(open(), change(20, 40, 'new')))).toEqual(['b'])
+  })
+
+  it('discards a Suggestion that ends up inside a frontmatter, keeps the rest', () => {
+    const frontmatter = findFrontmatter(`---\nx: ${'y'.repeat(37)}\n---\n`)
+    if (!frontmatter) throw new Error('no frontmatter')
+    const next = mapSuggestions(open(), change(95, 95, 'z'), frontmatter)
+    expect(idsOf(next)).toEqual(['b'])
+    expect(next.notice?.kind).toBe('text-changed')
+  })
+
+  it('discards a Suggestion that overlaps the start of a frontmatter', () => {
+    const frontmatter = findFrontmatter(`---\nx: ${'y'.repeat(27)}\n---\n`)
+    if (!frontmatter) throw new Error('no frontmatter')
+    const next = mapSuggestions(open(), change(95, 95, 'z'), frontmatter)
+    expect(idsOf(next)).toEqual(['b'])
+  })
+
+  it('keeps Suggestions after a frontmatter', () => {
+    const frontmatter = findFrontmatter('---\na: 1\n---\n')
+    if (!frontmatter) throw new Error('no frontmatter')
+    const next = mapSuggestions(open(), change(95, 95, 'z'), frontmatter)
+    expect(idsOf(next)).toEqual(['a', 'b'])
+    expect(next.notice).toBeNull()
   })
 
   it('discards a pending Suggestion when its Target is edited', () => {

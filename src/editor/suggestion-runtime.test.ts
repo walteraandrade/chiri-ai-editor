@@ -9,6 +9,7 @@ import {
 } from '../suggestions/instruction'
 import { findSuggestion } from '../suggestions/state'
 import type { ReadySuggestion } from '../suggestions/types'
+import { replaceDocument } from './document-commands'
 import { acceptSuggestionById, type EditorHandle } from './suggestion-commands'
 import {
   cancelRefineEffect,
@@ -47,9 +48,9 @@ const createClient = () => {
   }
 }
 
-const createHandle = (from: number, to = from): EditorHandle => {
+const createHandle = (from: number, to = from, doc = DOC): EditorHandle => {
   let state = EditorState.create({
-    doc: DOC,
+    doc,
     selection: { anchor: from, head: to },
     extensions: [suggestionsField],
   })
@@ -135,6 +136,53 @@ describe('ask', () => {
 
     expect(calls).toEqual([])
     expect(suggestionsOf(handle.state).items).toEqual([])
+  })
+
+  describe('with a frontmatter', () => {
+    const skill = '---\nname: demo\n---\n\nFirst paragraph here.\n'
+    const body = skill.indexOf('First')
+
+    it('refuses a cursor or selection inside it and calls no model', () => {
+      const { client, calls } = createClient()
+      const runtime = createSuggestionRuntime({ client })
+      for (const [from, to] of [
+        [6, 6],
+        [4, 12],
+        [0, body - 1],
+      ] as const) {
+        const handle = createHandle(from, to, skill)
+        runtime.actions.ask(handle, quickActionInstruction('shorter'))
+        expect(suggestionsOf(handle.state).items).toEqual([])
+      }
+      expect(calls).toEqual([])
+    })
+
+    it('clips a selection that extends past it and sends only the text after it', () => {
+      const { client, calls } = createClient()
+      const runtime = createSuggestionRuntime({ client })
+      const handle = createHandle(0, skill.length, skill)
+
+      runtime.actions.ask(handle, quickActionInstruction('shorter'))
+
+      expect(suggestionsOf(handle.state).items[0]).toMatchObject({
+        status: 'pending',
+        from: body,
+        source: 'selection',
+        original: 'First paragraph here.',
+      })
+      expect(only(calls).request.target.text).toBe('First paragraph here.')
+    })
+
+    it('asks about a Block after it', () => {
+      const { client, calls } = createClient()
+      const runtime = createSuggestionRuntime({ client })
+      const handle = createHandle(body + 2, body + 2, skill)
+
+      runtime.actions.ask(handle, quickActionInstruction('shorter'))
+
+      expect(only(calls).request.target.text).toBe('First paragraph here.')
+      expect(only(calls).request.neighbors.before).toEqual([])
+    })
   })
 
   it('turns the pending Suggestion into a ready one when the model answers', async () => {
@@ -239,6 +287,23 @@ describe('abort on Discard', () => {
     await settle()
     expect(suggestionsOf(handle.state).items).toEqual([])
     expect(suggestionsOf(handle.state).notice?.kind).toBe('text-changed')
+  })
+
+  it('aborts the request when a file replaces the Document, without a notice', async () => {
+    const { client, calls } = createClient()
+    const runtime = createSuggestionRuntime({ client, createId: () => 'a' })
+    const handle = createHandle(FIRST.from + 3)
+    runtime.actions.ask(handle, quickActionInstruction('shorter'))
+    const call = only(calls)
+
+    replaceDocument(handle, '# Opened\n')
+    runtime.reconcile(handle.state)
+    expect(call.request.signal?.aborted).toBe(true)
+
+    call.resolve(ok('Late answer.'))
+    await settle()
+    expect(suggestionsOf(handle.state).items).toEqual([])
+    expect(suggestionsOf(handle.state).notice).toBeNull()
   })
 
   it('aborts the older request when a newer one overlaps it', () => {

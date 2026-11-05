@@ -1,4 +1,5 @@
 import { type ChangeObject, diffWordsWithSpace } from 'diff'
+import { countWords } from './count-words'
 
 export const BLOCK_LEVEL_THRESHOLD = 0.4
 
@@ -113,9 +114,6 @@ const toHunks = (chunks: readonly Chunk[]): readonly DiffHunk[] =>
     },
     { hunks: [], offset: 0 },
   ).hunks
-
-const countWords = (text: string): number =>
-  text.split(/\s+/).filter((word) => word !== '').length
 
 const sumWords = (hunks: readonly DiffHunk[], type: DiffHunk['type']): number =>
   hunks

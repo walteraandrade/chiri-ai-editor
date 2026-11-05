@@ -7,6 +7,7 @@ import {
   beginRefine,
   beginSuggestion,
   cancelRefine,
+  clearSuggestions,
   emptySuggestions,
   failRefine,
   failSuggestion,
@@ -28,6 +29,7 @@ import type {
   SuggestionId,
   SuggestionsState,
 } from '../suggestions/types'
+import { frontmatterOfDoc } from './current-target'
 
 export const beginEffect = StateEffect.define<SuggestionDraft>()
 export const resolveEffect = StateEffect.define<{
@@ -61,6 +63,7 @@ export const rejectEffect = StateEffect.define<SuggestionId>()
 export const acceptEffect = StateEffect.define<SuggestionId>()
 export const acceptManyEffect = StateEffect.define<readonly SuggestionId[]>()
 export const rejectReviewEffect = StateEffect.define<null>()
+export const clearSuggestionsEffect = StateEffect.define<null>()
 
 const applyEffect = (
   state: SuggestionsState,
@@ -84,6 +87,7 @@ const applyEffect = (
     return showVersion(state, effect.value.id, effect.value.index)
   if (effect.is(rejectEffect)) return rejectSuggestion(state, effect.value)
   if (effect.is(rejectReviewEffect)) return rejectReviewSuggestions(state)
+  if (effect.is(clearSuggestionsEffect)) return clearSuggestions(state)
   return state
 }
 
@@ -97,10 +101,19 @@ export const suggestionsField = StateField.define<SuggestionsState>({
           ? effect.value
           : [],
     )
+    const frontmatter =
+      transaction.docChanged && value.items.length > 0
+        ? frontmatterOfDoc(transaction.newDoc)
+        : undefined
     const mapped =
       acceptedIds.length > 0
-        ? acceptSuggestions(value, acceptedIds, transaction.changes)
-        : mapSuggestions(value, transaction.changes)
+        ? acceptSuggestions(
+            value,
+            acceptedIds,
+            transaction.changes,
+            frontmatter,
+          )
+        : mapSuggestions(value, transaction.changes, frontmatter)
     return transaction.effects.reduce(applyEffect, mapped)
   },
 })

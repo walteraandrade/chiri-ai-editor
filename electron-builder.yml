@@ -1,0 +1,45 @@
+appId: io.github.walteraandrade.chiri
+productName: Chiri
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - "!node_modules/**"
+asar: true
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false
+linux:
+  target:
+    - pacman
+  executableName: chiri-ai-editor
+  icon: icons
+  category: Utility;TextEditor
+  synopsis: Markdown editor with an AI co-author
+  mimeTypes:
+    - text/markdown
+    - text/x-markdown
+  maintainer: Walter Andrade
+  desktop:
+    entry:
+      Name: Chiri
+      Comment: Markdown editor with an AI co-author
+      StartupWMClass: chiri-ai-editor
+      Keywords: markdown;editor;ai;skills;
+pacman:
+  depends:
+    - gtk3
+    - nss
+    - libsecret
+    - xdg-utils
+    - at-spi2-core
+    - libxss
+    - libxtst
+    - libnotify
+  compression: zstd

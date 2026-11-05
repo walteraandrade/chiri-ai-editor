@@ -6,6 +6,7 @@ import {
 } from '@codemirror/state'
 import {
   type EditorView,
+  type Rect,
   showTooltip,
   type Tooltip,
   type TooltipView,
@@ -15,10 +16,12 @@ import {
   freeTextInstruction,
   quickActionInstruction,
 } from '../suggestions/instruction'
+import { aiFlag } from './ai-flag'
 import { currentTarget } from './current-target'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
+import { inViewCoords, textRectAt } from './keep-in-view'
 import { beginEffect } from './suggestion-field'
 import { suggestionActionsFacet } from './suggestion-runtime'
 
@@ -89,6 +92,16 @@ export const targetPreviewRange = (state: EditorState): Range | undefined => {
   return currentTarget(state)
 }
 
+const bubbleCoords = (view: EditorView, pos: number): Rect => {
+  const left = view.contentDOM.getBoundingClientRect().left
+  return inViewCoords(
+    view,
+    textRectAt(view, pos, left),
+    currentTarget(view.state) ?? { from: pos, to: pos },
+    left,
+  )
+}
+
 const buildBubble = (view: EditorView) => {
   const actions = () => view.state.facet(suggestionActionsFacet)
 
@@ -131,15 +144,15 @@ const buildBubble = (view: EditorView) => {
         },
       },
     },
-    [input],
+    [aiFlag(), input],
   )
 
-  const buttons = QUICK_ACTIONS.map((action) =>
+  const buttons = QUICK_ACTIONS.map((action, index) =>
     el(
       'button',
       {
         class: 'cm-ai-chip',
-        attrs: { type: 'button' },
+        attrs: { type: 'button', style: `--i: ${index}` },
         on: {
           mousedown: (event) => event.preventDefault(),
           click: () => {
@@ -185,6 +198,7 @@ const buildBubble = (view: EditorView) => {
 
   const tooltipView: TooltipView = {
     dom,
+    getCoords: (pos) => bubbleCoords(view, pos),
     mount: () => focusIfAsking(view.state),
     update: (update) => {
       const reopened = update.transactions.some((transaction) =>
