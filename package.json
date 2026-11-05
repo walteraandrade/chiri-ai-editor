@@ -24,7 +24,8 @@
     "export-sessions": "tsx scripts/export-sessions.ts",
     "package": "pnpm build:electron && pnpm check:externals && electron-builder --linux",
     "package:dir": "pnpm build:electron && pnpm check:externals && electron-builder --linux dir",
-    "check:externals": "tsx scripts/check-externals.ts"
+    "check:externals": "tsx scripts/check-externals.ts",
+    "smoke:electron": "tsx scripts/smoke-electron.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
