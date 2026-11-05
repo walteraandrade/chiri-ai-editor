@@ -2,19 +2,25 @@ import { useCallback, useRef, useState } from 'react'
 import { appClient } from '../ai/app-client'
 import {
   descriptionRequest,
+  descriptionSource,
   normalizeDescription,
 } from '../skills/description-ai'
 import { describeError } from '../suggestions/error-message'
 
 export type DescriptionAiState =
   | { readonly kind: 'idle' }
-  | { readonly kind: 'working' }
+  | { readonly kind: 'working'; readonly source: string }
   | {
       readonly kind: 'ready'
+      readonly source: string
       readonly description: string
       readonly rationale: string
     }
-  | { readonly kind: 'failed'; readonly message: string }
+  | {
+      readonly kind: 'failed'
+      readonly source: string
+      readonly message: string
+    }
 
 export type DescriptionAi = {
   readonly state: DescriptionAiState
@@ -38,7 +44,8 @@ export const useDescriptionAi = (): DescriptionAi => {
     controller.current?.abort()
     const own = new AbortController()
     controller.current = own
-    setState({ kind: 'working' })
+    const source = descriptionSource(name, description)
+    setState({ kind: 'working', source })
     void appClient
       .requestSuggestion({
         ...descriptionRequest(name, description),
@@ -52,11 +59,16 @@ export const useDescriptionAi = (): DescriptionAi => {
           : ''
         setState(
           !result.ok
-            ? { kind: 'failed', message: describeError(result.error) }
+            ? { kind: 'failed', source, message: describeError(result.error) }
             : next === '' || next === description.trim()
-              ? { kind: 'failed', message: 'No better description came back.' }
+              ? {
+                  kind: 'failed',
+                  source,
+                  message: 'No better description came back.',
+                }
               : {
                   kind: 'ready',
+                  source,
                   description: next,
                   rationale: result.value.rationale,
                 },

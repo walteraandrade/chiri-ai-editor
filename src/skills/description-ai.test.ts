@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DESCRIPTION_INSTRUCTION,
   descriptionRequest,
+  descriptionSource,
   normalizeDescription,
 } from './description-ai'
 
@@ -50,5 +51,17 @@ describe('descriptionRequest', () => {
   it('says the answer must be one line of plain text', () => {
     expect(DESCRIPTION_INSTRUCTION).toMatch(/one line/i)
     expect(DESCRIPTION_INSTRUCTION).toMatch(/when/i)
+  })
+})
+
+describe('descriptionSource', () => {
+  it('differs when the skill or the description differs', () => {
+    const base = descriptionSource('pdf-tools', 'Works with PDFs.')
+    expect(descriptionSource('pdf-tools', 'Works with PDFs.')).toBe(base)
+    expect(descriptionSource('other', 'Works with PDFs.')).not.toBe(base)
+    expect(descriptionSource('pdf-tools', 'Works with docs.')).not.toBe(base)
+    expect(descriptionSource('a', 'b\nc')).not.toBe(
+      descriptionSource('a\nb', 'c'),
+    )
   })
 })
