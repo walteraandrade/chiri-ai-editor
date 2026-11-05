@@ -13,6 +13,8 @@ import {
   reviewNoticeText,
   reviewSummary,
   reviewTaskLabel,
+  reviewTooLarge,
+  reviewTooLargeText,
 } from '../suggestions/review'
 import type { SuggestionId } from '../suggestions/types'
 import { blocksOf, textOf } from './current-target'
@@ -161,6 +163,10 @@ export const createReviewRuntime = ({
       reviewRunOf(handle.state) !== null
     )
       return
+    if (reviewTooLarge(handle.state.doc.length)) {
+      onNotice({ text: reviewTooLargeText(handle.state.doc.length) })
+      return
+    }
     const focus = rawFocus.trim()
     const blocks = blocksOf(handle.state)
     const occupied = occupiedBlockIds(suggestionsOf(handle.state), blocks)
