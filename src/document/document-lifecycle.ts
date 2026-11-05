@@ -58,7 +58,7 @@ export type DocumentLifecycle<Ref> = Pick<
 > & {
   readonly snapshot: () => LifecycleState<Ref>
   readonly subscribe: (listener: () => void) => () => void
-  readonly start: () => () => void
+  readonly watchDisk: () => () => void
   readonly edited: (text: string) => void
   readonly resolveConflict: (choice: 'reload' | 'keep') => void
   readonly restore: (from: VersionId, text: string) => boolean
@@ -125,7 +125,7 @@ export const createDocumentLifecycle = <Ref>({
     if (before !== next) history.replaced(before)
   }
 
-  const guarded = (): EditorText | null => {
+  const settlingEditor = (): EditorText | null => {
     const current = editor()
     return current === null
       ? null
@@ -163,7 +163,7 @@ export const createDocumentLifecycle = <Ref>({
   const actions = createFileActions({
     files,
     offered: unsavedText.offered,
-    editor: guarded,
+    editor: settlingEditor,
     session: () => state.session,
     dispatch,
     notify,
@@ -206,7 +206,7 @@ export const createDocumentLifecycle = <Ref>({
     return true
   }
 
-  const start = (): (() => void) => {
+  const watchDisk = (): (() => void) => {
     if (external === undefined || check === null) return () => undefined
     let watched: Ref | null | undefined
     const watch = (): void => {
@@ -239,7 +239,7 @@ export const createDocumentLifecycle = <Ref>({
         listeners.delete(listener)
       }
     },
-    start,
+    watchDisk,
     edited: (text) => {
       dispatch({ type: 'edited', text })
       unsavedText.changed(text, state.session)

@@ -1,8 +1,8 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from 'react'
 import {
@@ -49,21 +49,18 @@ export const useMarkdownFile = <Ref>({
     latest.current = { controls, notify, onReplaced }
   }, [controls, notify, onReplaced])
 
-  const startRef = useRef(start)
-  const lifecycle = useMemo(
-    () =>
-      createDocumentLifecycle<Ref>({
-        files,
-        unsavedText,
-        history,
-        start: startRef.current,
-        ...(external !== undefined && { external }),
-        editor: () => latest.current.controls,
-        notify: (text) => latest.current.notify(text),
-        askLeave,
-        onReplaced: () => latest.current.onReplaced(),
-      }),
-    [files, unsavedText, history, external, askLeave],
+  const [lifecycle] = useState(() =>
+    createDocumentLifecycle<Ref>({
+      files,
+      unsavedText,
+      history,
+      start,
+      ...(external !== undefined && { external }),
+      editor: () => latest.current.controls,
+      notify: (text) => latest.current.notify(text),
+      askLeave,
+      onReplaced: () => latest.current.onReplaced(),
+    }),
   )
 
   const { session, conflict } = useSyncExternalStore(
@@ -71,7 +68,7 @@ export const useMarkdownFile = <Ref>({
     lifecycle.snapshot,
   )
 
-  useEffect(() => lifecycle.start(), [lifecycle])
+  useEffect(() => lifecycle.watchDisk(), [lifecycle])
 
   useEffect(() => {
     const apple = detectApplePlatform()
