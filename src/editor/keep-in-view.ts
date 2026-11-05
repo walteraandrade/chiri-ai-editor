@@ -12,17 +12,21 @@ export const keepInBand = ({
   range,
   band,
   left,
+  reserve = 0,
 }: {
   readonly anchor: Rect
   readonly range: Band
   readonly band: Band
   readonly left: number
+  readonly reserve?: number
 }): Rect => {
-  const below = anchor.bottom > band.bottom
+  const below = anchor.bottom + reserve > band.bottom
   const above = anchor.top < band.top
   const rangeOnScreen = range.top < band.bottom && range.bottom > band.top
   if ((!below && !above) || !rangeOnScreen) return anchor
-  const y = below ? band.bottom - EDGE_GAP : band.top + EDGE_GAP
+  const y = below
+    ? Math.max(band.top + EDGE_GAP, band.bottom - EDGE_GAP - reserve)
+    : band.top + EDGE_GAP
   return { left, right: left, top: y, bottom: y }
 }
 
@@ -55,6 +59,7 @@ export const inViewCoords = (
   anchor: Rect,
   { from, to }: Range,
   left = anchor.left,
+  reserve = 0,
 ): Rect =>
   keepInBand({
     anchor,
@@ -64,4 +69,5 @@ export const inViewCoords = (
     },
     band: visibleBand(view),
     left,
+    reserve,
   })
