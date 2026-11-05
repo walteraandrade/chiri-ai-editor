@@ -17,7 +17,7 @@ import { prefersReducedMotion } from './motion'
 export type ThemeState = {
   readonly omarchy: ThemeTokens | null
   readonly choice: ThemeChoice
-  readonly toggle: () => void
+  readonly choose: (choice: ThemeChoice) => void
 }
 
 export function useTheme(): ThemeState {
@@ -34,11 +34,10 @@ export function useTheme(): ThemeState {
     applied.current = true
   }, [choice, omarchy])
 
-  const toggle = (): void => {
-    const next = choice === 'omarchy' ? 'chiri' : 'omarchy'
+  const choose = (next: ThemeChoice): void => {
     saveThemeChoice(getLocalStorage(), next)
     setChoice(next)
   }
 
-  return { omarchy, choice, toggle }
+  return { omarchy, choice, choose }
 }

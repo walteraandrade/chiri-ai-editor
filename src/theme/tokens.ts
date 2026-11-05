@@ -1,39 +1,51 @@
 export type ThemeMode = 'light' | 'dark'
 
+export type ThemeRoles = {
+  readonly canvas: string
+  readonly raised: string
+  readonly ink: string
+  readonly faint: string
+  readonly accent: string
+  readonly ai: string
+  readonly danger: string
+  readonly selection: string
+  readonly fill: string
+  readonly fillHover: string
+  readonly hairline: string
+  readonly scrollbar: string
+}
+
 export type ThemeTokens = {
   readonly name: string
   readonly mode: ThemeMode
-  readonly bg: string
-  readonly raised: string | null
-  readonly ink: string
-  readonly inkStrong: string
-  readonly accent: string
-  readonly ai: string
-  readonly danger: string | null
-  readonly selection: string | null
+  readonly roles: ThemeRoles
 }
 
 const VARIABLES = {
-  bg: '--theme-bg',
+  canvas: '--theme-canvas',
   raised: '--theme-raised',
   ink: '--theme-ink',
-  inkStrong: '--theme-ink-strong',
+  faint: '--theme-faint',
   accent: '--theme-accent',
   ai: '--theme-ai',
   danger: '--theme-danger',
   selection: '--theme-selection',
-} as const satisfies Readonly<Partial<Record<keyof ThemeTokens, string>>>
+  fill: '--theme-fill',
+  fillHover: '--theme-fill-hover',
+  hairline: '--theme-hairline',
+  scrollbar: '--theme-scrollbar',
+} as const satisfies Readonly<Record<keyof ThemeRoles, string>>
 
 export const THEME_VARIABLE_NAMES: readonly string[] = Object.values(VARIABLES)
 
-export const themeVariables = (
-  tokens: ThemeTokens,
-): Readonly<Record<string, string>> =>
+export const themeVariables = ({
+  roles,
+}: ThemeTokens): Readonly<Record<string, string>> =>
   Object.fromEntries(
-    Object.entries(VARIABLES).flatMap(([key, variable]) => {
-      const value = tokens[key as keyof typeof VARIABLES]
-      return value === null ? [] : [[variable, value]]
-    }),
+    Object.entries(VARIABLES).map(([role, variable]) => [
+      variable,
+      roles[role as keyof ThemeRoles],
+    ]),
   )
 
 export const themeLabel = (name: string): string =>

@@ -19,6 +19,7 @@ All decisions were made in the planning session (see `ai-sessions/`), with quest
 | [0013](0013-native-app-on-electron.md) | Native app on Electron | Accepted; amended by 0016; build tool electron-vite (#29) |
 | [0014](0014-skills-on-disk.md) | Skills on disk are the source of truth | Accepted; Electron build |
 | [0015](0015-history-in-sqlite.md) | History in SQLite | Accepted; Electron build |
-| [0016](0016-web-and-electron-builds.md) | Web and Electron builds | Accepted |
+| [0016](0016-web-and-electron-builds.md) | Web and Electron builds | Accepted; Preferences added to the Web build by 0017 |
+| [0017](0017-book-themes-and-solid-colors.md) | Book themes and solid colors | Accepted; default theme open (#79) |
 
 Process decisions (slices, roles, gates, reviews) live in [docs/PLAN.md](../../PLAN.md).

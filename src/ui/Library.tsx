@@ -41,7 +41,7 @@ function SkillItem({
         type="button"
         aria-expanded={open}
         title={skill.realPath}
-        className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-fill ${hasOpenFile && !open ? 'bg-accent/10' : ''}`}
+        className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-fill ${hasOpenFile && !open ? 'bg-fill' : ''}`}
         onClick={onToggle}
       >
         <span className="flex items-baseline gap-2">
@@ -76,7 +76,7 @@ function SkillItem({
                   aria-current={isActiveFile(file.path) ? 'true' : undefined}
                   className={`flex w-full items-center gap-2 px-2 py-1 text-left text-xs ${
                     isActiveFile(file.path)
-                      ? 'bg-accent/20 font-medium text-ink-strong'
+                      ? 'bg-fill font-medium text-ink-strong'
                       : 'text-ink hover:bg-fill'
                   }`}
                   title={file.path}

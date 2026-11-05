@@ -21,7 +21,7 @@
 }
 
 .cm-ai-suggestion.cm-ai-active {
-  background: var(--color-fill);
+  background: var(--color-raised);
 }
 
 .cm-ai-refine-failed {
@@ -179,7 +179,6 @@
   width: 2px;
   margin-left: -1px;
   background: var(--color-ai);
-  box-shadow: 0 0 10px var(--color-ai-glow);
   transition: height var(--motion-travel) var(--ease-out-expo);
   animation: cm-ai-breathe 1.6s var(--ease-in-out-sine) infinite;
 }
@@ -239,7 +238,6 @@
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.4;
-  box-shadow: var(--shadow-float);
 }
 
 .cm-editor .cm-tooltip.cm-ai-bubble {
@@ -292,7 +290,6 @@
 .cm-editor .cm-tooltip.cm-ai-card-margin {
   --enter-rise: 0px;
   --enter-slide: -8px;
-  box-shadow: none;
 }
 
 .cm-editor .cm-tooltip.cm-ai-card-hover {
@@ -339,7 +336,7 @@
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.65rem;
-  border: 0;
+  border: 1px solid var(--color-hairline);
   background: var(--color-fill);
   color: var(--color-ink);
   font: inherit;
@@ -371,14 +368,14 @@
   transform: scale(0.96);
 }
 
-.cm-ai-button-primary {
-  background: color-mix(in oklab, var(--color-ai) 18%, transparent);
-  color: var(--color-ink-strong);
+.cm-ai-button-primary,
+.cm-ai-button-primary:hover {
+  background: var(--color-ai);
+  color: var(--color-ai-ink);
 }
 
-.cm-ai-button-primary:hover {
-  background: color-mix(in oklab, var(--color-ai) 28%, transparent);
-  color: var(--color-ink-strong);
+.cm-ai-button-primary .cm-ai-kbd {
+  color: inherit;
 }
 
 .cm-ai-bubble-input:focus-visible,
@@ -489,7 +486,6 @@
   height: 0.95em;
   margin-right: 0.55rem;
   background: var(--color-ai);
-  box-shadow: 0 0 8px var(--color-ai-glow);
   animation: cm-ai-breathe 1.6s var(--ease-in-out-sine) infinite;
 }
 

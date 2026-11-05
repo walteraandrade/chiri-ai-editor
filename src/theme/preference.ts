@@ -1,15 +1,21 @@
 import type { StorageLike } from '../document/storage'
+import { CHIRI_THEME, themeById } from './catalog'
 import type { ThemeTokens } from './tokens'
 
 export const THEME_STORAGE_KEY = 'chiri.theme'
 
-export type ThemeChoice = 'omarchy' | 'chiri'
+export const OMARCHY_CHOICE = 'omarchy'
+
+export type ThemeChoice = string
 
 export const loadThemeChoice = (storage: StorageLike | null): ThemeChoice => {
   try {
-    return storage?.getItem(THEME_STORAGE_KEY) === 'chiri' ? 'chiri' : 'omarchy'
+    const stored = storage?.getItem(THEME_STORAGE_KEY) ?? null
+    return stored !== null && themeById(stored) !== null
+      ? stored
+      : OMARCHY_CHOICE
   } catch {
-    return 'omarchy'
+    return OMARCHY_CHOICE
   }
 }
 
@@ -25,4 +31,13 @@ export const saveThemeChoice = (
 export const activeTheme = (
   choice: ThemeChoice,
   omarchy: ThemeTokens | null,
-): ThemeTokens | null => (choice === 'omarchy' ? omarchy : null)
+): ThemeTokens =>
+  choice === OMARCHY_CHOICE && omarchy !== null
+    ? omarchy
+    : (themeById(choice) ?? CHIRI_THEME).tokens
+
+export const selectedOption = (
+  choice: ThemeChoice,
+  omarchy: ThemeTokens | null,
+): string =>
+  choice === OMARCHY_CHOICE && omarchy === null ? CHIRI_THEME.id : choice

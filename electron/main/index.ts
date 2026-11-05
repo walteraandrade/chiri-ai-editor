@@ -1,6 +1,16 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, type IpcMainInvokeEvent, ipcMain } from 'electron'
-import { SHELL_INFO_CHANNEL, type ShellInfo } from '../api'
+import {
+  app,
+  BrowserWindow,
+  type IpcMainInvokeEvent,
+  ipcMain,
+  Menu,
+} from 'electron'
+import {
+  PREFERENCES_REQUEST_CHANNEL,
+  SHELL_INFO_CHANNEL,
+  type ShellInfo,
+} from '../api'
 import { resolveAppUrl } from './app-url'
 import { resolveDevOptions } from './dev-options'
 import { registerFileHandlers } from './files/register'
@@ -8,6 +18,7 @@ import { registerHistory } from './history-main'
 import { prepareInstalledApp, startInstalledApp } from './installed-app'
 import { registerLaunches } from './launch/register'
 import { registerLibraryHandlers } from './library/register'
+import { menuTemplate } from './menu-template'
 import { isAppNavigation, isTrustedFrame } from './trust'
 import { registerExternalChanges } from './watch/register'
 
@@ -91,7 +102,14 @@ const start = (): void => {
       isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
       onQuit: (close) => app.on('will-quit', close),
     })
-    createWindow()
+    const window = createWindow()
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate(
+        menuTemplate(() =>
+          window.webContents.send(PREFERENCES_REQUEST_CHANNEL),
+        ),
+      ),
+    )
   })
 }
 

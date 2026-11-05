@@ -157,3 +157,6 @@ Notes on issue #34 (Skill checks):
 
 Notes on issue #45 (Open from the desktop):
 - Slice cost is US$0: no check called the model (file arguments, second launches, the Save / Discard / Cancel question, the missing file, the Key dialog with a dummy key). The running total is unchanged.
+
+Notes on issue #79 (Theme system):
+- Slice cost is US$0: no check called the model. Suggestions were injected through the effects in dev mode. The running total is unchanged.

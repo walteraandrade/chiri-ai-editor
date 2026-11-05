@@ -45,8 +45,9 @@ import { LineDiff } from './LineDiff'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { ModelDialog } from './ModelDialog'
 import { NewSkillDialog } from './NewSkillDialog'
+import { PreferencesDialog } from './PreferencesDialog'
+import { isPreferencesShortcut } from './preferences-shortcut'
 import { ReviewToolbar } from './ReviewToolbar'
-import { ThemeToggle } from './ThemeToggle'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useDescriptionAi } from './use-description-ai'
@@ -75,11 +76,13 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     library,
     external,
     launches,
+    preferencesRequests,
   } = kit
   const key = useKeyState(kit)
   const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [modelOpen, setModelOpen] = useState(false)
+  const [preferencesOpen, setPreferencesOpen] = useState(false)
   const descriptionAi = useDescriptionAi()
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
   const [controls, setControls] = useState<ReviewControls | null>(null)
@@ -151,6 +154,19 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   })
   const openLaunched = useEffectEvent((ref: Ref) => void file.openRef(ref))
   useEffect(() => launches?.subscribe(openLaunched), [launches])
+  useEffect(
+    () => preferencesRequests?.(() => setPreferencesOpen(true)),
+    [preferencesRequests],
+  )
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!isPreferencesShortcut(event)) return
+      event.preventDefault()
+      setPreferencesOpen(true)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
   const libraryControls = useLibrary(library, showToast)
   const openRef = file.session?.ref ?? null
   const librarySkillFile =
@@ -365,13 +381,13 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         </div>
       </main>
       <div className="sticky bottom-4 z-30 ml-4 hidden w-fit gap-2 bg-canvas text-sm sm:flex">
-        {theme.omarchy ? (
-          <ThemeToggle
-            theme={theme.omarchy}
-            active={theme.choice === 'omarchy'}
-            onToggle={theme.toggle}
-          />
-        ) : null}
+        <button
+          type="button"
+          className="cm-ai-button"
+          onClick={() => setPreferencesOpen(true)}
+        >
+          Preferences
+        </button>
         <button
           type="button"
           className="cm-ai-button"
@@ -380,6 +396,12 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           Model
         </button>
       </div>
+      {preferencesOpen ? (
+        <PreferencesDialog
+          theme={theme}
+          onClose={() => setPreferencesOpen(false)}
+        />
+      ) : null}
       {modelOpen ? (
         <ModelDialog
           defaultModel={resolveModel(__OPENROUTER_MODEL__)}

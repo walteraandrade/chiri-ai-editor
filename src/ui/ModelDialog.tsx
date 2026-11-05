@@ -51,7 +51,7 @@ export function ModelDialog({
     <dialog
       ref={dialog}
       aria-labelledby="model-title"
-      className="m-auto w-[min(28rem,calc(100vw-3rem))] bg-raised p-6 text-ink shadow-lg backdrop:bg-black/60"
+      className="m-auto w-[min(28rem,calc(100vw-3rem))] bg-raised p-6 border border-hairline text-ink backdrop:bg-canvas"
       onCancel={(event) => {
         event.preventDefault()
         onClose()

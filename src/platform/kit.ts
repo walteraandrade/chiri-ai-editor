@@ -137,6 +137,7 @@ export type PlatformKit<Ref = unknown> = {
   readonly library?: LibraryKit<Ref>
   readonly external?: ExternalKit<Ref>
   readonly launches?: LaunchKit<Ref>
+  readonly preferencesRequests?: (listener: () => void) => () => void
 }
 
 export type PlatformKitFactory<Ref = unknown> = () => Promise<PlatformKit<Ref>>

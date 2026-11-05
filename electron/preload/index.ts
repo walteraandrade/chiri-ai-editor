@@ -17,6 +17,7 @@ import {
   LIBRARY_CREATE_SKILL_CHANNEL,
   LIBRARY_LIST_CHANNEL,
   LIBRARY_REMOVE_ROOT_CHANNEL,
+  PREFERENCES_REQUEST_CHANNEL,
   SHELL_INFO_CHANNEL,
   WATCH_FILE_CHANNEL,
 } from '../api'
@@ -54,6 +55,13 @@ const api: ChiriApi = {
   createSkill: (request) =>
     ipcRenderer.invoke(LIBRARY_CREATE_SKILL_CHANNEL, request),
   takeLaunchFile: () => ipcRenderer.invoke(LAUNCH_TAKE_CHANNEL),
+  onPreferencesRequest: (listener) => {
+    const relay = (): void => listener()
+    ipcRenderer.on(PREFERENCES_REQUEST_CHANNEL, relay)
+    return () => {
+      ipcRenderer.off(PREFERENCES_REQUEST_CHANNEL, relay)
+    }
+  },
   onLaunchFile: (listener) => {
     const relay = (): void => listener()
     ipcRenderer.on(LAUNCH_FILE_CHANNEL, relay)

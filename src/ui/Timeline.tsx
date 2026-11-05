@@ -100,7 +100,7 @@ export function Timeline({
               <VersionMark mark={markOf(version.cause)} />
               <span
                 aria-hidden="true"
-                className={`pointer-events-none absolute top-full z-40 mt-2 hidden w-64 bg-raised p-3 text-left text-xs shadow-lg group-hover:block group-focus-visible:block ${tooltipSide(share)}`}
+                className={`pointer-events-none absolute top-full z-40 mt-2 hidden w-64 border border-hairline bg-raised p-3 text-left text-xs group-hover:block group-focus-visible:block ${tooltipSide(share)}`}
               >
                 <span className="block text-ink-strong">
                   {description.label} · {clock}

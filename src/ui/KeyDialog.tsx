@@ -71,7 +71,7 @@ export function KeyDialog({
     <dialog
       ref={dialogRef}
       aria-labelledby="key-dialog-title"
-      className="m-auto w-[min(34rem,calc(100vw-3rem))] bg-surface p-6 text-ink backdrop:bg-black/60"
+      className="m-auto w-[min(34rem,calc(100vw-3rem))] bg-surface p-6 border border-hairline text-ink backdrop:bg-canvas"
       onClose={onClose}
     >
       <form onSubmit={submit} className="flex flex-col gap-4">

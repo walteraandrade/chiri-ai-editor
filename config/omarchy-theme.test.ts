@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { mixHex } from '../src/theme/color'
 import {
   omarchyTheme,
   omarchyTokens,
@@ -52,14 +53,20 @@ describe('omarchyTokens', () => {
     expect(omarchyTokens(parseColorsToml(TOKYO_NIGHT), 'tokyo-night')).toEqual({
       name: 'tokyo-night',
       mode: 'dark',
-      bg: '#1a1b26',
-      raised: '#24283b',
-      ink: '#a9b1d6',
-      inkStrong: '#c0caf5',
-      accent: '#7aa2f7',
-      ai: '#7aa2f7',
-      danger: '#f7768e',
-      selection: '#292e42',
+      roles: {
+        canvas: '#1a1b26',
+        raised: '#24283b',
+        ink: '#a9b1d6',
+        faint: mixHex('#1a1b26', '#a9b1d6', 0.7),
+        accent: '#7aa2f7',
+        ai: '#7aa2f7',
+        danger: '#f7768e',
+        selection: '#292e42',
+        fill: mixHex('#1a1b26', '#a9b1d6', 0.06),
+        fillHover: mixHex('#1a1b26', '#a9b1d6', 0.11),
+        hairline: mixHex('#1a1b26', '#a9b1d6', 0.09),
+        scrollbar: mixHex('#1a1b26', '#a9b1d6', 0.16),
+      },
     })
   })
 
@@ -85,10 +92,11 @@ describe('omarchyTokens', () => {
       ),
     ).toMatchObject({
       mode: 'light',
-      raised: null,
-      inkStrong: '#4c4f69',
-      danger: null,
-      selection: null,
+      roles: {
+        raised: mixHex('#eff1f5', '#4c4f69', 0.09),
+        danger: '#b42318',
+        selection: mixHex('#eff1f5', '#1e66f5', 0.28),
+      },
     })
   })
 
@@ -147,7 +155,7 @@ describe('readOmarchyTheme', () => {
     })
     expect(readOmarchyTheme(dir)).toMatchObject({
       name: 'tokyo-night',
-      bg: '#1a1b26',
+      roles: { canvas: '#1a1b26' },
     })
   })
 

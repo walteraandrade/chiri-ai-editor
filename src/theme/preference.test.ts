@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { StorageLike } from '../document/storage'
+import { BOOK_PALETTES, CHIRI_THEME } from './catalog'
 import {
   activeTheme,
   loadThemeChoice,
+  OMARCHY_CHOICE,
   saveThemeChoice,
+  selectedOption,
   THEME_STORAGE_KEY,
 } from './preference'
 import type { ThemeTokens } from './tokens'
@@ -27,28 +30,39 @@ const throwingStorage: StorageLike = {
   },
 }
 
+const MOOD_INDIGO = 'mood-indigo'
+
+const omarchy: ThemeTokens = {
+  name: 'vantablack',
+  mode: 'dark',
+  roles: CHIRI_THEME.tokens.roles,
+}
+
 describe('loadThemeChoice', () => {
   it('follows Omarchy by default', () => {
-    expect(loadThemeChoice(memoryStorage())).toBe('omarchy')
-    expect(loadThemeChoice(null)).toBe('omarchy')
-    expect(loadThemeChoice(throwingStorage)).toBe('omarchy')
+    expect(loadThemeChoice(memoryStorage())).toBe(OMARCHY_CHOICE)
+    expect(loadThemeChoice(null)).toBe(OMARCHY_CHOICE)
+    expect(loadThemeChoice(throwingStorage)).toBe(OMARCHY_CHOICE)
   })
 
-  it('reads a saved choice and ignores unknown values', () => {
+  it('reads a saved theme and ignores unknown values', () => {
     expect(
       loadThemeChoice(memoryStorage({ [THEME_STORAGE_KEY]: 'chiri' })),
     ).toBe('chiri')
     expect(
+      loadThemeChoice(memoryStorage({ [THEME_STORAGE_KEY]: MOOD_INDIGO })),
+    ).toBe(MOOD_INDIGO)
+    expect(
       loadThemeChoice(memoryStorage({ [THEME_STORAGE_KEY]: 'neon' })),
-    ).toBe('omarchy')
+    ).toBe(OMARCHY_CHOICE)
   })
 })
 
 describe('saveThemeChoice', () => {
   it('round-trips through storage', () => {
     const storage = memoryStorage()
-    saveThemeChoice(storage, 'chiri')
-    expect(loadThemeChoice(storage)).toBe('chiri')
+    saveThemeChoice(storage, MOOD_INDIGO)
+    expect(loadThemeChoice(storage)).toBe(MOOD_INDIGO)
   })
 
   it('swallows storage errors', () => {
@@ -57,25 +71,36 @@ describe('saveThemeChoice', () => {
 })
 
 describe('activeTheme', () => {
-  const vantablack: ThemeTokens = {
-    name: 'vantablack',
-    mode: 'dark',
-    bg: '#000000',
-    raised: null,
-    ink: '#ffffff',
-    inkStrong: '#ffffff',
-    accent: '#8d8d8d',
-    ai: '#8d8d8d',
-    danger: null,
-    selection: null,
-  }
-
-  it('uses the Omarchy theme when chosen and present', () => {
-    expect(activeTheme('omarchy', vantablack)).toBe(vantablack)
+  it('uses Omarchy when chosen and present', () => {
+    expect(activeTheme(OMARCHY_CHOICE, omarchy)).toBe(omarchy)
   })
 
-  it('falls back to the Chiri theme otherwise', () => {
-    expect(activeTheme('chiri', vantablack)).toBeNull()
-    expect(activeTheme('omarchy', null)).toBeNull()
+  it('falls back to the Chiri theme without Omarchy', () => {
+    expect(activeTheme(OMARCHY_CHOICE, null)).toBe(CHIRI_THEME.tokens)
+  })
+
+  it('uses the chosen theme, even with Omarchy present', () => {
+    expect(activeTheme(MOOD_INDIGO, omarchy).name).toBe(MOOD_INDIGO)
+    expect(activeTheme('chiri', omarchy)).toBe(CHIRI_THEME.tokens)
+  })
+
+  it('falls back to the Chiri theme for an unknown id', () => {
+    expect(activeTheme('neon', null)).toBe(CHIRI_THEME.tokens)
+  })
+
+  it('knows every palette', () => {
+    for (const { id } of BOOK_PALETTES)
+      expect(activeTheme(id, null).name).toBe(id)
+  })
+})
+
+describe('selectedOption', () => {
+  it('marks Omarchy only when it is present', () => {
+    expect(selectedOption(OMARCHY_CHOICE, omarchy)).toBe(OMARCHY_CHOICE)
+    expect(selectedOption(OMARCHY_CHOICE, null)).toBe(CHIRI_THEME.id)
+  })
+
+  it('marks the chosen theme', () => {
+    expect(selectedOption(MOOD_INDIGO, null)).toBe(MOOD_INDIGO)
   })
 })

@@ -133,6 +133,7 @@ const setup = (
     library: fakeLibrary,
     external: fakeExternal,
     launches,
+    preferencesRequests: () => () => undefined,
     now: () => 1000,
     hasApiKey: true,
     onHide: (flush) => {
