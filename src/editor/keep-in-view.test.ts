@@ -61,4 +61,41 @@ describe('keepInBand', () => {
       }),
     ).toEqual(anchor)
   })
+
+  it('lifts a tall card whose buttons would fall below the screen', () => {
+    expect(
+      keepInBand({
+        anchor: at(850),
+        range: { top: 150, bottom: 880 },
+        band,
+        left: 80,
+        reserve: 200,
+      }),
+    ).toEqual({ left: 80, right: 80, top: 692, bottom: 692 })
+  })
+
+  it('keeps the anchor when the whole card fits', () => {
+    const anchor = at(500)
+    expect(
+      keepInBand({
+        anchor,
+        range: { top: 0, bottom: 600 },
+        band,
+        left: 80,
+        reserve: 200,
+      }),
+    ).toEqual(anchor)
+  })
+
+  it('never lifts a card above the top edge', () => {
+    expect(
+      keepInBand({
+        anchor: at(850),
+        range: { top: 150, bottom: 880 },
+        band,
+        left: 80,
+        reserve: 2000,
+      }).top,
+    ).toBe(108)
+  })
 })
