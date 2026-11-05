@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type RefObject, useId } from 'react'
+import { descriptionSource } from '../skills/description-ai'
 import {
   announceProblems,
   type FrontmatterReport,
@@ -116,7 +117,11 @@ function DescriptionAssist({
   readonly description: string
   readonly onAccept: (value: string) => void
 }) {
-  const { state } = ai
+  const state =
+    ai.state.kind === 'idle' ||
+    ai.state.source === descriptionSource(name, description)
+      ? ai.state
+      : ({ kind: 'idle' } as const)
   return (
     <div className="text-xs">
       {state.kind === 'ready' ? (

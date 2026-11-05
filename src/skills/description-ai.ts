@@ -28,3 +28,6 @@ export const descriptionRequest = (
   neighbors: { title: `Skill ${name}`, before: [], after: [] },
   instruction: DESCRIPTION_INSTRUCTION,
 })
+
+export const descriptionSource = (name: string, description: string): string =>
+  JSON.stringify([name, description])
