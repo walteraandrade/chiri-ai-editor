@@ -14,6 +14,7 @@ import type { WatchEvent } from './classify-changes'
 import { createFolderWatcher } from './folder-watcher'
 import {
   directoryIdentity,
+  identityKey,
   nodeDirectoryWatch,
   rootEntries,
 } from './node-watch'
@@ -73,6 +74,16 @@ describe('nodeDirectoryWatch', () => {
     const events = await watchDir(dir)
     await writeFile(join(dir, 'new.md'), 'x')
     await expect.poll(() => named(events, 'new.md')).toBe(true)
+  })
+})
+
+describe('identityKey', () => {
+  it('tells apart a folder made again that got the same inode back', () => {
+    const before = identityKey({ dev: 1, ino: 7, birthtimeMs: 1000.5 })
+    expect(identityKey({ dev: 1, ino: 7, birthtimeMs: 1000.5 })).toBe(before)
+    expect(identityKey({ dev: 1, ino: 7, birthtimeMs: 2000.25 })).not.toBe(
+      before,
+    )
   })
 })
 

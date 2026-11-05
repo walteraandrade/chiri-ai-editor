@@ -99,15 +99,15 @@ scripts/
 
 ## Git and PRs
 
-- One branch per issue, from `main` (while `main` is frozen for the assessment: from `feat/open-save-markdown`, PR #22, merged back into it): `feat/ | fix/ | chore/ | refactor/ | docs/ | test/` + short kebab slug, max 40 chars.
+- One branch per issue, from `main`: `feat/ | fix/ | chore/ | refactor/ | docs/ | test/` + short kebab slug, max 40 chars.
 - Commit messages: short, imperative, conventional prefix. No `Co-Authored-By` or other authorship trailers.
 - PR body: use the `pr` skill, filling [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Start with `Closes #N`.
-- Squash merge only.
+- Squash merge only. A ruleset on `main` requires the `checks` job and allows only squash; its JSON is `.github/ruleset.json`, applied with `.github/apply-ruleset.sh`.
 
 ## Definition of done (every slice)
 
 1. `pnpm test` green, with TDD on the pure modules the issue lists.
-2. `pnpm biome check` clean and `pnpm build` green.
+2. `pnpm biome check` clean and `pnpm build` green. The `checks` job in `.github/workflows/ci.yml` runs both plus `pnpm check:externals` on every PR; the PR body links the run instead of pasting output.
 3. The issue's acceptance criteria checked in a real browser with `agent-browser`.
 4. AI calls made during that check recorded (next section), with screenshots.
 5. Code review done and real findings fixed (roles in [docs/PLAN.md](docs/PLAN.md)).
