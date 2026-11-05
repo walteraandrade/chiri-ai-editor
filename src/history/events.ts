@@ -9,13 +9,11 @@ export type HistoryEvent =
       readonly text: string
       readonly changes: readonly AcceptedChange[]
     }
-  | { readonly type: 'replaced'; readonly before: string }
 
 export const applyHistoryEvent = (
-  recorder: Pick<HistoryRecorder, 'edited' | 'accepted' | 'replaced'>,
+  recorder: Pick<HistoryRecorder, 'edited' | 'accepted'>,
   event: HistoryEvent,
 ): void => {
   if (event.type === 'edited') recorder.edited(event.text)
-  else if (event.type === 'accepted') recorder.accepted(event)
-  else recorder.replaced(event.before)
+  else recorder.accepted(event)
 }

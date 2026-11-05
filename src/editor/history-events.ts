@@ -45,7 +45,7 @@ export const historyEventOf = (
     transaction.isUserEvent('input.open') ||
     transaction.isUserEvent('input.restore')
   )
-    return { type: 'replaced', before: transaction.startState.doc.toString() }
+    return null
   const text = transaction.newDoc.toString()
   return transaction.isUserEvent('input.accept')
     ? {
