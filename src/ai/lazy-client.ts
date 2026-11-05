@@ -10,6 +10,7 @@ type SuggestionClient = Pick<
 
 export type LazyModelClient = SuggestionClient & {
   readonly preload: () => void
+  readonly reset: () => void
 }
 
 const loadFailure = {
@@ -31,6 +32,9 @@ export const createLazyModelClient = (
   }
 
   return {
+    reset: () => {
+      loading = undefined
+    },
     preload: () => {
       get().catch(() => undefined)
     },

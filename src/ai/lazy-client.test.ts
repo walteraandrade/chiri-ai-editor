@@ -196,3 +196,23 @@ describe('createLazyModelClient', () => {
     )
   })
 })
+
+describe('reset', () => {
+  it('loads the client again on the next request', async () => {
+    const load = vi.fn(async () => ({
+      requestSuggestion: async () => ({
+        ok: true as const,
+        value: { replacement: 'Hi', rationale: 'Short.', unchanged: false },
+      }),
+      refineSuggestion: vi.fn(),
+      reviewDocument: noReview,
+    }))
+    const client = createLazyModelClient(load)
+    await client.requestSuggestion(request)
+    await client.requestSuggestion(request)
+    expect(load).toHaveBeenCalledTimes(1)
+    client.reset()
+    await client.requestSuggestion(request)
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+})
