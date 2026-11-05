@@ -1,6 +1,6 @@
 # 0017. Book themes and solid colors
 
-- Status: Accepted (2026-11-05); default theme still open (issue #79)
+- Status: Accepted (2026-11-05)
 - Source: maintainer request and grilling session (Q1 to Q26); throwaway prototype on branch `claude/seigensha-color-combinations-3a0c9e`
 - Amends: [0016](0016-web-and-electron-builds.md) (the Web build gets the Preferences screen, as shared UI)
 
@@ -21,7 +21,7 @@ The data pushes back. Vol. 1 has 348 combinations of 2, 3 or 4 colors, so none r
 - **Fewer roles.** A theme is 12 roles (`canvas`, `raised`, `ink`, `faint`, `accent`, `ai`, `danger`, `selection`, `fill`, `fillHover`, `hairline`, `scrollbar`). Strong, body and muted ink are one color; hierarchy comes from size and weight. The fill under AI words is `raised`. The `--color-*` tokens stay as aliases, so the UI classes did not change.
 - **Palettes name colors, not codes.** A palette's jobs refer to its own color names, so a theme cannot paint a code outside its palette. Every color has a job.
 - **Each palette has a red for errors** (pinkish reds count), and the AI color is a real hue, not black or gray.
-- **The Chiri theme stays, for now, as a 25th option** with its own solid colors, and it stays the default. The maintainer picks the default, and whether it stays, once the system runs. Omarchy stays dev-only, outside the hard rule, and computes its roles in the plugin.
+- **The default is `Mood Indigo`**, picked by the maintainer once all 24 ran in the app. The stylesheet's defaults and the Electron window background match it. The Chiri theme stays as a 25th option, with its own solid colors. Omarchy stays dev-only, outside the hard rule, and computes its roles in the plugin; in `pnpm dev` on an Omarchy machine it still wins when nothing is stored.
 - **Preferences:** one screen in both builds, themes only. A click applies at once, and the choice lives in `chiri.theme`. Electron opens it from a native `File > Preferences…` item and `Ctrl+,`; the Web build from a button and `Ctrl+,`. The native menu keeps the Edit, View and Window menus Electron gave by default. No user themes, no font choice.
 - **Names are Duke Ellington compositions** where Ellington is a credited composer. The screen credits Wada, the dataset and Ellington, and says the pairings are ours, not Wada's.
 
@@ -33,7 +33,7 @@ The data pushes back. Vol. 1 has 348 combinations of 2, 3 or 4 colors, so none r
 - The original five prototype themes are gone: their colors cannot reach 6 by these rules without inventing tones.
 - Fidelity means fidelity to the published code, not to the printed page.
 - The test copy of the dataset adds 60 KB to the repo, outside the bundle.
-- The Electron window's first paint still uses the graphite background until the page loads.
+- Graphite and Ember stop being the face of the app. The Chiri theme keeps them as an option.
 
 ## Alternatives considered
 

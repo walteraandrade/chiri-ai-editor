@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { StorageLike } from '../document/storage'
-import { BOOK_PALETTES, CHIRI_THEME } from './catalog'
+import { BOOK_PALETTES, CHIRI_THEME, DEFAULT_THEME } from './catalog'
 import {
   activeTheme,
   loadThemeChoice,
@@ -75,8 +75,8 @@ describe('activeTheme', () => {
     expect(activeTheme(OMARCHY_CHOICE, omarchy)).toBe(omarchy)
   })
 
-  it('falls back to the Chiri theme without Omarchy', () => {
-    expect(activeTheme(OMARCHY_CHOICE, null)).toBe(CHIRI_THEME.tokens)
+  it('falls back to the default theme without Omarchy', () => {
+    expect(activeTheme(OMARCHY_CHOICE, null)).toBe(DEFAULT_THEME.tokens)
   })
 
   it('uses the chosen theme, even with Omarchy present', () => {
@@ -84,8 +84,8 @@ describe('activeTheme', () => {
     expect(activeTheme('chiri', omarchy)).toBe(CHIRI_THEME.tokens)
   })
 
-  it('falls back to the Chiri theme for an unknown id', () => {
-    expect(activeTheme('neon', null)).toBe(CHIRI_THEME.tokens)
+  it('falls back to the default theme for an unknown id', () => {
+    expect(activeTheme('neon', null)).toBe(DEFAULT_THEME.tokens)
   })
 
   it('knows every palette', () => {
@@ -97,7 +97,7 @@ describe('activeTheme', () => {
 describe('selectedOption', () => {
   it('marks Omarchy only when it is present', () => {
     expect(selectedOption(OMARCHY_CHOICE, omarchy)).toBe(OMARCHY_CHOICE)
-    expect(selectedOption(OMARCHY_CHOICE, null)).toBe(CHIRI_THEME.id)
+    expect(selectedOption(OMARCHY_CHOICE, null)).toBe(DEFAULT_THEME.id)
   })
 
   it('marks the chosen theme', () => {

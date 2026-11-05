@@ -94,6 +94,16 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
   ...BOOK_PALETTES.map(optionOf),
 ]
 
+const DEFAULT_THEME_ID = 'mood-indigo'
+
+const defaultTheme = (): ThemeOption => {
+  const option = THEME_OPTIONS.find(({ id }) => id === DEFAULT_THEME_ID)
+  if (!option) throw new Error(`No theme named ${DEFAULT_THEME_ID}`)
+  return option
+}
+
+export const DEFAULT_THEME: ThemeOption = defaultTheme()
+
 export const themesOfMode = (mode: ThemeMode): readonly ThemeOption[] =>
   THEME_OPTIONS.filter((option) => option.tokens.mode === mode)
 

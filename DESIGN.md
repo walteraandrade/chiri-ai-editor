@@ -2,11 +2,12 @@
 name: Chiri
 description: A Markdown editor where the AI works in the text as a visible, quiet co-author.
 colors:
-  graphite-canvas: "#141417"
-  raised-graphite: "#28282d"
-  paper-white-ink: "#f1f1f3"
-  ember-accent: "#e37545"
-  signal-red: "#f87171"
+  deep-indigo: "#051230"
+  dull-violet-black: "#1e0e3f"
+  apricot-yellow: "#ffdd00"
+  apricot-orange: "#f68c50"
+  olive-yellow: "#a6a159"
+  old-rose: "#d46d7a"
 typography:
   display:
     fontFamily: "League Spartan Variable, Inter Variable, sans-serif"
@@ -36,24 +37,24 @@ spacing:
   lg: "1.5rem"
 components:
   button:
-    backgroundColor: "{colors.raised-graphite}"
-    textColor: "{colors.paper-white-ink}"
+    backgroundColor: "{colors.dull-violet-black}"
+    textColor: "{colors.apricot-yellow}"
     rounded: "{rounded.none}"
     padding: "0.25rem 0.65rem"
   button-primary:
-    backgroundColor: "{colors.ember-accent}"
-    textColor: "{colors.graphite-canvas}"
+    backgroundColor: "{colors.apricot-orange}"
+    textColor: "{colors.deep-indigo}"
     rounded: "{rounded.none}"
     padding: "0.25rem 0.65rem"
   ai-flag:
-    backgroundColor: "{colors.ember-accent}"
-    textColor: "{colors.graphite-canvas}"
+    backgroundColor: "{colors.apricot-orange}"
+    textColor: "{colors.deep-indigo}"
     typography: "{typography.flag}"
     rounded: "{rounded.none}"
     padding: "0 0.3rem"
   inserted-text:
-    backgroundColor: "{colors.raised-graphite}"
-    textColor: "{colors.ember-accent}"
+    backgroundColor: "{colors.dull-violet-black}"
+    textColor: "{colors.apricot-orange}"
 ---
 
 # Design System: Chiri
@@ -62,26 +63,27 @@ components:
 
 **Creative North Star: "The Shared Manuscript".** One page, two authors. The writer's ink is neutral; the AI writes in one color and wears one name tag, so every glance answers "who did this?". The surface is flat with square corners; depth comes from solid layers and hairlines.
 
-Colors are not hard-coded. A Theme is 12 solid roles on `:root` (`--theme-canvas`, `-raised`, `-ink`, `-faint`, `-accent`, `-ai`, `-danger`, `-selection`, `-fill`, `-fill-hover`, `-hairline`, `-scrollbar`), and every `--color-*` token is an alias of one of them. The themes live in `src/theme/catalog.ts`: 24 Palettes from *A Dictionary of Color Combinations* Vol. 1 and the Chiri theme below. In `pnpm dev` on an Omarchy machine the current Omarchy theme, light or dark, is one more option (`config/omarchy-theme.ts`, registered in `config/renderer.ts` for both the Web and the Electron dev servers); it computes its own solid roles. The default stays the Chiri theme until the maintainer picks one ([ADR 0017](docs/chiri/adr/0017-book-themes-and-solid-colors.md)).
+Colors are not hard-coded. A Theme is 12 solid roles on `:root` (`--theme-canvas`, `-raised`, `-ink`, `-faint`, `-accent`, `-ai`, `-danger`, `-selection`, `-fill`, `-fill-hover`, `-hairline`, `-scrollbar`), and every `--color-*` token is an alias of one of them. The themes live in `src/theme/catalog.ts`: 24 Palettes from *A Dictionary of Color Combinations* Vol. 1, of which `Mood Indigo` below is the default, and the original Chiri theme in graphite and ember. In `pnpm dev` on an Omarchy machine the current Omarchy theme, light or dark, is one more option (`config/omarchy-theme.ts`, registered in `config/renderer.ts` for both the Web and the Electron dev servers); it computes its own solid roles. See [ADR 0017](docs/chiri/adr/0017-book-themes-and-solid-colors.md).
 
 ## 2. Colors
 
-### Primary
-These are the Chiri theme's colors. A Palette puts its own colors in the same roles.
+These are the default theme's colors, `Mood Indigo`. Another Theme puts its own colors in the same roles.
 
-- **Ember** (#e37545): the AI's color. Its name flag, its caret, its words, the primary Accept button, the pulse in the Review button. Also links and focus rings (`--color-accent`), which share the color in this theme but have their own role.
+### Primary
+- **Apricot Orange** (#f68c50): the AI's color. Its name flag, its caret, its words, the primary Accept button, the pulse in the Review button.
 
 ### Neutral
-- **Graphite Canvas** (#141417): page and editor background.
-- **Raised Graphite** (#28282d): side panels, dialogs, bubble, Cards, popovers, toasts, and the fill under AI words.
-- **Paper White Ink** (#f1f1f3): all text. Strong, body and muted ink are one color; hierarchy comes from size and weight. Faint (#a6a6ab) is for decoration and disabled controls, and it passes AA too.
-- **Signal Red** (#f87171): errors only.
+- **Deep Indigo** (#051230): page and editor background.
+- **Dull Violet Black** (#1e0e3f): side panels, dialogs, bubble, Cards, popovers, toasts, and the fill under AI words.
+- **Apricot Yellow** (#ffdd00): all text. Strong, body and muted ink are one color; hierarchy comes from size and weight.
+- **Olive Yellow** (#a6a159): links, focus rings, faint text, hairlines and scrollbars. Faint is for decoration and disabled controls, and it passes AA too.
+- **Old Rose** (#d46d7a): errors only.
 
 ### Named Rules
 **The Hard Rule.** At rest, the app paints only the Theme's exact codes: no `color-mix()`, alpha colors or shadows (`src/theme/hard-rule.test.ts` looks for them). Hover and disabled are other palette colors. Animations may pass through in-between tones. Text-edge antialiasing is out of scope.
 **The Palette Rule.** A Palette joins 2 Vol. 1 combinations that share a color, has at least 6 colors and invents none. Every color has a job, one is a red for errors, the AI color is a real hue, and all text passes AA (`src/theme/catalog.test.ts`).
 **The One Author Color Rule.** Only AI-authored things use `--color-ai*`. Writer text, chrome and selection never borrow it.
-**The Ownership Rule.** AI text stays in Ember until accepted; on Accept it lands in Ember with a soft glow, holds for ~0.4s and fades to the writer's ink by 1.4s. Under reduced motion it shows in Ember for the same 1.5s, without the fade.
+**The Ownership Rule.** AI text stays in the AI color until accepted; on Accept it lands in the AI color with a soft glow, holds for ~0.4s and fades to the writer's ink by 1.4s. Under reduced motion it shows in the AI color for the same 1.5s, without the fade.
 
 ## 3. Typography
 
@@ -115,10 +117,10 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 - **Entrance:** rise 3px and fade, staggered 35ms per chip.
 
 ### The AI flag (signature)
-- A small Ember tag reading "AI", in canvas-colored text. It marks every AI surface: the caret, the bubble's input, the Card's Rationale.
+- A small tag in the AI color, reading "AI", in canvas-colored text. It marks every AI surface: the caret, the bubble's input, the Card's Rationale.
 
 ### The AI caret (signature)
-- A 2px Ember bar with the flag above it, showing the Instruction ("AI · More formal ···"). It exists only while the AI works: a request, a Refine, a Review pass. It appears where the writer asked, travels (560ms, expo-out) to the end of the Target, and during a Review pass hops to each Suggestion as it streams in. It breathes while thinking and fades out when the work lands.
+- A 2px bar in the AI color with the flag above it, showing the Instruction ("AI · More formal ···"). It exists only while the AI works: a request, a Refine, a Review pass. It appears where the writer asked, travels (560ms, expo-out) to the end of the Target, and during a Review pass hops to each Suggestion as it streams in. It breathes while thinking and fades out when the work lands.
 
 ### Suggestions in the text
 - **Deleted text:** ink with a 1px strike drawn left to right in 420ms, across wrapped lines.
@@ -137,7 +139,7 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 - Native scrollbars, themed: a 4px square thumb (`--color-scrollbar`; ink on hover) on a clear track, no arrow buttons. Firefox gets `scrollbar-width: thin` with the same colors.
 
 ### Bubble
-- Hairline border; when its input has focus, a 70° arc of Ember orbits the border every 3.6s ("listening"). Enters with a 6px rise, 0.98 scale and a 3px blur, 260ms.
+- Hairline border; when its input has focus, a 70° arc of the AI color orbits the border every 3.6s ("listening"). Enters with a 6px rise, 0.98 scale and a 3px blur, 260ms.
 
 ### Cards
 - Margin Cards slide in 8px from the text; floating Cards rise. Switching the Active Suggestion cross-fades the content in 240ms.

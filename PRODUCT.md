@@ -29,7 +29,7 @@ Calm, precise, collaborative. The AI behaves like a quiet colleague in the same 
 2. **Show who is acting.** The AI has one visible identity (its caret and its name flag) wherever it acts: while thinking, in its Suggestions, in its Cards.
 3. **Motion tells state.** Each animation answers a question: where is the AI working, what changed, is it mine now?
 4. **The writer decides.** AI changes stay visibly provisional until accepted; accepted text settles into the writer's own ink.
-5. **Any palette, exactly.** A theme is a few solid colors, painted as they are, with no tints or shadows. The writer picks one of 24 palettes in Preferences, or the Chiri theme. In dev the writer's Omarchy theme, light or dark, is one more option.
+5. **Any palette, exactly.** A theme is a few solid colors, painted as they are, with no tints or shadows. The default is Mood Indigo, and the writer picks another in Preferences: 24 Palettes, or the original Chiri theme. In dev the writer's Omarchy theme, light or dark, is one more option.
 
 ## Accessibility & Inclusion
 

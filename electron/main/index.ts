@@ -22,7 +22,7 @@ import { menuTemplate } from './menu-template'
 import { isAppNavigation, isTrustedFrame } from './trust'
 import { registerExternalChanges } from './watch/register'
 
-const CANVAS_COLOR = '#141417'
+const CANVAS_COLOR = '#051230'
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
 

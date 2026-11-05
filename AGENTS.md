@@ -20,7 +20,7 @@ ADRs are decisions, not suggestions. If an ADR blocks you, stop and report it; d
 | App | Vite + React + TypeScript (strict) |
 | Desktop shell | Electron 43 built with `electron-vite` ([ADR 0013](docs/chiri/adr/0013-native-app-on-electron.md)); two builds, Web and Electron ([ADR 0016](docs/chiri/adr/0016-web-and-electron-builds.md)) |
 | Editor | CodeMirror 6, `@codemirror/lang-markdown` |
-| Styling | Tailwind v4, theme tokens in CSS via `@theme`, aliases of a theme's solid roles, with no `color-mix()`, alpha colors or shadows ([DESIGN.md](DESIGN.md), [ADR 0017](docs/chiri/adr/0017-book-themes-and-solid-colors.md)); themes picked in Preferences; dark Chiri theme by default, the Omarchy theme (light or dark) in dev when present; sans-serif; League Spartan for the app title |
+| Styling | Tailwind v4, theme tokens in CSS via `@theme`, aliases of a theme's solid roles, with no `color-mix()`, alpha colors or shadows ([DESIGN.md](DESIGN.md), [ADR 0017](docs/chiri/adr/0017-book-themes-and-solid-colors.md)); themes picked in Preferences; dark Mood Indigo by default, the Omarchy theme (light or dark) in dev when present; sans-serif; League Spartan for the app title |
 | AI | `ai@^7` + `@openrouter/ai-sdk-provider@^3` + `zod` |
 | Diff | `diff` (jsdiff) |
 | Tests | Vitest |

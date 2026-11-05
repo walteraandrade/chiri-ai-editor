@@ -1,5 +1,5 @@
 import type { StorageLike } from '../document/storage'
-import { CHIRI_THEME, themeById } from './catalog'
+import { DEFAULT_THEME, themeById } from './catalog'
 import type { ThemeTokens } from './tokens'
 
 export const THEME_STORAGE_KEY = 'chiri.theme'
@@ -34,10 +34,10 @@ export const activeTheme = (
 ): ThemeTokens =>
   choice === OMARCHY_CHOICE && omarchy !== null
     ? omarchy
-    : (themeById(choice) ?? CHIRI_THEME).tokens
+    : (themeById(choice) ?? DEFAULT_THEME).tokens
 
 export const selectedOption = (
   choice: ThemeChoice,
   omarchy: ThemeTokens | null,
 ): string =>
-  choice === OMARCHY_CHOICE && omarchy === null ? CHIRI_THEME.id : choice
+  choice === OMARCHY_CHOICE && omarchy === null ? DEFAULT_THEME.id : choice

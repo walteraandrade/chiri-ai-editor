@@ -42,7 +42,7 @@ Sources: `src/theme/hard-rule.test.ts` (no `color-mix`, shadow, ring, alpha colo
 | A click repaints at once | Both | Pass |
 | The choice survives a reload (`chiri.theme`) | Web | Pass |
 | The choice is stored | Electron | Pass; a restart was not tried |
-| No choice stored: the Chiri theme, 25 rows, no Omarchy row, no prototype bar | Electron, built | Pass |
+| No choice stored: Mood Indigo, 25 rows, no Omarchy row, no prototype bar | Electron, built | Pass |
 | The button can be clicked at 400 px wide, with and without the Missing key banner | Web | Pass, by hit test (the bar used to hide under 640 px, and the banner used to cover it) |
 | The checked row takes focus on open | Web | Pass |
 
@@ -62,7 +62,7 @@ First pass on three axes: Standards, Spec and TDD. Fixed from it:
 
 Kept, with the reason:
 - `Menu` closes over the first window: on Linux, closing it quits the app, so there is no second one.
-- `pnpm dev` follows Omarchy when nothing is stored, and the issue says the Chiri theme is default: this behavior is older, dev only, and the built app was checked to use the Chiri theme.
+- `pnpm dev` follows Omarchy when nothing is stored, and the issue says the app's default applies: this behavior is older, dev only, and the built app was checked to use the default theme.
 - The Omarchy test recomputes `mixHex` values: the ratios are design values, and `mixHex` has its own tests.
 - The bubble's orbit and the sweeps pass through in-between tones: they are motion, which the ADR allows.
 - The relay in the preload repeats `onLaunchFile`: one more copy did not earn a helper.
@@ -72,9 +72,9 @@ Second pass, on those fixes. Fixed from it:
 - The Missing key banner covered the bottom bar. The bar and the banner now stack.
 - `src/theme/hard-rule.test.ts` could pass on an empty file list, and it missed `text-shadow`, `filter` and partial `opacity` at rest in the stylesheets.
 
-## Open for the maintainer
+## Maintainer decision
 
-- The default theme, and whether the Chiri theme stays.
+After seeing all 24 in the real app, the maintainer kept them all and picked `Mood Indigo` as the default. The Chiri theme stays as an option.
 
 ## AI calls
 

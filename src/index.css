@@ -4,18 +4,18 @@
 @import "./editor/suggestions.css";
 
 :root {
-  --theme-canvas: #141417;
-  --theme-raised: #28282d;
-  --theme-ink: #f1f1f3;
-  --theme-faint: #a6a6ab;
-  --theme-accent: #e37545;
-  --theme-ai: #e37545;
-  --theme-danger: #f87171;
-  --theme-selection: #3a241b;
-  --theme-fill: #222226;
-  --theme-fill-hover: #303035;
-  --theme-hairline: #333338;
-  --theme-scrollbar: #46464b;
+  --theme-canvas: #051230;
+  --theme-raised: #1e0e3f;
+  --theme-ink: #ffdd00;
+  --theme-faint: #a6a159;
+  --theme-accent: #a6a159;
+  --theme-ai: #f68c50;
+  --theme-danger: #d46d7a;
+  --theme-selection: #1e0e3f;
+  --theme-fill: #1e0e3f;
+  --theme-fill-hover: #051230;
+  --theme-hairline: #a6a159;
+  --theme-scrollbar: #a6a159;
 
   --motion-press: 120ms;
   --motion-state: 180ms;

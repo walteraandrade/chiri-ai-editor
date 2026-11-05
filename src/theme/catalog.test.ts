@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BOOK_PALETTES,
   CHIRI_THEME,
+  DEFAULT_THEME,
   omarchyOption,
   THEME_OPTIONS,
   themeById,
@@ -138,12 +139,19 @@ describe('the Chiri theme', () => {
   it('passes AA', () => {
     expectLegible(CHIRI_THEME.tokens.roles)
   })
+})
 
-  it('matches the stylesheet defaults', () => {
+describe('the default theme', () => {
+  it('is Mood Indigo', () => {
+    expect(DEFAULT_THEME.title).toBe('Mood Indigo')
+    expect(DEFAULT_THEME.tokens.mode).toBe('dark')
+  })
+
+  it('matches the stylesheet defaults, so the first paint is the theme', () => {
     const css = readFileSync(join(__dirname, '..', 'index.css'), 'utf8')
     const seed = (name: string): string | undefined =>
       new RegExp(`--theme-${name}: (#[0-9a-f]+);`).exec(css)?.[1]
-    const { roles } = CHIRI_THEME.tokens
+    const { roles } = DEFAULT_THEME.tokens
     expect(seed('canvas')).toBe(roles.canvas)
     expect(seed('raised')).toBe(roles.raised)
     expect(seed('ink')).toBe(roles.ink)
@@ -157,10 +165,20 @@ describe('the Chiri theme', () => {
     expect(seed('hairline')).toBe(roles.hairline)
     expect(seed('scrollbar')).toBe(roles.scrollbar)
   })
+
+  it('matches the Electron window background', () => {
+    const main = readFileSync(
+      join(__dirname, '..', '..', 'electron', 'main', 'index.ts'),
+      'utf8',
+    )
+    expect(/CANVAS_COLOR = '(#[0-9a-f]+)'/.exec(main)?.[1]).toBe(
+      DEFAULT_THEME.tokens.roles.canvas,
+    )
+  })
 })
 
 describe('theme options', () => {
-  it('lists the Chiri theme first, then every palette', () => {
+  it('lists the Chiri theme first, then every Palette', () => {
     expect(THEME_OPTIONS).toHaveLength(25)
     expect(THEME_OPTIONS[0]).toBe(CHIRI_THEME)
   })
