@@ -12,6 +12,7 @@ import {
   acceptAtCursor,
   type EditorHandle,
   rejectAtCursor,
+  stepSuggestionFromCursor,
 } from './suggestion-commands'
 import {
   activeAtCursor,
@@ -90,6 +91,8 @@ export const suggestionKeymap = Prec.highest(
     { key: 'Escape', run: escapeAtCursor },
     { key: 'Ctrl-h', run: stepVersionAtCursor(-1) },
     { key: 'Ctrl-l', run: stepVersionAtCursor(1) },
+    { key: 'Alt-]', run: stepSuggestionFromCursor(1) },
+    { key: 'Alt-[', run: stepSuggestionFromCursor(-1) },
     { key: 'Tab', run: focusOpenCard(false), shift: focusOpenCard(true) },
   ]),
 )
