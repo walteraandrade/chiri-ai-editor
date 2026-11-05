@@ -102,7 +102,7 @@ scripts/
 - One branch per issue, from `main`: `feat/ | fix/ | chore/ | refactor/ | docs/ | test/` + short kebab slug, max 40 chars.
 - Commit messages: short, imperative, conventional prefix. No `Co-Authored-By` or other authorship trailers.
 - PR body: use the `pr` skill, filling [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Start with `Closes #N`.
-- Squash merge only.
+- Squash merge only. A ruleset on `main` requires the `checks` job and allows only squash; its JSON is `.github/ruleset.json`, applied with `.github/apply-ruleset.sh`.
 
 ## Definition of done (every slice)
 
