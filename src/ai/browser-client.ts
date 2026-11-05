@@ -5,6 +5,7 @@ import {
 } from './client'
 import { resolveModel } from './default-model'
 import { type AiCallLogTarget, appendAiCall, enrichAiCall } from './dev-log'
+import { readModelChoice } from './model-choice'
 
 export const BROWSER_PLACEHOLDER_KEY = 'browser-placeholder-key'
 
@@ -34,7 +35,8 @@ export const createBrowserModelClient = (): ModelClient =>
   createModelClient(
     browserClientConfig({
       origin: window.location.origin,
-      configuredModel: __OPENROUTER_MODEL__,
+      configuredModel:
+        readModelChoice(window.localStorage) ?? __OPENROUTER_MODEL__,
       dev: import.meta.env.DEV,
       logTarget: window,
     }),

@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef } from 'react'
 import { appendReviewDrop } from '../ai/dev-log'
 import { createLazyModelClient } from '../ai/lazy-client'
+import { MODEL_CHANGED_EVENT } from '../ai/model-choice'
 import { createEditorView } from '../editor/create-editor-view'
 import {
   bindDocumentControls,
@@ -93,7 +94,10 @@ export function EditorPane({
     emitReviewControls(bindReviewControls(view))
     emitDocumentControls(bindDocumentControls(view))
     const cancelPreload = whenIdle(client.preload)
+    const onModelChanged = () => client.reset()
+    window.addEventListener(MODEL_CHANGED_EVENT, onModelChanged)
     return () => {
+      window.removeEventListener(MODEL_CHANGED_EVENT, onModelChanged)
       cancelPreload()
       emitReviewControls(null)
       emitDocumentControls(null)
