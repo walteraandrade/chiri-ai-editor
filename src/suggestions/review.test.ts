@@ -7,6 +7,7 @@ import {
   acceptAllPlan,
   DEFAULT_REVIEW_FOCUS,
   firstReviewSuggestion,
+  MAX_REVIEW_CHARS,
   mapBlockRange,
   occupiedBlockIds,
   openReviewCount,
@@ -15,6 +16,8 @@ import {
   reviewNoticeText,
   reviewSummary,
   reviewTaskLabel,
+  reviewTooLarge,
+  reviewTooLargeText,
 } from './review'
 import {
   beginRefine,
@@ -498,5 +501,22 @@ describe('reviewNoticeText', () => {
     })
     expect(text).toContain('Review: 2 suggestions')
     expect(text).toMatch(/took too long/i)
+  })
+})
+
+describe('review size limit', () => {
+  it('accepts a Document up to the limit and refuses one over it', () => {
+    expect(reviewTooLarge(MAX_REVIEW_CHARS)).toBe(false)
+    expect(reviewTooLarge(MAX_REVIEW_CHARS + 1)).toBe(true)
+  })
+
+  it('covers the largest skill file seen on the maintainer machine with room to spare', () => {
+    expect(reviewTooLarge(60_000)).toBe(false)
+  })
+
+  it('says how big the Document is and what to do', () => {
+    expect(reviewTooLargeText(130_400)).toBe(
+      'Review stopped: the Document is 130 KB and a pass takes up to 120 KB. Select a part and ask instead.',
+    )
   })
 })

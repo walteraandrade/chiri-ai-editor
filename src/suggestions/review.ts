@@ -176,3 +176,11 @@ export const reviewNoticeText = ({
     : added === 0
       ? describeError(error)
       : `${reviewSummary({ added, stopped: false })}. ${describeError(error)}`
+
+export const MAX_REVIEW_CHARS = 120_000
+
+export const reviewTooLarge = (documentLength: number): boolean =>
+  documentLength > MAX_REVIEW_CHARS
+
+export const reviewTooLargeText = (documentLength: number): string =>
+  `Review stopped: the Document is ${Math.round(documentLength / 1000)} KB and a pass takes up to ${MAX_REVIEW_CHARS / 1000} KB. Select a part and ask instead.`

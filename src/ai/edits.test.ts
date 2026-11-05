@@ -225,6 +225,36 @@ describe('junk guard', () => {
     expect(isJunkReplacement('Item one two three four.', 'Done.')).toBe(false)
   })
 
+  it('flags a chatty opener the Block did not have', () => {
+    expect(
+      isJunkReplacement(
+        'Smoke tests now run before every deploy to customers.',
+        "Sure! Here's the improved version of that paragraph for you.",
+      ),
+    ).toBe(true)
+    expect(
+      isJunkReplacement(
+        'Thank you for reading our long pipeline guide today.',
+        'Thank you for reading our pipeline guide today.',
+      ),
+    ).toBe(false)
+  })
+
+  it('flags a Replacement that shares nothing with a substantial Block', () => {
+    expect(
+      isJunkReplacement(
+        'Smoke tests now run before every single deploy reaches customers.',
+        'The weather tomorrow looks sunny with gentle coastal breezes.',
+      ),
+    ).toBe(true)
+    expect(
+      isJunkReplacement(
+        'Smoke tests now run before every single deploy reaches customers.',
+        'Every deploy gets smoke tests first.',
+      ),
+    ).toBe(false)
+  })
+
   it('does not count Markdown syntax as words', () => {
     expect(isJunkReplacement(LONG, '## - * 1.')).toBe(true)
     expect(isJunkReplacement(LONG, '- Smoke tests\n- Canary')).toBe(false)
