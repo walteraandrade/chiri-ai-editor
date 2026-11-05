@@ -8,7 +8,7 @@ import {
   buildTargetPrompt,
   SYSTEM_PROMPT,
 } from './prompts'
-import { QUICK_ACTIONS } from './quick-actions'
+import { QUICK_ACTIONS, quickActionsFor } from './quick-actions'
 
 const DOC = [
   '# Guide',
@@ -57,16 +57,28 @@ describe('SYSTEM_PROMPT', () => {
 })
 
 describe('QUICK_ACTIONS', () => {
-  it('exports the four Quick actions with an Instruction each', () => {
+  it('exports the Quick actions with an Instruction each', () => {
     expect(QUICK_ACTIONS.map((action) => action.label)).toEqual([
       'Shorter',
       'Clearer',
       'More formal',
       'Fix grammar',
+      'Make this an instruction',
+      'Cut what the agent already knows',
     ])
     for (const action of QUICK_ACTIONS) {
       expect(action.instruction.length).toBeGreaterThan(10)
     }
+  })
+
+  it('offers the skill actions only for a skill', () => {
+    expect(quickActionsFor(false).map((action) => action.id)).toEqual([
+      'shorter',
+      'clearer',
+      'more-formal',
+      'fix-grammar',
+    ])
+    expect(quickActionsFor(true)).toEqual(QUICK_ACTIONS)
   })
 
   it('has unique ids', () => {
