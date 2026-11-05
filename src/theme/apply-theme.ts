@@ -6,6 +6,7 @@ import {
   type ThemeTokens,
   themeVariables,
 } from './tokens'
+import { currentVariantKey, variantByKey } from './wada-prototype'
 
 const setVariables = (root: HTMLElement, tokens: ThemeTokens | null): void => {
   for (const name of THEME_VARIABLE_NAMES) root.style.removeProperty(name)
@@ -30,6 +31,7 @@ export const applyTheme = (
 export const applyInitialTheme = (): void =>
   applyTheme(
     document.documentElement,
-    activeTheme(loadThemeChoice(getLocalStorage()), initialOmarchyTheme),
+    variantByKey(currentVariantKey())?.theme ??
+      activeTheme(loadThemeChoice(getLocalStorage()), initialOmarchyTheme),
     { crossfade: false },
   )

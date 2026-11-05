@@ -109,6 +109,6 @@ export const browserWebKit: PlatformKitFactory<MarkdownFileHandle> =
     storage: getLocalStorage(),
     files: browserFiles(),
     now: Date.now,
-    hasApiKey: __HAS_OPENROUTER_KEY__,
+    hasApiKey: __HAS_OPENROUTER_KEY__ || import.meta.env.DEV,
     onHide: flushWhenPageHides,
   }))

@@ -254,7 +254,7 @@ export const browserElectronKit: PlatformKitFactory<string> =
       external: createElectronExternal(api),
       launches: createElectronLaunches(api),
       now: Date.now,
-      hasApiKey: __HAS_OPENROUTER_KEY__,
+      hasApiKey: __HAS_OPENROUTER_KEY__ || import.meta.env.DEV,
       onHide: flushWhenPageHides,
     }
   })

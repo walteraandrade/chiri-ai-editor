@@ -59,6 +59,7 @@ import { type FileArrival, useMarkdownFile } from './use-markdown-file'
 import { useTheme } from './use-theme'
 import { useVersionTexts } from './use-version-texts'
 import { VersionBar } from './VersionBar'
+import { WadaPrototypeBar } from './WadaPrototypeBar'
 
 type AppProps<Ref> = {
   readonly kit: PlatformKit<Ref>
@@ -392,6 +393,9 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           />
         </div>
       </main>
+      {import.meta.env.DEV ? (
+        <WadaPrototypeBar current={theme.variant} onChange={theme.setVariant} />
+      ) : null}
       <div className="sticky bottom-4 z-30 ml-4 hidden w-fit gap-2 bg-canvas text-sm sm:flex">
         {theme.omarchy ? (
           <ThemeToggle
