@@ -29,3 +29,7 @@ A rewrite that ignores the surrounding tone feels pasted in. Sending the whole D
 
 - **Target only:** cheapest, but blind to tone and topic.
 - **Whole Document on every request:** best tone match, but more tokens. A size limit for huge Documents would also be needed (backlog).
+
+## Size limit for a Review pass
+
+The whole Document goes on every Review request, so a Review pass refuses a Document over 120,000 characters (about 30,000 input tokens, twice the largest skill file seen) and says to select a part and ask instead. The limit is `MAX_REVIEW_CHARS` in `src/suggestions/review.ts`.
