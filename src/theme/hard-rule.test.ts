@@ -36,7 +36,45 @@ const FORBIDDEN: readonly (readonly [string, RegExp, string])[] = [
   ],
 ]
 
+const AT_REST_IN_STYLESHEETS: readonly (readonly [string, RegExp, string])[] = [
+  ['text-shadow', /text-shadow:/, '.a { text-shadow: 0 0 1px red; }'],
+  ['filter', /(^|[\s;{])(backdrop-)?filter:/, '.a { filter: blur(3px); }'],
+  ['partial opacity', /opacity:\s*0?\.\d/, '.a { opacity: 0.5; }'],
+]
+
+const atRest = (css: string): string =>
+  css.replace(/@keyframes[^{]+\{[\s\S]*?\n\}/g, '')
+
 describe('the hard rule', () => {
+  it('reads the renderer sources', () => {
+    const files = sourceFiles(SRC)
+    expect(files.some((file) => file.endsWith('index.css'))).toBe(true)
+    expect(files.some((file) => file.endsWith('App.tsx'))).toBe(true)
+  })
+
+  it.each(AT_REST_IN_STYLESHEETS)(
+    'recognizes %s',
+    (_label, pattern, sample) => {
+      expect(pattern.test(atRest(sample))).toBe(true)
+    },
+  )
+
+  it('lets a stylesheet animate through what it may not hold', () => {
+    const css = '@keyframes a {\n  from {\n    opacity: 0.5;\n  }\n}\n.b {}\n'
+    for (const [, pattern] of AT_REST_IN_STYLESHEETS)
+      expect(pattern.test(atRest(css))).toBe(false)
+  })
+
+  it.each(AT_REST_IN_STYLESHEETS)(
+    'finds no %s at rest in the stylesheets',
+    (_label, pattern) => {
+      const offenders = sourceFiles(SRC)
+        .filter((file) => file.endsWith('.css'))
+        .filter((file) => pattern.test(atRest(readFileSync(file, 'utf8'))))
+      expect(offenders).toEqual([])
+    },
+  )
+
   it.each(FORBIDDEN)('recognizes %s', (_label, pattern, sample) => {
     expect(pattern.test(sample)).toBe(true)
   })

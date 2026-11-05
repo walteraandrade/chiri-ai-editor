@@ -107,6 +107,7 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 - **Shape:** square (0px).
 - **Default:** `--color-fill` with a hairline and ink text; hover `--color-fill-hover`; press scales to 0.96 in 120ms.
 - **Primary (Accept, Accept all):** the AI color with canvas-colored text.
+- **Disabled:** no fill, a dashed hairline and faint text, since a Palette cannot dim a color.
 - **Busy:** a slow sweep of `--color-ai-glow` across the button.
 
 ### Chips (Quick actions)

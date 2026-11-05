@@ -380,21 +380,26 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           />
         </div>
       </main>
-      <div className="sticky bottom-4 z-30 ml-4 flex w-fit gap-2 bg-canvas text-sm">
-        <button
-          type="button"
-          className="cm-ai-button"
-          onClick={() => setPreferencesOpen(true)}
-        >
-          Preferences
-        </button>
-        <button
-          type="button"
-          className="cm-ai-button"
-          onClick={() => setModelOpen(true)}
-        >
-          Model
-        </button>
+      <div className="pointer-events-none sticky bottom-0 z-30">
+        <div className="pointer-events-auto mb-4 ml-4 flex w-fit gap-2 bg-canvas text-sm">
+          <button
+            type="button"
+            className="cm-ai-button"
+            onClick={() => setPreferencesOpen(true)}
+          >
+            Preferences
+          </button>
+          <button
+            type="button"
+            className="cm-ai-button"
+            onClick={() => setModelOpen(true)}
+          >
+            Model
+          </button>
+        </div>
+        {key.present ? null : (
+          <MissingKeyBanner onSetKey={key.settings && key.openDialog} />
+        )}
       </div>
       {preferencesOpen ? (
         <PreferencesDialog
@@ -410,9 +415,6 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         />
       ) : null}
       <Toast message={toast} onDismiss={dismissToast} />
-      {key.present ? null : (
-        <MissingKeyBanner onSetKey={key.settings && key.openDialog} />
-      )}
       {key.settings && key.state && key.dialogOpen ? (
         <KeyDialog
           settings={key.settings}

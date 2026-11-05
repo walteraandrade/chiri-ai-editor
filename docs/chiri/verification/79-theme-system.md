@@ -22,7 +22,7 @@ A script walked every visible element in the running app and read its computed t
 
 What the scans caught, all fixed and the affected case rescanned:
 - The key hint inside Accept fell under AA in every theme (1.02 to 3.22).
-- Disabled buttons fell under AA in `It Don't Mean a Thing` (4.18), on New skill and the Key dialog. They now sit on the raised color.
+- Disabled buttons fell under AA in `It Don't Mean a Thing` (4.18), on New skill and the Key dialog. They now have no fill and a dashed hairline, which also tells them from enabled buttons in every palette.
 - One alpha reading on a Preferences row was the hover transition, in motion, so it was left alone.
 
 Not scanned: the Leave dialog, the frontmatter panel, and hover states other than that one. They use the same tokens, and `src/theme/hard-rule.test.ts` covers their sources, but no one looked at them in each theme.
@@ -43,7 +43,7 @@ Sources: `src/theme/hard-rule.test.ts` (no `color-mix`, shadow, ring, alpha colo
 | The choice survives a reload (`chiri.theme`) | Web | Pass |
 | The choice is stored | Electron | Pass; a restart was not tried |
 | No choice stored: the Chiri theme, 25 rows, no Omarchy row, no prototype bar | Electron, built | Pass |
-| The button is reachable at 400 px wide | Web | Pass (the bottom bar used to hide under 640 px) |
+| The button can be clicked at 400 px wide, with and without the Missing key banner | Web | Pass, by hit test (the bar used to hide under 640 px, and the banner used to cover it) |
 | The checked row takes focus on open | Web | Pass |
 
 ## Ellington credits
@@ -53,7 +53,7 @@ Titles were checked against secondary sources, not ASCAP or BMI: [Learn Jazz Sta
 ## Review
 
 First pass on three axes: Standards, Spec and TDD. Fixed from it:
-- Boxes that vanished once every tint became the raised color: the Key dialog notice, the frontmatter proposal, unfocused inputs, the Timeline line (invisible on 11 palettes), Library rows.
+- Boxes that vanished once every tint became the raised color: the Key dialog notice, the frontmatter proposal, unfocused inputs, the Timeline line (invisible on 12 palettes), Library rows.
 - The Active Suggestion looked like the others in 19 palettes; it now has a 1px AI underline.
 - `focus-visible:ring-1` in the Key dialog was a box-shadow, and `hover:brightness-110` on the problems badge was a filter.
 - The Preferences button hid under 640 px.
@@ -67,7 +67,10 @@ Kept, with the reason:
 - The bubble's orbit and the sweeps pass through in-between tones: they are motion, which the ADR allows.
 - The relay in the preload repeats `onLaunchFile`: one more copy did not earn a helper.
 
-A second pass on the fixes is still to run.
+Second pass, on those fixes. Fixed from it:
+- Disabled buttons looked enabled in several palettes, since faint can equal ink or accent.
+- The Missing key banner covered the bottom bar. The bar and the banner now stack.
+- `src/theme/hard-rule.test.ts` could pass on an empty file list, and it missed `text-shadow`, `filter` and partial `opacity` at rest in the stylesheets.
 
 ## Open for the maintainer
 

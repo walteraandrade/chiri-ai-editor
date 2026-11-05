@@ -387,7 +387,8 @@
 
 .cm-ai-button:disabled,
 .cm-ai-button:disabled:hover {
-  background: var(--color-raised);
+  border-style: dashed;
+  background: transparent;
   color: var(--color-ink-faint);
   cursor: default;
 }
