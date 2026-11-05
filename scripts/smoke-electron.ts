@@ -48,13 +48,21 @@ const child = spawn(
   { stdio: 'inherit', env: { ...process.env, ELECTRON_ENABLE_LOGGING: '1' } },
 )
 
-const run = async () => {
-  const page = await waitForPage(Date.now() + TIMEOUT_MS)
+const waitForRender = async (url: string, deadline: number): Promise<void> => {
   const rendered = await evaluate(
-    page.webSocketDebuggerUrl,
+    url,
     "document.querySelector('#root')?.childElementCount > 0",
-  )
-  if (!isRendered(rendered)) throw new Error('The window is blank')
+  ).catch(() => false)
+  if (isRendered(rendered)) return
+  if (Date.now() > deadline) throw new Error('The window is blank')
+  await sleep(POLL_MS)
+  return waitForRender(url, deadline)
+}
+
+const run = async () => {
+  const deadline = Date.now() + TIMEOUT_MS
+  const page = await waitForPage(deadline)
+  await waitForRender(page.webSocketDebuggerUrl, deadline)
   console.log('The built app opened a window with content.')
 }
 
