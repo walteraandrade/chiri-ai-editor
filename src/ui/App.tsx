@@ -55,7 +55,7 @@ import { useHistoryView } from './use-history-view'
 import { useKeyState } from './use-key-state'
 import { useLeavePrompt } from './use-leave-prompt'
 import { useLibrary } from './use-library'
-import { type FileArrival, useMarkdownFile } from './use-markdown-file'
+import { useMarkdownFile } from './use-markdown-file'
 import { useTheme } from './use-theme'
 import { useVersionTexts } from './use-version-texts'
 import { VersionBar } from './VersionBar'
@@ -137,29 +137,6 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   )
   const historyView = useHistoryView(history, focusEditor)
   const { mode, versions, close: closeHistory } = historyView
-  const onOpened = useCallback(
-    ({ ref, text, name }: FileArrival<Ref>) => {
-      history.select(ref)
-      history.opened({ text, name })
-      closeHistory()
-    },
-    [history, closeHistory],
-  )
-  const onReloaded = useCallback(
-    ({ ref, text }: FileArrival<Ref>) => {
-      history.select(ref)
-      history.external({ text })
-      closeHistory()
-    },
-    [history, closeHistory],
-  )
-  const onSaved = useCallback(
-    ({ ref, text, name }: FileArrival<Ref>) => {
-      history.select(ref)
-      history.saved({ text, name })
-    },
-    [history],
-  )
   const leavePrompt = useLeavePrompt()
   const file = useMarkdownFile({
     files,
@@ -167,11 +144,9 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     start,
     external,
     controls: documentControls,
+    history,
     notify: showToast,
-    onOpened,
-    onReloaded,
-    onSaving: history.saving,
-    onSaved,
+    onReplaced: closeHistory,
     askLeave: leavePrompt.ask,
   })
   const openLaunched = useEffectEvent((ref: Ref) => void file.openRef(ref))
@@ -209,7 +184,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   })
   const refreshFrontmatter = frontmatter.refresh
   const frontmatterPanel = useRef<HTMLElement>(null)
-  const { edited, openCreated } = file
+  const { edited, openCreated, restore: restoreVersion } = file
   const onChange = useCallback(
     (text: string) => {
       edited(text)
@@ -270,15 +245,12 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
 
   const restore = useCallback(
     (version: VersionSummary, text: string): void => {
-      if (documentControls === null) return
-      documentControls.restore(text)
-      history.restored({ text, from: version.id })
-      closeHistory()
+      if (!restoreVersion(version.id, text)) return
       showToast(
         `Restored the Version from ${formatClock(version.at, Date.now())}`,
       )
     },
-    [documentControls, history, closeHistory, showToast],
+    [restoreVersion, showToast],
   )
   const onReviewEnd = useCallback((revealed: boolean) => {
     if (!revealed && document.activeElement === document.body)

@@ -10,6 +10,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Timeline** | The bar under the header, one dot per Version. A dot shows that Version against the current text, with Restore. |
 | **Full history** | The page "How this Document changed", opened from the Timeline: one entry per Version, newest first, with the lines it changed. |
 | **Restore** | Replace the Document with a Version's text. Drops every Suggestion, takes one undo step, and records a Restored Version. |
+| **Lifecycle** | The open, reload, save and restore of a Document, and what each records in the History, in order: the old text is settled before the key changes, then the new Version is recorded. The History is where it writes, not a synonym. |
 | **Block** | A top-level node of the CodeMirror Markdown syntax tree: paragraph, heading, list, blockquote, code block. A whole list is one Block. |
 | **Target** | The range an AI request is about: the selection, or the Block under the cursor when nothing is selected. |
 | **Neighbors** | The 2 Blocks before and the 2 after the Target, plus the document title (first `#`) and the current section heading. Sent as context. |

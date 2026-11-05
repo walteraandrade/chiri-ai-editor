@@ -150,12 +150,10 @@ describe('historyEventOf', () => {
     ])
   })
 
-  it('reports Open and Restore as a replace with the text before it', () => {
-    const { handle, events, clear } = createHandle()
+  it('reports nothing for Open and Restore: the Document lifecycle records them', () => {
+    const { handle, events } = createHandle()
     replaceDocument(handle, '# Opened')
-    expect(events.at(-1)).toEqual({ type: 'replaced', before: DOC })
-    clear()
     replaceDocument(handle, DOC, 'input.restore')
-    expect(events.at(-1)).toEqual({ type: 'replaced', before: '# Opened' })
+    expect(events.filter((event) => event !== null)).toEqual([])
   })
 })

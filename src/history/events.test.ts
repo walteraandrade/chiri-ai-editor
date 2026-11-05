@@ -4,7 +4,6 @@ import { applyHistoryEvent } from './events'
 const createRecorder = () => ({
   edited: vi.fn(),
   accepted: vi.fn(),
-  replaced: vi.fn(),
 })
 
 describe('applyHistoryEvent', () => {
@@ -25,11 +24,5 @@ describe('applyHistoryEvent', () => {
     } as const
     applyHistoryEvent(recorder, event)
     expect(recorder.accepted).toHaveBeenCalledWith(event)
-  })
-
-  it('passes a replace on with the text before it', () => {
-    const recorder = createRecorder()
-    applyHistoryEvent(recorder, { type: 'replaced', before: 'old' })
-    expect(recorder.replaced).toHaveBeenCalledWith('old')
   })
 })
