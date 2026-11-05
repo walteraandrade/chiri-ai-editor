@@ -82,6 +82,7 @@ type PlacementSpec = {
   readonly position: (
     view: EditorView,
     rangeOf: (pos: number) => ChangeRange,
+    heightOf: () => number,
   ) => Pick<TooltipView, 'getCoords' | 'resize'>
 }
 
@@ -103,9 +104,15 @@ const placements: Readonly<Record<CardPlacement, PlacementSpec>> = {
     side: { above: false, strictSide: true },
     attrs: { style: `width: ${MARGIN_CARD_WIDTH}px` },
     alwaysShowRationale: true,
-    position: (view, rangeOf) => ({
+    position: (view, rangeOf, heightOf) => ({
       getCoords: (pos) =>
-        inViewCoords(view, marginAnchorAt(view, pos), rangeOf(pos)),
+        inViewCoords(
+          view,
+          marginAnchorAt(view, pos),
+          rangeOf(pos),
+          undefined,
+          heightOf(),
+        ),
       resize: false,
     }),
   },
@@ -604,6 +611,7 @@ const cardCreator =
       ...placements[placement].position(
         view,
         (pos) => range ?? { from: pos, to: pos },
+        () => dom.offsetHeight,
       ),
       update: (update) => {
         sync(update.state)
