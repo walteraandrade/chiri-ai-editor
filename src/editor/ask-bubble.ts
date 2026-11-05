@@ -11,13 +11,13 @@ import {
   type Tooltip,
   type TooltipView,
 } from '@codemirror/view'
-import { QUICK_ACTIONS } from '../ai/quick-actions'
+import { quickActionsFor } from '../ai/quick-actions'
 import {
   freeTextInstruction,
   quickActionInstruction,
 } from '../suggestions/instruction'
 import { aiFlag } from './ai-flag'
-import { currentTarget } from './current-target'
+import { currentTarget, frontmatterOfDoc } from './current-target'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
@@ -147,7 +147,9 @@ const buildBubble = (view: EditorView) => {
     [aiFlag(), input],
   )
 
-  const buttons = QUICK_ACTIONS.map((action, index) =>
+  const buttons = quickActionsFor(
+    frontmatterOfDoc(view.state.doc) !== undefined,
+  ).map((action, index) =>
     el(
       'button',
       {
