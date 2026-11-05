@@ -631,11 +631,12 @@ const creatorFor = (
   id: SuggestionId,
 ): ((view: EditorView) => TooltipView) => {
   const key = `${placement}:${kind}:${id}`
-  const cached = creatorCache.get(key)
-  if (cached) return cached
-  if (creatorCache.size >= CREATOR_CACHE_LIMIT) creatorCache.clear()
-  const created = cardCreator(kind, placement)
+  const created = creatorCache.get(key) ?? cardCreator(kind, placement)
+  creatorCache.delete(key)
   creatorCache.set(key, created)
+  const [oldest] = creatorCache.keys()
+  if (creatorCache.size > CREATOR_CACHE_LIMIT && oldest !== undefined)
+    creatorCache.delete(oldest)
   return created
 }
 
