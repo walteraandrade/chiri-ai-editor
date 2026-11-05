@@ -5,6 +5,7 @@ import { countWords } from '../../src/diff/count-words'
 import type { Unsaved } from '../../src/document/unsaved'
 import { isCause } from '../../src/history/cause'
 import type { MarkSavedInput, RecordInput } from '../../src/history/store'
+import { idsToThin } from '../../src/history/thin'
 import type {
   VersionCause,
   VersionId,
@@ -54,6 +55,7 @@ export type HistoryDb = {
   readonly loadUnsaved: (path: string) => Unsaved | null
   readonly saveUnsaved: (path: string, unsaved: Unsaved, at: number) => void
   readonly clearUnsaved: (path: string) => void
+  readonly thin: (path: string, now: number) => number
   readonly close: () => void
 }
 
@@ -160,6 +162,13 @@ export const openHistoryDb = (file: string): HistoryDb => {
     clearUnsaved: db.prepare(
       'delete from drafts where file_id in (select id from files where path = ?)',
     ),
+    thinList: db.prepare(
+      'select v.id, v.at, v.cause, v.saved from versions v join files f on f.id = v.file_id where f.path = ? order by v.id',
+    ),
+    deleteVersion: db.prepare('delete from versions where id = ?'),
+    dropOrphanBlobs: db.prepare(
+      'delete from blobs where hash not in (select blob_hash from versions) and hash not in (select base_hash from drafts)',
+    ),
   }
 
   const fileIdOf = (path: string): number => {
@@ -253,6 +262,23 @@ export const openHistoryDb = (file: string): HistoryDb => {
     },
     clearUnsaved: (path) => {
       statements.clearUnsaved.run(path)
+    },
+    thin: (path, now) => {
+      const candidates = statements.thinList.all(path).map((row) => ({
+        id: numberOf(row.id),
+        at: numberOf(row.at),
+        kind: causeOf(row.cause).kind,
+        saved: row.saved !== null,
+      }))
+      const doomed = idsToThin(candidates, now)
+      if (doomed.length === 0) return 0
+      inTransaction(db, () => {
+        doomed.forEach((id) => {
+          statements.deleteVersion.run(id)
+        })
+        statements.dropOrphanBlobs.run()
+      })
+      return doomed.length
     },
     close: () => {
       if (!open) return

@@ -299,3 +299,50 @@ describe('unsaved text in drafts', () => {
     expect(text).toEqual({ text: 'killed mid-edit' })
   })
 })
+
+describe('thin', () => {
+  beforeEach(() => {
+    directory = mkdtempSync(join(tmpdir(), 'chiri-history-'))
+    file = join(directory, 'history.sqlite')
+  })
+
+  afterEach(() => {
+    for (const db of opened.splice(0)) db.close()
+    rmSync(directory, { recursive: true, force: true })
+  })
+
+  const DAY = 86_400_000
+  const NOW = 200 * DAY
+
+  it('removes old Edited Versions inside the same hour and their orphan blobs', () => {
+    const db = open()
+    const base = NOW - 10 * DAY
+    db.record(PATH, edit('one', base))
+    db.record(PATH, edit('one two', base + 60_000))
+    db.record(PATH, edit('one two three', base + 120_000))
+    db.record(PATH, edit('one two three four', base + 180_000))
+    db.record(PATH, edit('one two three four five', NOW))
+    expect(db.thin(PATH, NOW)).toBe(2)
+    expect(db.list(PATH).map(({ words }) => words)).toEqual([1, 4, 5])
+    expect(
+      inspect((raw) => raw.prepare('select count(*) as n from blobs').get()),
+    ).toEqual({ n: 3 })
+  })
+
+  it('keeps a text a draft still builds on', () => {
+    const db = open()
+    const base = NOW - 10 * DAY
+    db.record(PATH, edit('old', base))
+    db.record(PATH, edit('old text', base + 1000))
+    db.record(PATH, edit('newest', NOW))
+    db.saveUnsaved(PATH, { text: 'old text plus', base: 'old' }, NOW)
+    db.thin(PATH, NOW)
+    expect(db.loadUnsaved(PATH)).toEqual({ text: 'old text plus', base: 'old' })
+  })
+
+  it('does nothing for a History with nothing to thin', () => {
+    const db = open()
+    db.record(PATH, edit('one', NOW - 1000))
+    expect(db.thin(PATH, NOW)).toBe(0)
+  })
+})
