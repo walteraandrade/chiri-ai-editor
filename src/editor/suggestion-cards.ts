@@ -39,6 +39,7 @@ import { el, syncChildren } from './dom'
 import { cycleTab } from './focus-cycle'
 import { interactionField } from './interaction-state'
 import { inViewCoords, textRectAt } from './keep-in-view'
+import { type RefineDraft, restorableDraft } from './refine-draft'
 import {
   closeRefineEffect,
   openRefineEffect,
@@ -255,6 +256,20 @@ type RefineForm = {
   readonly input: HTMLInputElement
 }
 
+const refineDrafts = new WeakMap<EditorView, RefineDraft>()
+
+const rememberDraft = (view: EditorView, patch: Partial<RefineDraft>): void => {
+  const owner = refineInputOpenFor(view.state)
+  if (owner === null) return
+  const current = restorableDraft(refineDrafts.get(view), owner)
+  refineDrafts.set(view, {
+    owner,
+    value: current?.value ?? '',
+    focused: current?.focused ?? false,
+    ...patch,
+  })
+}
+
 const createRefineForm = (view: EditorView): RefineForm => {
   const input = el('input', {
     class: 'cm-ai-bubble-input',
@@ -266,11 +281,17 @@ const createRefineForm = (view: EditorView): RefineForm => {
       spellcheck: 'false',
     },
     on: {
+      input: () => rememberDraft(view, { value: input.value }),
+      focus: () => rememberDraft(view, { focused: true }),
+      blur: () => {
+        if (input.isConnected) rememberDraft(view, { focused: false })
+      },
       keydown: (event) => {
         if (event.key === 'Escape') {
           event.preventDefault()
           event.stopPropagation()
           input.value = ''
+          refineDrafts.delete(view)
           view.dispatch({ effects: closeRefineEffect.of(null) })
           view.focus()
         } else if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
@@ -290,6 +311,7 @@ const createRefineForm = (view: EditorView): RefineForm => {
           const text = input.value.trim()
           if (id === null || text === '') return
           input.value = ''
+          refineDrafts.delete(view)
           view.state
             .facet(suggestionActionsFacet)
             ?.refine(view, id, freeTextInstruction(text))
@@ -581,12 +603,18 @@ const cardCreator =
     let renderedKey = ''
     let range: ChangeRange | null = null
     let renderedId: SuggestionId | null = null
-    let formOwner: SuggestionId | null = null
+    const restored = restorableDraft(
+      refineDrafts.get(view),
+      refineInputOpenFor(view.state),
+    )
+    if (restored) refineForm.input.value = restored.value
+    let formOwner: SuggestionId | null = restored?.owner ?? null
     const syncFormOwner = (state: EditorState): void => {
       const next = refineInputOpenFor(state)
       if (next === formOwner) return
       formOwner = next
       refineForm.input.value = ''
+      refineDrafts.delete(view)
     }
     const sync = (state: EditorState): void => {
       syncFormOwner(state)
@@ -613,6 +641,9 @@ const cardCreator =
         (pos) => range ?? { from: pos, to: pos },
         () => dom.offsetHeight,
       ),
+      mount: () => {
+        if (restored?.focused) refineForm.input.focus()
+      },
       update: (update) => {
         sync(update.state)
         if (openedRefine(update) && refineForm.form.isConnected)
