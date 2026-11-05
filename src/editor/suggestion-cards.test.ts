@@ -85,6 +85,34 @@ describe('Active Suggestion card', () => {
     expect(margin?.create).not.toBe(floating?.create)
   })
 
+  it('keeps its card while the same Suggestion stays active', () => {
+    expect(activeCard(stateWith(0))?.create).toBe(
+      activeCard(stateWith(OUTSIDE))?.create,
+    )
+  })
+
+  it('is rebuilt for another Suggestion, so a floating card picks its side again', () => {
+    const other = stateWith(30, [
+      beginEffect.of({
+        id: 'b',
+        from: 23,
+        to: 44,
+        source: 'block',
+        original: DOC.slice(23, 44),
+        instruction: quickActionInstruction('shorter'),
+      }),
+      resolveEffect.of({
+        id: 'b',
+        result: {
+          replacement: 'Second paragraph.',
+          rationale: 'Shorter.',
+          unchanged: false,
+        },
+      }),
+    ])
+    expect(activeCard(other)?.create).not.toBe(activeCard(stateWith(0))?.create)
+  })
+
   it('hides the Rationale while floating if the cursor is outside and nothing is hovered', () => {
     expect(contentFor('active', stateWith(OUTSIDE))).toMatchObject({
       showRationale: false,

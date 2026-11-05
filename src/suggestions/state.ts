@@ -266,6 +266,17 @@ export const rejectSuggestion = (
 ): SuggestionsState =>
   findSuggestion(state, id) === undefined ? state : without(state, id)
 
+export const restoreSuggestion = (
+  state: SuggestionsState,
+  suggestion: ReadySuggestion,
+  textAtRange: string,
+): SuggestionsState =>
+  findSuggestion(state, suggestion.id) !== undefined ||
+  textAtRange !== suggestion.original ||
+  state.items.some((item) => overlaps(item, suggestion))
+    ? state
+    : { ...state, items: [...state.items, suggestion] }
+
 export const rejectSuggestions = (
   state: SuggestionsState,
   ids: readonly SuggestionId[],
