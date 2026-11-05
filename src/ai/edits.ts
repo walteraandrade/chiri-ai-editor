@@ -9,12 +9,40 @@ const WORD = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu
 
 const wordCount = (text: string): number => text.match(WORD)?.length ?? 0
 
+export const UNRELATED_MIN_ORIGINAL_WORDS = 8
+
+const CHATTY_OPENER =
+  /^\s*(sure|certainly|of course|here is|here's|i'?m sorry|i cannot|i can'?t|as an ai|thank you|thanks)\b/i
+
+const contentWords = (text: string): ReadonlySet<string> =>
+  new Set(
+    (text.match(WORD) ?? [])
+      .map((word) => word.toLowerCase())
+      .filter((word) => word.length >= 4),
+  )
+
+const hasChattyOpener = (original: string, replacement: string): boolean =>
+  CHATTY_OPENER.test(replacement) && !CHATTY_OPENER.test(original)
+
+const sharesNoContent = (original: string, replacement: string): boolean => {
+  const kept = contentWords(original)
+  const proposed = [...contentWords(replacement)]
+  return (
+    wordCount(original) >= UNRELATED_MIN_ORIGINAL_WORDS &&
+    kept.size > 0 &&
+    proposed.length > 0 &&
+    proposed.every((word) => !kept.has(word))
+  )
+}
+
 export const isJunkReplacement = (
   original: string,
   replacement: string,
 ): boolean =>
-  wordCount(original) > JUNK_MIN_ORIGINAL_WORDS &&
-  wordCount(replacement) < JUNK_MAX_REPLACEMENT_WORDS
+  (wordCount(original) > JUNK_MIN_ORIGINAL_WORDS &&
+    wordCount(replacement) < JUNK_MAX_REPLACEMENT_WORDS) ||
+  hasChattyOpener(original, replacement) ||
+  sharesNoContent(original, replacement)
 
 export type DropReason =
   | 'unknown-block'
