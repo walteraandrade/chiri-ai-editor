@@ -77,13 +77,24 @@ const parseMarkSaved = (value: unknown): MarkSavedInput => {
 export const createHistoryHandlers = (
   db: HistoryDb,
   now: () => number,
-): HistoryHandlers => ({
-  list: (key) => db.list(parseKey(key)),
-  text: (key, id) => db.text(parseKey(key), parseId(id)),
-  record: (key, input) => db.record(parseKey(key), parseRecord(input)),
-  markSaved: (key, input) => db.markSaved(parseKey(key), parseMarkSaved(input)),
-  loadUnsaved: (key) => db.loadUnsaved(parseKey(key)),
-  saveUnsaved: (key, unsaved) =>
-    db.saveUnsaved(parseKey(key), parseUnsaved(unsaved), now()),
-  clearUnsaved: (key) => db.clearUnsaved(parseKey(key)),
-})
+): HistoryHandlers => {
+  const thinned = new Set<string>()
+  return {
+    list: (key) => {
+      const path = parseKey(key)
+      if (!thinned.has(path)) {
+        thinned.add(path)
+        db.thin(path, now())
+      }
+      return db.list(path)
+    },
+    text: (key, id) => db.text(parseKey(key), parseId(id)),
+    record: (key, input) => db.record(parseKey(key), parseRecord(input)),
+    markSaved: (key, input) =>
+      db.markSaved(parseKey(key), parseMarkSaved(input)),
+    loadUnsaved: (key) => db.loadUnsaved(parseKey(key)),
+    saveUnsaved: (key, unsaved) =>
+      db.saveUnsaved(parseKey(key), parseUnsaved(unsaved), now()),
+    clearUnsaved: (key) => db.clearUnsaved(parseKey(key)),
+  }
+}
