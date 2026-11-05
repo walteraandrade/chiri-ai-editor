@@ -155,7 +155,7 @@ export function NewSkillDialog({
           </button>
           <button
             type="submit"
-            className="cm-ai-button bg-accent-tint! text-accent-soft! disabled:bg-fill! disabled:text-ink-faint!"
+            className="cm-ai-button bg-accent-tint! text-accent-soft! disabled:bg-raised! disabled:text-ink-faint!"
             disabled={!draft.ready || busy}
             aria-busy={busy || undefined}
           >

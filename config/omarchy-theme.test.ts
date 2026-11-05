@@ -100,6 +100,15 @@ describe('omarchyTokens', () => {
     })
   })
 
+  it('picks a readable red for a dark theme without one', () => {
+    expect(
+      omarchyTokens(
+        { background: '#101010', foreground: '#eeeeee', accent: '#ff0000' },
+        'x',
+      )?.roles.danger,
+    ).toBe('#f87171')
+  })
+
   it('trusts an explicit mode over the background', () => {
     expect(
       omarchyTokens(

@@ -380,7 +380,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           />
         </div>
       </main>
-      <div className="sticky bottom-4 z-30 ml-4 hidden w-fit gap-2 bg-canvas text-sm sm:flex">
+      <div className="sticky bottom-4 z-30 ml-4 flex w-fit gap-2 bg-canvas text-sm">
         <button
           type="button"
           className="cm-ai-button"

@@ -1,29 +1,12 @@
 import { useEffect, useRef } from 'react'
-import { THEME_OPTIONS, type ThemeOption } from '../theme/catalog'
+import { omarchyOption, type ThemeOption, themesOfMode } from '../theme/catalog'
 import { OMARCHY_CHOICE, selectedOption } from '../theme/preference'
-import { type ThemeTokens, themeLabel } from '../theme/tokens'
 import type { ThemeState } from './use-theme'
 
 type PreferencesDialogProps = {
   readonly theme: ThemeState
   readonly onClose: () => void
 }
-
-const omarchyOption = (omarchy: ThemeTokens): ThemeOption => ({
-  id: OMARCHY_CHOICE,
-  title: 'Omarchy',
-  origin: `Follows ${themeLabel(omarchy.name)}`,
-  colors: [
-    { name: 'Canvas', hex: omarchy.roles.canvas },
-    { name: 'Raised', hex: omarchy.roles.raised },
-    { name: 'Ink', hex: omarchy.roles.ink },
-    { name: 'AI', hex: omarchy.roles.ai },
-  ],
-  tokens: omarchy,
-})
-
-const ofMode = (mode: ThemeTokens['mode']): readonly ThemeOption[] =>
-  THEME_OPTIONS.filter((option) => option.tokens.mode === mode)
 
 type ThemeRowProps = {
   readonly option: ThemeOption
@@ -74,9 +57,9 @@ type ThemeGroupProps = {
 function ThemeGroup({ label, options, selected, onChoose }: ThemeGroupProps) {
   return (
     <div>
-      <h4 className="mt-4 mb-1 text-ink-muted text-xs uppercase tracking-widest">
+      <h3 className="mt-4 mb-1 text-ink-muted text-xs uppercase tracking-widest">
         {label}
-      </h4>
+      </h3>
       {options.map((option) => (
         <ThemeRow
           key={option.id}
@@ -129,20 +112,20 @@ export function PreferencesDialog({ theme, onClose }: PreferencesDialogProps) {
           {theme.omarchy ? (
             <ThemeGroup
               label="This machine"
-              options={[omarchyOption(theme.omarchy)]}
+              options={[omarchyOption(OMARCHY_CHOICE, theme.omarchy)]}
               selected={selected}
               onChoose={theme.choose}
             />
           ) : null}
           <ThemeGroup
             label="Dark"
-            options={ofMode('dark')}
+            options={themesOfMode('dark')}
             selected={selected}
             onChoose={theme.choose}
           />
           <ThemeGroup
             label="Light"
-            options={ofMode('light')}
+            options={themesOfMode('light')}
             selected={selected}
             onChoose={theme.choose}
           />

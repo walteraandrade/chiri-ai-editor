@@ -13,15 +13,34 @@ const sourceFiles = (dir: string): readonly string[] =>
       : []
   })
 
-const FORBIDDEN: readonly (readonly [string, RegExp])[] = [
-  ['color-mix', /color-mix\(/],
-  ['box-shadow', /box-shadow:/],
-  ['shadow utility', /\bshadow-(float|lg|md|sm|xl)\b/],
-  ['alpha color utility', /\b(bg|text|border|ring|outline)-[a-z-]+\/\d+/],
-  ['alpha color function', /rgba?\([^)]*\/\s*0?\.\d+\)/],
+const FORBIDDEN: readonly (readonly [string, RegExp, string])[] = [
+  ['color-mix', /color-mix\(/, 'color-mix(in oklab, red, blue)'],
+  ['box-shadow', /box-shadow:|boxShadow/, 'boxShadow: "none"'],
+  ['shadow utility', /\bshadow-[a-z0-9]+\b/, 'p-2 shadow-2xl'],
+  ['ring utility', /\bring-[a-z0-9]+\b/, 'focus-visible:ring-1'],
+  [
+    'alpha color utility',
+    /\b(bg|text|border|ring|outline|fill|stroke|divide|decoration|caret|accent|placeholder|from|via|to)-[a-z-]+\/\d+/,
+    'hover:bg-accent/10',
+  ],
+  [
+    'alpha color function',
+    /(rgb|hsl)a?\([^)]*[,/]\s*0?\.\d+\s*\)/,
+    'rgba(0, 0, 0, 0.5)',
+  ],
+  ['alpha hex', /#[0-9a-f]{8}\b/i, '#ff800080'],
+  [
+    'filter utility',
+    /\b(brightness|backdrop-blur)-[a-z0-9]+/,
+    'hover:brightness-110',
+  ],
 ]
 
 describe('the hard rule', () => {
+  it.each(FORBIDDEN)('recognizes %s', (_label, pattern, sample) => {
+    expect(pattern.test(sample)).toBe(true)
+  })
+
   it.each(FORBIDDEN)('finds no %s in the renderer', (_label, pattern) => {
     const offenders = sourceFiles(SRC).filter((file) =>
       pattern.test(readFileSync(file, 'utf8')),

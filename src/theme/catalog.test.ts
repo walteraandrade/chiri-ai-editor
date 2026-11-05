@@ -1,7 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { BOOK_PALETTES, CHIRI_THEME, THEME_OPTIONS, themeById } from './catalog'
+import {
+  BOOK_PALETTES,
+  CHIRI_THEME,
+  omarchyOption,
+  THEME_OPTIONS,
+  themeById,
+  themesOfMode,
+} from './catalog'
 import { contrast, rgbOf } from './color'
 import wadaColors from './testing/wada-colors.json'
 import type { ThemeRoles } from './tokens'
@@ -156,6 +163,32 @@ describe('theme options', () => {
   it('lists the Chiri theme first, then every palette', () => {
     expect(THEME_OPTIONS).toHaveLength(25)
     expect(THEME_OPTIONS[0]).toBe(CHIRI_THEME)
+  })
+
+  it('splits the options by mode, with no option lost', () => {
+    const dark = themesOfMode('dark')
+    const light = themesOfMode('light')
+    expect(dark.every(({ tokens }) => tokens.mode === 'dark')).toBe(true)
+    expect(light.every(({ tokens }) => tokens.mode === 'light')).toBe(true)
+    expect(dark.length + light.length).toBe(THEME_OPTIONS.length)
+  })
+
+  it('shows every code the Chiri theme paints', () => {
+    const codes = CHIRI_THEME.colors.map(({ hex }) => hex)
+    for (const value of Object.values(CHIRI_THEME.tokens.roles))
+      expect(codes).toContain(value)
+  })
+
+  it('offers Omarchy with every code it paints', () => {
+    const option = omarchyOption('omarchy', {
+      name: 'tokyo-night',
+      mode: 'dark',
+      roles: CHIRI_THEME.tokens.roles,
+    })
+    expect(option.origin).toBe('Follows Tokyo Night')
+    expect(option.colors.map(({ hex }) => hex)).toEqual(
+      CHIRI_THEME.colors.map(({ hex }) => hex),
+    )
   })
 
   it('finds an option by id and answers null otherwise', () => {

@@ -22,6 +22,7 @@
 
 .cm-ai-suggestion.cm-ai-active {
   background: var(--color-raised);
+  border-bottom: 1px solid var(--color-ai);
 }
 
 .cm-ai-refine-failed {
@@ -87,7 +88,6 @@
 
 .cm-ai-pending,
 .cm-ai-refining {
-  background-color: var(--color-ai-wash);
   background-image: var(--cm-ai-sweep);
   background-size: 300% 100%;
   animation: cm-ai-shimmer 1.8s linear infinite;
@@ -316,7 +316,7 @@
   flex: 1;
   min-width: 0;
   padding: 0.4rem 0.65rem;
-  border: 0;
+  border: 1px solid var(--color-hairline);
   background: var(--color-fill);
   color: var(--color-ink-strong);
   font: inherit;
@@ -374,10 +374,6 @@
   color: var(--color-ai-ink);
 }
 
-.cm-ai-button-primary .cm-ai-kbd {
-  color: inherit;
-}
-
 .cm-ai-bubble-input:focus-visible,
 .cm-ai-chip:focus-visible,
 .cm-ai-button:focus-visible {
@@ -389,13 +385,11 @@
   outline: none;
 }
 
-.cm-ai-button:disabled {
+.cm-ai-button:disabled,
+.cm-ai-button:disabled:hover {
+  background: var(--color-raised);
   color: var(--color-ink-faint);
   cursor: default;
-}
-
-.cm-ai-button:disabled:hover {
-  background-color: var(--color-fill);
 }
 
 .cm-ai-button[aria-busy="true"] {
@@ -467,6 +461,10 @@
   color: var(--color-ink-muted);
   font: inherit;
   font-size: 0.75rem;
+}
+
+.cm-ai-button-primary .cm-ai-kbd {
+  color: inherit;
 }
 
 .cm-ai-rationale {

@@ -76,7 +76,7 @@ export function Timeline({
         className="relative h-8 flex-1"
         onKeyDown={onKeyDown}
       >
-        <div className="absolute inset-x-0 top-1/2 h-px bg-fill-hover" />
+        <div className="absolute inset-x-0 top-1/2 h-px bg-hairline" />
         {versions.map((version, index) => {
           const description = describeVersion(versions, version, clockOf)
           const clock = clockOf(version.at)
@@ -95,7 +95,7 @@ export function Timeline({
                 left: `${share * 100}%`,
                 width: `min(1.5rem, ${100 / gaps}%)`,
               }}
-              className={`group absolute top-1/2 grid h-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full transition-colors hover:bg-fill-hover focus-visible:outline-2 focus-visible:outline-accent ${selected ? 'bg-accent-tint outline outline-accent' : highlighted === version.id ? 'bg-fill-hover' : ''}`}
+              className={`group absolute top-1/2 grid h-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent ${selected ? 'bg-accent-tint outline outline-accent' : highlighted === version.id ? 'bg-raised' : ''}`}
             >
               <VersionMark mark={markOf(version.cause)} />
               <span

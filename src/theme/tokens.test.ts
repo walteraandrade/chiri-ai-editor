@@ -38,14 +38,35 @@ describe('themeVariables', () => {
     })
   })
 
-  it('names the same variables it writes', () => {
-    expect(THEME_VARIABLE_NAMES).toHaveLength(12)
+  it('names the variables it writes, so they can be cleared', () => {
+    const written = Object.keys(
+      themeVariables({
+        name: 'x',
+        mode: 'dark',
+        roles: {
+          canvas: '#000001',
+          raised: '#000002',
+          ink: '#000003',
+          faint: '#000004',
+          accent: '#000005',
+          ai: '#000006',
+          danger: '#000007',
+          selection: '#000008',
+          fill: '#000009',
+          fillHover: '#00000a',
+          hairline: '#00000b',
+          scrollbar: '#00000c',
+        },
+      }),
+    )
+    expect([...THEME_VARIABLE_NAMES].sort()).toEqual(written.sort())
   })
 })
 
 describe('themeLabel', () => {
   it('title-cases a slug', () => {
     expect(themeLabel('tokyo-night')).toBe('Tokyo Night')
-    expect(themeLabel('rose_pine moon')).toBe('Rose Pine Moon')
+    expect(themeLabel('vantablack')).toBe('Vantablack')
+    expect(themeLabel('rose_pine  moon')).toBe('Rose Pine Moon')
   })
 })

@@ -51,7 +51,6 @@
   --color-ai: var(--theme-ai);
   --color-ai-text: var(--theme-ai);
   --color-ai-tint: var(--theme-raised);
-  --color-ai-wash: transparent;
   --color-ai-glow: var(--theme-ai);
   --color-ai-ink: var(--theme-canvas);
 
@@ -123,7 +122,7 @@
 
 .theme-option:hover,
 .theme-option:has(:checked) {
-  background: var(--color-fill);
+  background: var(--color-canvas);
 }
 
 .theme-option-mark {

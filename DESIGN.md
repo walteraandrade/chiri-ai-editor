@@ -110,7 +110,7 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 - **Busy:** a slow sweep of `--color-ai-glow` across the button.
 
 ### Chips (Quick actions)
-- **Style:** same as buttons; hover turns to the AI tint with AI text, since a chip is a request to the AI.
+- **Style:** same as buttons; hover turns to the raised color with AI text, since a chip is a request to the AI.
 - **Entrance:** rise 3px and fade, staggered 35ms per chip.
 
 ### The AI flag (signature)
@@ -123,10 +123,11 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 - **Deleted text:** ink with a 1px strike drawn left to right in 420ms, across wrapped lines.
 - **Inserted text:** AI color on the raised color; the words fade in one by one (34ms apart, 560ms budget) from a soft AI glow, which ends with the animation.
 - **Pending / refining:** no fill at rest, with a slow 1.8s sweep.
+- **Active Suggestion:** the raised color and a 1px AI underline, since a Palette may paint every Suggestion the same.
 - **Accepted:** lands in AI color, then fades to ink. **Rejected:** the original text flashes a neutral fill and settles in 420ms.
 
 ### Lists (Library)
-- **Open file:** the fill color behind medium-weight ink, with a solid 6px accent square before the name. The skill that holds it gets an accent caret.
+- **Open file:** the canvas color behind medium-weight ink, with a solid 6px accent square before the name. The skill that holds it gets an accent caret.
 
 ### Preferences
 - A panel docked to the right, with no backdrop, so the page shows the theme as it changes. One row per theme: a square radio mark (the accent, solid when chosen), name, origin, and every color of the palette. Keyboard: arrows move and apply; `Esc` closes.
