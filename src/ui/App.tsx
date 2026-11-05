@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { resolveModel } from '../ai/default-model'
 import type { DocumentControls } from '../editor/document-controls'
 import {
   beforeReviewChanges,
@@ -42,11 +43,13 @@ import { LeaveDialog } from './LeaveDialog'
 import { Library } from './Library'
 import { LineDiff } from './LineDiff'
 import { MissingKeyBanner } from './MissingKeyBanner'
+import { ModelDialog } from './ModelDialog'
 import { NewSkillDialog } from './NewSkillDialog'
 import { ReviewToolbar } from './ReviewToolbar'
 import { ThemeToggle } from './ThemeToggle'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
+import { useDescriptionAi } from './use-description-ai'
 import { useFrontmatterReport } from './use-frontmatter-report'
 import { useHistoryView } from './use-history-view'
 import { useKeyState } from './use-key-state'
@@ -76,6 +79,8 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const key = useKeyState(kit)
   const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
+  const [modelOpen, setModelOpen] = useState(false)
+  const descriptionAi = useDescriptionAi()
   const [review, setReview] = useState<ReviewStatus>(idleReviewStatus)
   const [controls, setControls] = useState<ReviewControls | null>(null)
   const [documentControls, setDocumentControls] =
@@ -370,6 +375,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             panelRef={frontmatterPanel}
             onEdit={editFrontmatter}
             onHistory={(command) => documentControls?.[command]()}
+            descriptionAi={descriptionAi}
           />
           <EditorPane
             initialDoc={initialDoc}
@@ -386,14 +392,28 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           />
         </div>
       </main>
-      {theme.omarchy ? (
-        <div className="sticky bottom-4 z-30 ml-4 hidden w-fit bg-canvas text-sm sm:block">
+      <div className="sticky bottom-4 z-30 ml-4 hidden w-fit gap-2 bg-canvas text-sm sm:flex">
+        {theme.omarchy ? (
           <ThemeToggle
             theme={theme.omarchy}
             active={theme.choice === 'omarchy'}
             onToggle={theme.toggle}
           />
-        </div>
+        ) : null}
+        <button
+          type="button"
+          className="cm-ai-button"
+          onClick={() => setModelOpen(true)}
+        >
+          Model
+        </button>
+      </div>
+      {modelOpen ? (
+        <ModelDialog
+          defaultModel={resolveModel(__OPENROUTER_MODEL__)}
+          onClose={() => setModelOpen(false)}
+          onSaved={showToast}
+        />
       ) : null}
       <Toast message={toast} onDismiss={dismissToast} />
       {key.present ? null : (
