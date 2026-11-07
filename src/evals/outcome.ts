@@ -32,6 +32,9 @@ const stop = (message: string, costUsd: number | null): RunOutcome => ({
 const limitLabel = (maxCostUsd: number): string =>
   maxCostUsd.toFixed(4).replace(/0{1,2}$/, '')
 
+export const costLimitMessage = (maxCostUsd: number): string =>
+  `Stopped at the cost limit (US$${limitLabel(maxCostUsd)})`
+
 const exitMessage = (exitCode: number | null, signal: string | null): string =>
   signal !== null
     ? `Claude stopped with ${signal}`
@@ -60,8 +63,7 @@ const partialMessage = (
   maxCostUsd: number,
 ): string => {
   if (reason === 'interrupted') return CANCELLED
-  if (reason === 'cost_ceiling')
-    return `Stopped at the cost limit (US$${limitLabel(maxCostUsd)})`
+  if (reason === 'cost_ceiling') return costLimitMessage(maxCostUsd)
   if (reason === 'auth_failed') return 'Claude is not logged in'
   if (endedByCancel(exitCode, signal)) return CANCELLED
   const early = `Claude stopped early${reason === null ? '' : ` (${reason})`}`

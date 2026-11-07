@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
+import { type RunBaseline, versionOptionLabel } from '../evals/baseline'
 import { riskLines } from '../evals/risks'
 import {
   checkEvalSettings,
@@ -9,6 +10,7 @@ import {
   MIN_RUNS,
 } from '../evals/settings'
 import type { EvalPrepareResult } from '../evals/types'
+import { formatClock } from '../history/time'
 
 type Prepared = Extract<EvalPrepareResult, { kind: 'ready' }>
 
@@ -16,14 +18,30 @@ type EvalRunDialogProps = {
   readonly skillName: string
   readonly prepared: Prepared
   readonly unsavedNotice: string | null
+  readonly baseline: RunBaseline
+  readonly refreshing: boolean
+  readonly onPick: (baseline: RunBaseline) => void
   readonly onRun: (settings: EvalSettings) => void
   readonly onClose: () => void
 }
+
+const NONE_VALUE = 'none'
+
+const selectValue = (baseline: RunBaseline): string =>
+  baseline.kind === 'none' ? NONE_VALUE : String(baseline.versionId)
+
+const baselineOf = (value: string): RunBaseline =>
+  value === NONE_VALUE
+    ? { kind: 'none' }
+    : { kind: 'version', versionId: Number(value) }
 
 export function EvalRunDialog({
   skillName,
   prepared,
   unsavedNotice,
+  baseline,
+  refreshing,
+  onPick,
   onRun,
   onClose,
 }: EvalRunDialogProps) {
@@ -31,6 +49,7 @@ export function EvalRunDialog({
   const runsId = useId()
   const modelId = useId()
   const costId = useId()
+  const baselineId = useId()
   const [runs, setRuns] = useState(String(DEFAULT_EVAL_SETTINGS.runs))
   const [model, setModel] = useState(DEFAULT_EVAL_SETTINGS.model)
   const [cost, setCost] = useState(String(DEFAULT_EVAL_SETTINGS.maxCostUsd))
@@ -41,8 +60,13 @@ export function EvalRunDialog({
   }
   const problems = checkEvalSettings(settings)
   const lines = riskLines(prepared.risks)
+  const olderLines =
+    prepared.baselineRisks === null ? null : riskLines(prepared.baselineRisks)
   const noCases = prepared.caseCount === 0
-  const ready = problems.length === 0 && !noCases
+  const ready = problems.length === 0 && !noCases && !refreshing
+  const now = Date.now()
+  const formatTime = (at: number): string => formatClock(at, now)
+  const versions = prepared.versions.toReversed()
 
   useEffect(() => {
     const element = dialog.current
@@ -74,8 +98,34 @@ export function EvalRunDialog({
         <p className="mt-2 text-sm">
           {noCases
             ? 'This Skill has no Evals. Add a folder under evals/ with a prompt.md and a graders/ folder.'
-            : `${prepared.caseCount} ${prepared.caseCount === 1 ? 'Eval' : 'Evals'}, each run with and without the Skill, by the real agent through Claude CLI ${prepared.claudeVersion}.`}
+            : `${prepared.caseCount} ${prepared.caseCount === 1 ? 'Eval' : 'Evals'}, each run ${baseline.kind === 'none' ? 'with and without the Skill' : "with today's SKILL.md and with the Version"}, by the real agent through Claude CLI ${prepared.claudeVersion}.`}
         </p>
+        <label
+          htmlFor={baselineId}
+          className="mt-4 mb-1 block font-medium text-ink-muted text-xs"
+        >
+          Compare against
+        </label>
+        <select
+          id={baselineId}
+          value={selectValue(baseline)}
+          className="cm-ai-bubble-input w-full"
+          onChange={(event) => onPick(baselineOf(event.target.value))}
+        >
+          <option value={NONE_VALUE}>No Skill</option>
+          {versions.map((version) => (
+            <option key={version.id} value={String(version.id)}>
+              {versionOptionLabel(prepared.versions, version, formatTime)}
+            </option>
+          ))}
+        </select>
+        {baseline.kind === 'version' ? (
+          <p className="mt-1 text-ink-faint text-xs">
+            Two Stages run, one after the other. The older one has the Version's
+            SKILL.md and today's other files, because History keeps only
+            SKILL.md.
+          </p>
+        ) : null}
         <h3 className="mt-4 font-medium text-ink-muted text-xs">
           What a run can reach
         </h3>
@@ -91,14 +141,12 @@ export function EvalRunDialog({
         <h3 className="mt-4 font-medium text-ink-muted text-xs">
           Found on this Skill
         </h3>
-        {lines.length === 0 ? (
-          <p className="mt-1 text-sm">Nothing flagged.</p>
-        ) : (
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-            {lines.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
+        <RiskList
+          title={olderLines === null ? null : "Today's Stage"}
+          lines={lines}
+        />
+        {olderLines === null ? null : (
+          <RiskList title="The Version's Stage" lines={olderLines} />
         )}
         {unsavedNotice === null ? null : (
           <p role="status" className="mt-4 text-ink-strong text-sm">
@@ -168,8 +216,10 @@ export function EvalRunDialog({
           </ul>
         )}
         <p className="mt-2 text-ink-faint text-xs">
-          The CLI stops the run at the cost limit. A run reads what is saved on
-          disk.
+          {baseline.kind === 'none'
+            ? 'The CLI stops the run at the cost limit.'
+            : 'The cost limit covers both runs: the first gets half, the second what is left.'}{' '}
+          A run reads what is saved on disk.
         </p>
         <div className="mt-5 flex justify-end gap-2 text-sm">
           <button type="button" className="cm-ai-button" onClick={onClose}>
@@ -185,5 +235,29 @@ export function EvalRunDialog({
         </div>
       </form>
     </dialog>
+  )
+}
+
+type RiskListProps = {
+  readonly title: string | null
+  readonly lines: readonly string[]
+}
+
+function RiskList({ title, lines }: RiskListProps) {
+  return (
+    <>
+      {title === null ? null : (
+        <p className="mt-2 font-medium text-ink-strong text-sm">{title}</p>
+      )}
+      {lines.length === 0 ? (
+        <p className="mt-1 text-sm">Nothing flagged.</p>
+      ) : (
+        <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+          {lines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </>
   )
 }

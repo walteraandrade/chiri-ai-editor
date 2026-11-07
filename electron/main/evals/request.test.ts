@@ -7,6 +7,7 @@ import {
 
 const valid = {
   skillPath: '/home/u/.claude/skills/pdf',
+  baseline: { kind: 'none' },
   runs: 3,
   model: 'haiku',
   maxCostUsd: 0.5,
@@ -17,8 +18,33 @@ describe('parseRunRequest', () => {
     expect(parseRunRequest(valid)).toEqual(valid)
   })
 
+  it('accepts a Version baseline by id', () => {
+    const request = { ...valid, baseline: { kind: 'version', versionId: 12 } }
+    expect(parseRunRequest(request)).toEqual(request)
+  })
+
   it.each([
     ['an extra field', { ...valid, flags: ['--allow-tools'] }],
+    ['no baseline', { ...valid, baseline: undefined }],
+    [
+      'a baseline with text',
+      { ...valid, baseline: { kind: 'version', versionId: 1, text: 'x' } },
+    ],
+    [
+      'a baseline with a path',
+      { ...valid, baseline: { kind: 'none', path: '/etc' } },
+    ],
+    ['a Version without id', { ...valid, baseline: { kind: 'version' } }],
+    ['Version id 0', { ...valid, baseline: { kind: 'version', versionId: 0 } }],
+    [
+      'fractional Version id',
+      { ...valid, baseline: { kind: 'version', versionId: 1.5 } },
+    ],
+    [
+      'Version id as text',
+      { ...valid, baseline: { kind: 'version', versionId: '1' } },
+    ],
+    ['another baseline kind', { ...valid, baseline: { kind: 'file' } }],
     ['a missing field', { skillPath: valid.skillPath, runs: 1, model: 'x' }],
     ['a relative path', { ...valid, skillPath: 'skills/pdf' }],
     ['a path with NUL', { ...valid, skillPath: '/a\0b' }],

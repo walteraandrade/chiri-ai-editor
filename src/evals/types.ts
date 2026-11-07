@@ -1,3 +1,5 @@
+import type { VersionList } from '../history/types'
+import type { RunBaseline } from './baseline'
 import type { EvalSummary } from './report'
 import type { Risk } from './risks'
 import type { EvalSettings } from './settings'
@@ -6,7 +8,11 @@ export type EvalSkillRequest = {
   readonly skillPath: string
 }
 
-export type EvalRunRequest = EvalSkillRequest & EvalSettings
+export type EvalPrepareRequest = EvalSkillRequest & {
+  readonly baseline: RunBaseline
+}
+
+export type EvalRunRequest = EvalPrepareRequest & EvalSettings
 
 export type StoppedRun = {
   readonly message: string
@@ -31,6 +37,8 @@ export type EvalPrepareResult =
       readonly claudeVersion: string
       readonly caseCount: number
       readonly risks: readonly Risk[]
+      readonly baselineRisks: readonly Risk[] | null
+      readonly versions: VersionList
     }
   | { readonly kind: 'no-cli' }
   | { readonly kind: 'failed'; readonly reason: string }
@@ -54,7 +62,7 @@ export type EvalOpenReportResult =
 
 export type EvalsKit = {
   readonly status: (request: EvalSkillRequest) => Promise<EvalStatus>
-  readonly prepare: (request: EvalSkillRequest) => Promise<EvalPrepareResult>
+  readonly prepare: (request: EvalPrepareRequest) => Promise<EvalPrepareResult>
   readonly run: (request: EvalRunRequest) => Promise<EvalRunResult>
   readonly openReport: (
     request: EvalSkillRequest,

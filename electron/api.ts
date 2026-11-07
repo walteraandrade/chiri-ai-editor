@@ -1,6 +1,7 @@
 import type {
   EvalCancelResult,
   EvalOpenReportResult,
+  EvalPrepareRequest,
   EvalPrepareResult,
   EvalRunRequest,
   EvalRunResult,
@@ -124,7 +125,7 @@ export type ChiriApi = {
   readonly saveQuickActions: (text: string) => Promise<void>
   readonly evalStatus: (request: EvalSkillRequest) => Promise<EvalStatus>
   readonly evalPrepare: (
-    request: EvalSkillRequest,
+    request: EvalPrepareRequest,
   ) => Promise<EvalPrepareResult>
   readonly evalRun: (request: EvalRunRequest) => Promise<EvalRunResult>
   readonly evalOpenReport: (

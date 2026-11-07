@@ -57,11 +57,11 @@ describe('createResultsStore', () => {
     mkdirSync(first.outputDir)
     writeFileSync(join(first.outputDir, 'report.html'), '<p>one</p>')
     await results.promote(KEY)
-    expect(await results.readLast(KEY)).toBe('one')
+    expect((await results.readLast(KEY))?.firstText).toBe('one')
     const second = await results.begin(KEY)
     writeFileSync(second.jsonFile, 'two')
     await results.promote(KEY)
-    expect(await results.readLast(KEY)).toBe('two')
+    expect((await results.readLast(KEY))?.firstText).toBe('two')
     expect(await results.lastReport(KEY)).toBeNull()
   })
 
@@ -87,7 +87,7 @@ describe('createResultsStore', () => {
     const second = await results.begin(KEY)
     writeFileSync(second.jsonFile, 'dropped')
     await results.discard(KEY)
-    expect(await results.readLast(KEY)).toBe('kept')
+    expect((await results.readLast(KEY))?.firstText).toBe('kept')
     expect(existsSync(join(dir, 'eval-runs', KEY, 'next'))).toBe(false)
   })
 
@@ -104,7 +104,7 @@ describe('createResultsStore', () => {
     const second = await failing.begin(KEY)
     writeFileSync(second.jsonFile, 'new')
     await expect(failing.promote(KEY)).rejects.toThrow('rename failed')
-    expect(await failing.readLast(KEY)).toBe('kept')
+    expect((await failing.readLast(KEY))?.firstText).toBe('kept')
   })
 
   it('starts each run from an empty next', async () => {
@@ -113,5 +113,47 @@ describe('createResultsStore', () => {
     writeFileSync(first.jsonFile, 'stale')
     await results.begin(KEY)
     expect(await results.readNext(KEY)).toBeNull()
+  })
+
+  it('keeps the two reports of a Version run in separate folders with the baseline', async () => {
+    const { dir, results } = store()
+    await results.begin(KEY)
+    const today = await results.beginPart(KEY, 'today')
+    const older = await results.beginPart(KEY, 'version')
+    expect(today.jsonFile).toBe(
+      join(dir, 'eval-runs', KEY, 'next', 'today', 'result.json'),
+    )
+    expect(older.outputDir).toBe(
+      join(dir, 'eval-runs', KEY, 'next', 'version', 'report'),
+    )
+    writeFileSync(today.jsonFile, 'T')
+    writeFileSync(older.jsonFile, 'V')
+    mkdirSync(today.outputDir)
+    writeFileSync(join(today.outputDir, 'report.html'), '<p>t</p>')
+    expect(await results.readNext(KEY, 'today')).toBe('T')
+    expect(await results.readNext(KEY, 'version')).toBe('V')
+    const baseline = '{"kind":"version","versionId":3,"at":9}'
+    await results.writeBaseline(KEY, baseline)
+    await results.promote(KEY)
+    expect(await results.readLast(KEY)).toEqual({
+      baselineText: baseline,
+      firstText: 'T',
+      secondText: 'V',
+    })
+    expect(await results.lastReport(KEY)).toBe(
+      join(dir, 'eval-runs', KEY, 'last', 'today', 'report', 'report.html'),
+    )
+  })
+
+  it('reads a run with no baseline file as a single report', async () => {
+    const { results } = store()
+    const next = await results.begin(KEY)
+    writeFileSync(next.jsonFile, 'one')
+    await results.promote(KEY)
+    expect(await results.readLast(KEY)).toEqual({
+      baselineText: null,
+      firstText: 'one',
+      secondText: null,
+    })
   })
 })

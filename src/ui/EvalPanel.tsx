@@ -2,13 +2,16 @@ import { caseSignals, firedOverall, helpedOverall } from '../evals/signals'
 import type { EvalsKit } from '../evals/types'
 import { unsavedNotice } from '../evals/unsaved'
 import {
+  armLabelsOf,
   costEstimate,
   countLabel,
   erroredText,
   leftOutText,
   stoppedText,
   suspiciousText,
+  unpairedText,
 } from '../evals/view'
+import { formatClock } from '../history/time'
 import type { Skill } from '../skills/scan-skills'
 import { EvalRunDialog } from './EvalRunDialog'
 import { useEvalPanel } from './use-eval-panel'
@@ -29,6 +32,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
     message,
     refresh,
     ask,
+    pick,
     close,
     run,
     cancel,
@@ -47,6 +51,12 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
   const errored = signals.filter(({ errored: count }) => count > 0)
   const fired = last === null ? null : firedOverall(last.cases)
   const helped = last === null ? null : helpedOverall(last.cases)
+  const versionRun = last?.baseline.kind === 'version'
+  const labels = armLabelsOf(last?.baseline ?? { kind: 'none' }, (at) =>
+    formatClock(at, Date.now()),
+  )
+  const firedSecond =
+    last === null || !versionRun ? null : firedOverall(last.cases, 'second')
 
   return (
     <section
@@ -103,25 +113,41 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
               <p className="text-ink-faint">
                 Last complete run, {new Date(last.startedAt).toLocaleString()}
               </p>
+              {versionRun ? (
+                <p className="text-ink-faint">
+                  Compared today's SKILL.md with {labels.second}. The older
+                  Stage uses today's other files, because History keeps only
+                  SKILL.md.
+                </p>
+              ) : null}
               <dl className="mt-1 space-y-1">
                 <div>
                   <dt className="text-ink-muted">Did the Skill fire?</dt>
                   <dd className="text-ink-strong">
                     {fired === null
                       ? 'Not checked. No Eval has a tool_used Skill grader.'
-                      : `${countLabel(fired)} runs with the Skill`}
+                      : versionRun
+                        ? `${countLabel(fired)} runs with ${labels.first}${firedSecond === null ? '' : `, ${countLabel(firedSecond)} with ${labels.second}`}`
+                        : `${countLabel(fired)} runs with the Skill`}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-ink-muted">Did it help?</dt>
                   <dd className="text-ink-strong">
                     {helped === null
-                      ? 'No run without the Skill to compare.'
-                      : `${countLabel(helped.with)} passes with, ${countLabel(helped.without)} without`}
+                      ? versionRun
+                        ? 'No Eval ran in both Stages to compare.'
+                        : 'No run without the Skill to compare.'
+                      : versionRun
+                        ? `${countLabel(helped.with)} passes with ${labels.first}, ${countLabel(helped.without)} with ${labels.second}`
+                        : `${countLabel(helped.with)} passes with, ${countLabel(helped.without)} without`}
                   </dd>
                   {helped === null || helped.leftOut === 0 ? null : (
                     <dd className="text-ink-faint">
-                      {leftOutText(helped.leftOut)}.
+                      {versionRun
+                        ? unpairedText(helped.leftOut)
+                        : leftOutText(helped.leftOut)}
+                      .
                     </dd>
                   )}
                 </div>
@@ -136,10 +162,10 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                       Fired
                     </th>
                     <th scope="col" className="py-0.5 pr-2 font-normal">
-                      With
+                      {versionRun ? 'Today' : 'With'}
                     </th>
                     <th scope="col" className="py-0.5 font-normal">
-                      Without
+                      {versionRun ? 'Version' : 'Without'}
                     </th>
                   </tr>
                 </thead>
@@ -154,7 +180,9 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                           ? '–'
                           : countLabel(signals[index].fired)}
                       </td>
-                      <td className="py-0.5 pr-2">{countLabel(item.with)}</td>
+                      <td className="py-0.5 pr-2">
+                        {item.with.total === 0 ? '–' : countLabel(item.with)}
+                      </td>
                       <td className="py-0.5">
                         {item.without === null ? '–' : countLabel(item.without)}
                       </td>
@@ -201,7 +229,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                           <span className="font-medium text-ink-strong">
                             {item.name}
                           </span>{' '}
-                          {suspiciousText(kind)}
+                          {suspiciousText(kind, labels)}
                         </li>
                       )),
                     )}
@@ -261,7 +289,10 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
           skillName={skill.name}
           unsavedNotice={notice}
           prepared={dialog.prepared}
-          onRun={(settings) => void run(settings)}
+          baseline={dialog.baseline}
+          refreshing={dialog.refreshing}
+          onPick={(baseline) => void pick(baseline)}
+          onRun={(settings) => void run(settings, dialog.baseline)}
           onClose={close}
         />
       ) : null}

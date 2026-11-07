@@ -16,9 +16,17 @@ describe('createElectronEvals', () => {
   it('passes each call to the main process', async () => {
     const evals = createElectronEvals(api())
     expect(await evals.status(request)).toEqual({ kind: 'no-cli' })
-    expect(await evals.prepare(request)).toEqual({ kind: 'no-cli' })
     expect(
-      await evals.run({ ...request, runs: 1, model: 'haiku', maxCostUsd: 1 }),
+      await evals.prepare({ ...request, baseline: { kind: 'none' } }),
+    ).toEqual({ kind: 'no-cli' })
+    expect(
+      await evals.run({
+        ...request,
+        baseline: { kind: 'none' },
+        runs: 1,
+        model: 'haiku',
+        maxCostUsd: 1,
+      }),
     ).toEqual({ kind: 'busy' })
     expect(await evals.openReport(request)).toEqual({ kind: 'opened' })
     expect(await evals.cancel()).toEqual({ kind: 'cancelling' })
@@ -33,8 +41,15 @@ describe('createElectronEvals', () => {
       }),
     )
     expect(
-      (await evals.run({ ...request, runs: 1, model: 'haiku', maxCostUsd: 1 }))
-        .kind,
+      (
+        await evals.run({
+          ...request,
+          baseline: { kind: 'none' },
+          runs: 1,
+          model: 'haiku',
+          maxCostUsd: 1,
+        })
+      ).kind,
     ).toBe('failed')
   })
 })

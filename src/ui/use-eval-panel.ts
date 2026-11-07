@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { NO_BASELINE, type RunBaseline } from '../evals/baseline'
 import type { EvalSummary } from '../evals/report'
 import type { EvalSettings } from '../evals/settings'
 import type { EvalPrepareResult, EvalsKit, StoppedRun } from '../evals/types'
@@ -22,6 +23,8 @@ export type EvalDialogState =
   | {
       readonly status: 'confirm'
       readonly prepared: Extract<EvalPrepareResult, { kind: 'ready' }>
+      readonly baseline: RunBaseline
+      readonly refreshing: boolean
     }
 
 const POLL_MS = 1500
@@ -82,9 +85,14 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
   const ask = useCallback(async () => {
     setMessage(null)
     setDialog({ status: 'preparing' })
-    const prepared = await evals.prepare({ skillPath })
+    const prepared = await evals.prepare({ skillPath, baseline: NO_BASELINE })
     if (prepared.kind === 'ready') {
-      setDialog({ status: 'confirm', prepared })
+      setDialog({
+        status: 'confirm',
+        prepared,
+        baseline: NO_BASELINE,
+        refreshing: false,
+      })
       return
     }
     setDialog({ status: 'closed' })
@@ -92,15 +100,38 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
     else setMessage(prepared.reason)
   }, [evals, skillPath])
 
+  const pick = useCallback(
+    async (baseline: RunBaseline) => {
+      setDialog((previous) =>
+        previous.status === 'confirm'
+          ? { ...previous, baseline, refreshing: true }
+          : previous,
+      )
+      const prepared = await evals.prepare({ skillPath, baseline })
+      if (prepared.kind === 'ready') {
+        setDialog((previous) =>
+          previous.status === 'confirm' && previous.baseline === baseline
+            ? { status: 'confirm', prepared, baseline, refreshing: false }
+            : previous,
+        )
+        return
+      }
+      setDialog({ status: 'closed' })
+      if (prepared.kind === 'no-cli') setState({ status: 'no-cli' })
+      else setMessage(prepared.reason)
+    },
+    [evals, skillPath],
+  )
+
   const close = useCallback(() => setDialog({ status: 'closed' }), [])
 
   const run = useCallback(
-    async (settings: EvalSettings) => {
+    async (settings: EvalSettings, baseline: RunBaseline) => {
       setDialog({ status: 'closed' })
       latest.current += 1
       patchReady({ running: true, cancelling: false, stopped: null })
       setMessage(null)
-      const result = await evals.run({ skillPath, ...settings })
+      const result = await evals.run({ skillPath, baseline, ...settings })
       latest.current += 1
       const finished = { running: false, cancelling: false }
       if (result.kind === 'completed') {
@@ -146,6 +177,7 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
     message,
     refresh,
     ask,
+    pick,
     close,
     run,
     cancel,
