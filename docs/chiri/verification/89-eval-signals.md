@@ -12,12 +12,16 @@ Throwaway skill `status-tag` (session scratchpad, never `~/.claude/skills`), thr
 
 | Check | Result |
 |---|---|
-| Run 1 (2 runs per Arm, cost about US$0.0163): "Did the Skill fire?" 2/2 runs with the Skill; "Did it help?" 4/6 passes with, 2/6 without. Table: `arithmetic` 2/2 and 2/2, `impossible` 0/2 and 0/2, `status-line` fired 2/2, 2/2 with, 0/2 without. Suspicious cases: `arithmetic` passes with and without the Skill, `impossible` fails with and without; "Still counted in the totals" ([89-1](img/89-1.png)) | Pass |
+| Run 1 (2 runs per Arm, cost about US$0.0163): "Did the Skill fire?" 2/2 runs with the Skill; "Did it help?" 4/6 passes with, 2/6 without. Table: `arithmetic` 2/2 and 2/2, `impossible` 0/2 and 0/2, `status-line` fired 2/2, 2/2 with, 0/2 without. Suspicious cases: `arithmetic` passes with the Skill and without the Skill, `impossible` fails with and without; "Still counted in the totals" ([89-1](img/89-1.png)) | Pass |
 | `SKILL.md` edited in the window, not saved: the panel says "Unsaved text in SKILL.md. A run reads what is saved on disk." above Run Evals ([89-2](img/89-2.png)) | Pass |
 | Run Evals clicked with the unsaved text: the dialog repeats it and adds "Save first to measure your edits." Run stays enabled ([89-3](img/89-3.png)) | Pass |
 | Dialog cancelled, another file of the Skill opened (`SKILL.md` no longer the open Document): the notice stays, from the unsaved text the app keeps per file ([89-4](img/89-4.png)) | Pass |
 | Run 2 (3 runs per Arm, with the unsaved text, so the disk text ran; cost about US$0.0250): fired 3/3, 6/9 with, 3/9 without, same two Suspicious cases ([89-5](img/89-5.png)) | Pass |
 | "Runs disagree": no case was noisy in either run (free graders do not vary), so it was not seen in the window. Covered by `signals.test.ts` | Not seen live |
+
+## Review fixes
+
+After the review fixes the panel was reopened on the same userData and read run 2's saved report, with no new model call: the wording of the Suspicious lines changed to "passes with the Skill and without the Skill" (Arm labels are now parameters), the per-case verdict was removed, and the unsaved notice still showed from the text the app keeps ([89-6](img/89-6.png)). Errored runs and Evals left out of the comparison have no live check; `report.test.ts`, `signals.test.ts` and `view.test.ts` cover them.
 
 ## Runs
 
