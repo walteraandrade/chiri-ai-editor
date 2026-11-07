@@ -21,5 +21,6 @@ All decisions were made in the planning session (see `ai-sessions/`), with quest
 | [0015](0015-history-in-sqlite.md) | History in SQLite | Accepted; Electron build |
 | [0016](0016-web-and-electron-builds.md) | Web and Electron builds | Accepted; Preferences added to the Web build by 0017 |
 | [0017](0017-book-themes-and-solid-colors.md) | Book themes and solid colors | Accepted |
+| [0018](0018-skill-evals-through-claude-cli.md) | Skill Evals run through the Claude CLI | Proposed; Electron build |
 
 Process decisions (slices, roles, gates, reviews) live in [docs/PLAN.md](../../PLAN.md).
