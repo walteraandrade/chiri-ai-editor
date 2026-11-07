@@ -114,7 +114,7 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 
 ### Action list (Quick actions)
 - **At rest:** the bubble shows only its input and a faint hint naming the first Quick action and `↓`.
-- **Typing:** a list under the input shows the Quick actions whose name contains the text, prefixes first, and always ends with "Ask AI: “…”" for free text. `↓` on an empty input lists them all.
+- **Typing:** a list under the input shows the Quick actions with a word that starts with the text, name starts first, and always ends with "Ask AI: “…”" for free text. `↓` on an empty input lists them all.
 - **Style:** rows on the fill color, split by raised hairlines, the match underlined. The highlighted row takes the raised color, AI text and a 1px AI outline, since a Palette may paint fill and raised the same. Skill actions carry a faint "Skill" tag.
 - **Keyboard:** `↑` `↓` move and wrap, `Enter` runs the highlighted row. No entrance motion: the list changes on every keystroke.
 
