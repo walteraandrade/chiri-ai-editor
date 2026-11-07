@@ -364,6 +364,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             onEdit={editFrontmatter}
             onHistory={(command) => documentControls?.[command]()}
             descriptionAi={descriptionAi}
+            readSkillText={() => documentControls?.text() ?? ''}
           />
           <EditorPane
             initialDoc={initialDoc}

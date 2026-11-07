@@ -3,9 +3,11 @@ import { extractBlocks } from '../blocks/extract-blocks'
 import { getNeighbors, resolveTarget } from '../blocks/target'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import {
+  buildDescriptionPrompt,
   buildRefinePrompt,
   buildReviewPrompt,
   buildTargetPrompt,
+  DESCRIPTION_SYSTEM_PROMPT,
   SYSTEM_PROMPT,
 } from './prompts'
 import { QUICK_ACTIONS, quickActionsFor } from './quick-actions'
@@ -377,5 +379,58 @@ describe('buildReviewPrompt', () => {
 
   it('returns the system prompt as instructions', () => {
     expect(buildReviewPrompt({ blocks }).instructions).toBe(SYSTEM_PROMPT)
+  })
+})
+
+describe('buildDescriptionPrompt', () => {
+  const input = {
+    name: 'pdf-tools',
+    description: 'Helps with PDFs.',
+    body: '# PDF tools\n\nRun scripts/extract.py to pull tables out of a PDF.',
+  }
+
+  it('uses its own system prompt, not the editing rules', () => {
+    const { instructions } = buildDescriptionPrompt(input)
+    expect(instructions).toBe(DESCRIPTION_SYSTEM_PROMPT)
+    expect(instructions).not.toMatch(/change only what the instruction needs/i)
+  })
+
+  it('asks for when to invoke the skill, not what it does', () => {
+    expect(DESCRIPTION_SYSTEM_PROMPT).toMatch(/when an agent should invoke/i)
+    expect(DESCRIPTION_SYSTEM_PROMPT).toMatch(
+      /does not restate what the skill does/i,
+    )
+    expect(DESCRIPTION_SYSTEM_PROMPT).toMatch(/1024/)
+    expect(DESCRIPTION_SYSTEM_PROMPT).toMatch(/do not invent/i)
+    expect(DESCRIPTION_SYSTEM_PROMPT).toMatch(
+      /language of the current description/i,
+    )
+  })
+
+  it('gives no examples to copy', () => {
+    expect(DESCRIPTION_SYSTEM_PROMPT).not.toMatch(/<good>|<poor>|example/i)
+  })
+
+  it('treats the tagged skill content as data', () => {
+    expect(DESCRIPTION_SYSTEM_PROMPT).toMatch(
+      /<skill-body>[\s\S]*not instructions/i,
+    )
+  })
+
+  it('sends the name, the current description and the body', () => {
+    expect(buildDescriptionPrompt(input).prompt).toBe(
+      [
+        'Skill name: pdf-tools',
+        '<current-description>\nHelps with PDFs.\n</current-description>',
+        '<skill-body>\n# PDF tools\n\nRun scripts/extract.py to pull tables out of a PDF.\n</skill-body>',
+        'Return the new description as the replacement, and a rationale.',
+      ].join('\n\n'),
+    )
+  })
+
+  it('says so when the body is empty', () => {
+    const { prompt } = buildDescriptionPrompt({ ...input, body: '  \n' })
+    expect(prompt).not.toContain('<skill-body>')
+    expect(prompt).toContain('The skill body is empty.')
   })
 })

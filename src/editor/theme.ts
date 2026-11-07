@@ -35,13 +35,7 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.strong, fontWeight: '700', color: 'var(--color-ink-strong)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  {
-    tag: tags.monospace,
-    fontFamily: 'var(--font-mono)',
-    fontSize: '0.9em',
-    backgroundColor: 'var(--color-code-bg)',
-    padding: '0.1em 0.3em',
-  },
+  { tag: tags.monospace, class: 'cm-inline-code' },
   { tag: tags.link, color: 'var(--color-accent)' },
   { tag: tags.url, color: 'var(--color-ink-faint)' },
   { tag: tags.quote, color: 'var(--color-ink-muted)', fontStyle: 'italic' },
@@ -50,6 +44,27 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.contentSeparator, color: 'var(--color-ink-faint)' },
   { tag: tags.comment, color: 'var(--color-ink-faint)' },
 ])
+
+const SHADED_AREAS = [
+  '.cm-line.cm-frontmatter-line',
+  '.cm-line.cm-codeblock-line',
+  '.cm-ai-suggestion',
+]
+
+const SHADED_MARKS = ['.cm-inline-code']
+
+const selectionOnShade = [
+  ...SHADED_AREAS.flatMap((area) => [
+    `${area} .cm-selected-text`,
+    `${area} .cm-selected-text *`,
+  ]),
+  ...SHADED_MARKS.flatMap((mark) => [
+    `${mark} .cm-selected-text`,
+    `.cm-selected-text ${mark}`,
+  ]),
+  '.cm-selected-text .cm-ai-suggestion',
+  '.cm-selected-text .cm-ai-suggestion *',
+].join(', ')
 
 export const editorTheme = EditorView.theme({
   '&': {
@@ -106,5 +121,17 @@ export const editorTheme = EditorView.theme({
   },
   '.cm-frontmatter-line .cm-frontmatter-key': {
     color: 'var(--color-accent-soft)',
+  },
+  '.cm-inline-code': {
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.9em',
+    backgroundColor: 'var(--color-code-bg)',
+    padding: '0.1em 0.3em',
+  },
+  '.cm-selected-text': { backgroundColor: 'var(--color-selection)' },
+  '.cm-selected-text *': { backgroundColor: 'transparent' },
+  [selectionOnShade]: {
+    backgroundColor: 'var(--color-ink-strong)',
+    color: 'var(--color-canvas)',
   },
 })

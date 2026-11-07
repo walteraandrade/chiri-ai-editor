@@ -45,6 +45,7 @@ describe('createLazyModelClient', () => {
     const load = vi.fn(async () => ({
       requestSuggestion,
       refineSuggestion: async () => answer,
+      requestDescription: async () => answer,
       reviewDocument: noReview,
     }))
     const client = createLazyModelClient(load)
@@ -61,6 +62,7 @@ describe('createLazyModelClient', () => {
     const load = vi.fn(async () => ({
       requestSuggestion: async () => answer,
       refineSuggestion: async () => answer,
+      requestDescription: async () => answer,
       reviewDocument: noReview,
     }))
     const client = createLazyModelClient(load)
@@ -82,6 +84,7 @@ describe('createLazyModelClient', () => {
       .mockResolvedValue({
         requestSuggestion: async () => answer,
         refineSuggestion: async () => answer,
+        requestDescription: async () => answer,
         reviewDocument: noReview,
       })
     const client = createLazyModelClient(load)
@@ -98,6 +101,7 @@ describe('createLazyModelClient', () => {
     const load = vi.fn(async () => ({
       requestSuggestion: async () => answer,
       refineSuggestion: async () => answer,
+      requestDescription: async () => answer,
       reviewDocument: noReview,
     }))
     const client = createLazyModelClient(load)
@@ -116,6 +120,7 @@ describe('createLazyModelClient', () => {
       .mockResolvedValue({
         requestSuggestion: async () => answer,
         refineSuggestion: async () => answer,
+        requestDescription: async () => answer,
         reviewDocument: noReview,
       })
     const client = createLazyModelClient(load)
@@ -132,6 +137,7 @@ describe('createLazyModelClient', () => {
     const load = vi.fn(async () => ({
       requestSuggestion: async () => answer,
       refineSuggestion,
+      requestDescription: async () => answer,
       reviewDocument: noReview,
     }))
     const client = createLazyModelClient(load)
@@ -140,6 +146,38 @@ describe('createLazyModelClient', () => {
 
     expect(load).toHaveBeenCalledTimes(1)
     expect(refineSuggestion).toHaveBeenCalledWith(refineRequest)
+  })
+
+  it('loads the client for a description pass and forwards it', async () => {
+    const requestDescription = vi.fn(async () => answer)
+    const descriptionRequest = {
+      name: 'x-tool',
+      description: 'Does X.',
+      body: 'Body.',
+    }
+    const client = createLazyModelClient(async () => ({
+      requestSuggestion: async () => answer,
+      refineSuggestion: async () => answer,
+      requestDescription,
+      reviewDocument: noReview,
+    }))
+
+    expect(await client.requestDescription(descriptionRequest)).toBe(answer)
+    expect(requestDescription).toHaveBeenCalledWith(descriptionRequest)
+  })
+
+  it('turns a failed load into the reload error for a description pass', async () => {
+    const client = createLazyModelClient(
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
+    )
+
+    const failed = await client.requestDescription({
+      name: 'x-tool',
+      description: 'Does X.',
+      body: '',
+    })
+
+    expect(!failed.ok && failed.error.message).toMatch(/reload the page/i)
   })
 
   it('turns a failed load into the reload error for a Refine too', async () => {
@@ -170,6 +208,7 @@ describe('createLazyModelClient', () => {
     const load = vi.fn(async () => ({
       requestSuggestion: async () => answer,
       refineSuggestion: async () => answer,
+      requestDescription: async () => answer,
       reviewDocument,
     }))
     const client = createLazyModelClient(load)
@@ -205,6 +244,7 @@ describe('reset', () => {
         value: { replacement: 'Hi', rationale: 'Short.', unchanged: false },
       }),
       refineSuggestion: vi.fn(),
+      requestDescription: vi.fn(),
       reviewDocument: noReview,
     }))
     const client = createLazyModelClient(load)

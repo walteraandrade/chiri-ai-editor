@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DESCRIPTION_INSTRUCTION,
-  descriptionRequest,
+  descriptionOutcome,
   descriptionSource,
   normalizeDescription,
+  SKILL_BODY_MAX_CHARS,
+  skillBody,
 } from './description-ai'
 
 describe('normalizeDescription', () => {
@@ -30,27 +31,60 @@ describe('normalizeDescription', () => {
   })
 })
 
-describe('descriptionRequest', () => {
-  it('asks about the description as a single block, naming the skill', () => {
-    const request = descriptionRequest('pdf-tools', 'Works with PDFs.')
-    expect(request.target).toEqual({
-      source: 'block',
-      from: 0,
-      to: 'Works with PDFs.'.length,
-      text: 'Works with PDFs.',
-      blocks: [],
-    })
-    expect(request.neighbors).toEqual({
-      title: 'Skill pdf-tools',
-      before: [],
-      after: [],
-    })
-    expect(request.instruction).toBe(DESCRIPTION_INSTRUCTION)
+describe('skillBody', () => {
+  it('returns the text after the frontmatter, trimmed', () => {
+    expect(
+      skillBody('---\nname: a\ndescription: b\n---\n\n# Title\n\nBody.\n'),
+    ).toBe('# Title\n\nBody.')
   })
 
-  it('says the answer must be one line of plain text', () => {
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/one line/i)
-    expect(DESCRIPTION_INSTRUCTION).toMatch(/when/i)
+  it('returns the whole text when there is no frontmatter', () => {
+    expect(skillBody('# Title\n')).toBe('# Title')
+  })
+
+  it('cuts a long body and says so', () => {
+    const body = skillBody(`---\nname: a\n---\n${'x'.repeat(50_000)}`)
+    expect(body).toBe(
+      `${'x'.repeat(SKILL_BODY_MAX_CHARS)}\n[The body is cut here.]`,
+    )
+  })
+
+  it('keeps a body of exactly the limit whole', () => {
+    expect(skillBody('x'.repeat(SKILL_BODY_MAX_CHARS))).toBe(
+      'x'.repeat(SKILL_BODY_MAX_CHARS),
+    )
+  })
+})
+
+describe('descriptionOutcome', () => {
+  it('accepts a new description, normalized', () => {
+    expect(descriptionOutcome('"Does X. Use when Y."', 'Does X.')).toEqual({
+      kind: 'ready',
+      description: 'Does X. Use when Y.',
+    })
+  })
+
+  it('fails on nothing or on the same text', () => {
+    const none = { kind: 'failed', message: 'No better description came back.' }
+    expect(descriptionOutcome(' ', 'Does X.')).toEqual(none)
+    expect(descriptionOutcome('Does X.', ' Does X. ')).toEqual(none)
+  })
+
+  it('fails when the answer only restates the current text', () => {
+    expect(descriptionOutcome('description: "Does X."', 'Does X.').kind).toBe(
+      'failed',
+    )
+  })
+
+  it('accepts exactly 1024 characters', () => {
+    expect(descriptionOutcome('x'.repeat(1024), 'Does X.').kind).toBe('ready')
+  })
+
+  it('fails on a description over the spec limit', () => {
+    expect(descriptionOutcome('x'.repeat(1025), 'Does X.')).toEqual({
+      kind: 'failed',
+      message: 'The new description came back over 1024 characters.',
+    })
   })
 })
 

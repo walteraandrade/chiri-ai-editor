@@ -17,9 +17,11 @@ import {
 } from './errors'
 import { fetchGeneration } from './generation'
 import {
+  buildDescriptionPrompt,
   buildRefinePrompt,
   buildReviewPrompt,
   buildTargetPrompt,
+  type DescriptionPromptInput,
   type PromptParts,
   type RefinePromptInput,
   type TargetPromptInput,
@@ -101,6 +103,7 @@ type RequestOptions = {
 
 export type TargetRequest = TargetPromptInput & RequestOptions
 export type RefineRequest = RefinePromptInput & RequestOptions
+export type DescriptionRequest = DescriptionPromptInput & RequestOptions
 export type ReviewRequest = RequestOptions & {
   readonly blocks: readonly Block[]
   readonly focus?: string
@@ -136,6 +139,9 @@ export type ModelClient = {
   ) => Promise<Result<SuggestionResult>>
   readonly refineSuggestion: (
     request: RefineRequest,
+  ) => Promise<Result<SuggestionResult>>
+  readonly requestDescription: (
+    request: DescriptionRequest,
   ) => Promise<Result<SuggestionResult>>
   readonly reviewDocument: (
     request: ReviewRequest,
@@ -538,6 +544,13 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
         buildRefinePrompt(request),
         request.target.text,
         request.task ?? `Refine: ${request.instruction}`,
+        request.signal,
+      ),
+    requestDescription: (request) =>
+      runTarget(
+        buildDescriptionPrompt(request),
+        request.description,
+        request.task ?? 'Improve skill description',
         request.signal,
       ),
     reviewDocument,

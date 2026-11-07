@@ -475,6 +475,26 @@ describe('refineSuggestion', () => {
   })
 })
 
+describe('requestDescription', () => {
+  it('sends the description prompt with the skill body', async () => {
+    const { fake, client, records } = setup([
+      () => chatStream(suggestionJson('Does X. Use when Y.')),
+    ])
+    const result = await client.requestDescription({
+      name: 'x-tool',
+      description: 'Does X.',
+      body: 'Run x.sh on Y files.',
+    })
+    expect(result.ok).toBe(true)
+    const text = JSON.stringify(fake.chatRequests()[0]?.body)
+    expect(text).toContain('Agent Skill')
+    expect(text).toContain('Run x.sh on Y files.')
+    expect(text).toContain('current-description')
+    await client.recorded()
+    expect(records[0]?.task).toBe('Improve skill description')
+  })
+})
+
 describe('AI call records', () => {
   it('records the call right away from telemetry', async () => {
     const { client, records, enriched } = setup([
