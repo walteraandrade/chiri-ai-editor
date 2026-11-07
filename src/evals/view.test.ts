@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { costEstimate, countLabel, stoppedText, suspiciousText } from './view'
+import {
+  costEstimate,
+  countLabel,
+  erroredText,
+  leftOutText,
+  stoppedText,
+  suspiciousText,
+} from './view'
 
 describe('countLabel', () => {
   it('shows passes over entries', () => {
@@ -29,10 +36,28 @@ describe('stoppedText', () => {
 
 describe('suspiciousText', () => {
   it('names each kind in plain words', () => {
-    expect(suspiciousText('passes-in-both')).toContain(
-      'does not tell them apart',
+    expect(suspiciousText('passes-in-both')).toBe(
+      'passes with the Skill and without the Skill, so it does not tell them apart',
     )
     expect(suspiciousText('fails-in-both')).toContain('likely broken')
     expect(suspiciousText('runs-disagree')).toContain('noisy')
+  })
+
+  it('takes the Arm labels, for another pair of Arms', () => {
+    expect(
+      suspiciousText('passes-in-both', {
+        first: 'in this Version',
+        second: 'in the older Version',
+      }),
+    ).toContain('passes in this Version and in the older Version')
+  })
+})
+
+describe('erroredText and leftOutText', () => {
+  it('count in words', () => {
+    expect(erroredText(1)).toBe('1 run ended on an error and is not counted')
+    expect(erroredText(2)).toContain('2 runs')
+    expect(leftOutText(1)).toContain('1 Eval has no run without the Skill')
+    expect(leftOutText(3)).toContain('3 Evals have')
   })
 })

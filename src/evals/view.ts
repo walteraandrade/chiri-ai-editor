@@ -1,5 +1,5 @@
 import type { Tally } from './report'
-import type { SuspiciousKind, Verdict } from './signals'
+import type { SuspiciousKind } from './signals'
 
 export const countLabel = ({ passed, total }: Tally): string =>
   `${passed}/${total}`
@@ -27,18 +27,28 @@ export const stoppedText = ({
     ? message
     : `${message}. Cost ${costEstimate(costUsd)}, the CLI's figure.`
 
-export const suspiciousText = (kind: SuspiciousKind): string =>
+export type ArmLabels = {
+  readonly first: string
+  readonly second: string
+}
+
+export const SKILL_ARMS: ArmLabels = {
+  first: 'with the Skill',
+  second: 'without the Skill',
+}
+
+export const suspiciousText = (
+  kind: SuspiciousKind,
+  { first, second }: ArmLabels = SKILL_ARMS,
+): string =>
   kind === 'passes-in-both'
-    ? 'passes with and without the Skill, so it does not tell them apart'
+    ? `passes ${first} and ${second}, so it does not tell them apart`
     : kind === 'fails-in-both'
-      ? 'fails with and without the Skill, so it is likely broken'
+      ? `fails ${first} and ${second}, so it is likely broken`
       : 'its runs disagree, so it is noisy'
 
-export const verdictText = (verdict: Verdict | null): string =>
-  verdict === 'more'
-    ? 'More passes with the Skill'
-    : verdict === 'fewer'
-      ? 'Fewer passes with the Skill'
-      : verdict === 'same'
-        ? 'Same passes with and without'
-        : 'No run without the Skill to compare'
+export const erroredText = (count: number): string =>
+  `${count} ${count === 1 ? 'run' : 'runs'} ended on an error and ${count === 1 ? 'is' : 'are'} not counted`
+
+export const leftOutText = (count: number): string =>
+  `${count} ${count === 1 ? 'Eval has' : 'Evals have'} no run without the Skill and ${count === 1 ? 'is' : 'are'} left out of the comparison`

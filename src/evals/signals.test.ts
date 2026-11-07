@@ -1,33 +1,35 @@
 import { describe, expect, it } from 'vitest'
 import type { CaseTally, RunRecord } from './report'
-import { caseSignals, firedOverall } from './signals'
+import { caseSignals, firedOverall, helpedOverall, signalsOf } from './signals'
+import { armTally } from './tally'
 
-const run = (passed: boolean, fired: boolean | null = null): RunRecord => ({
-  passed,
-  fired,
-})
-
-const tally = (runs: readonly RunRecord[]) => ({
-  passed: runs.filter(({ passed }) => passed).length,
-  total: runs.length,
-})
+const run = (
+  passed: boolean,
+  fired: boolean | null = null,
+  errored = false,
+): RunRecord => ({ passed, fired, errored })
 
 const item = (
   withRuns: readonly RunRecord[],
   withoutRuns: readonly RunRecord[] | null,
+  name = 'case',
 ): CaseTally => ({
-  name: 'case',
-  with: tally(withRuns),
-  without: withoutRuns === null ? null : tally(withoutRuns),
+  name,
+  with: armTally(withRuns),
+  without: withoutRuns === null ? null : armTally(withoutRuns),
   runs: { with: withRuns, without: withoutRuns },
 })
 
 describe('fired', () => {
   it('counts the runs in the Arm with the Skill where it fired', () => {
-    const signals = caseSignals(
-      item([run(true, true), run(true, false), run(false, true)], [run(false)]),
-    )
-    expect(signals.fired).toEqual({ passed: 2, total: 3 })
+    expect(
+      caseSignals(
+        item(
+          [run(true, true), run(true, false), run(false, true)],
+          [run(false)],
+        ),
+      ).fired,
+    ).toEqual({ passed: 2, total: 3 })
   })
 
   it('is not checked when the case has no tool_used Skill grader', () => {
@@ -40,39 +42,25 @@ describe('fired', () => {
       total: 1,
     })
   })
+
+  it('leaves out runs that ended on an error', () => {
+    expect(
+      caseSignals(item([run(false, false, true), run(true, true)], null)).fired,
+    ).toEqual({ passed: 1, total: 1 })
+  })
 })
 
-describe('helped', () => {
-  it('keeps the passes of both Arms as counts', () => {
-    const { helped } = caseSignals(
-      item(
-        [run(true), run(true), run(false)],
-        [run(true), run(false), run(false)],
-      ),
+describe('errored runs', () => {
+  it('counts them across both Arms and keeps them out of Suspicious', () => {
+    const signals = caseSignals(
+      item([run(true), run(false, null, true)], [run(true), run(true)]),
     )
-    expect(helped).toEqual({
-      with: { passed: 2, total: 3 },
-      without: { passed: 1, total: 3 },
-      verdict: 'more',
-    })
-  })
-
-  it('says same and fewer', () => {
+    expect(signals.errored).toBe(1)
+    expect(signals.suspicious).toEqual(['passes-in-both'])
     expect(
-      caseSignals(item([run(true), run(false)], [run(true), run(false)])).helped
-        .verdict,
-    ).toBe('same')
-    expect(caseSignals(item([run(false)], [run(true)])).helped.verdict).toBe(
-      'fewer',
-    )
-  })
-
-  it('has no verdict without a second Arm', () => {
-    expect(caseSignals(item([run(true)], null)).helped).toEqual({
-      with: { passed: 1, total: 1 },
-      without: null,
-      verdict: null,
-    })
+      caseSignals(item([run(false, null, true)], [run(false, null, true)]))
+        .suspicious,
+    ).toEqual([])
   })
 })
 
@@ -140,6 +128,18 @@ describe('suspicious kinds', () => {
   })
 })
 
+describe('signalsOf', () => {
+  it('works on any pair of Arms, not only with and without the Skill', () => {
+    const signals = signalsOf(
+      'older',
+      [run(true), run(true)],
+      [run(true), run(true)],
+    )
+    expect(signals.name).toBe('older')
+    expect(signals.suspicious).toEqual(['passes-in-both'])
+  })
+})
+
 describe('firedOverall', () => {
   it('sums the checked cases and ignores the unchecked', () => {
     expect(
@@ -153,5 +153,24 @@ describe('firedOverall', () => {
 
   it('is null when no case checks it', () => {
     expect(firedOverall([item([run(true)], [run(false)])])).toBeNull()
+  })
+})
+
+describe('helpedOverall', () => {
+  it('compares only the cases that have both Arms and counts the rest', () => {
+    expect(
+      helpedOverall([
+        item([run(true), run(true)], [run(false), run(true)]),
+        item([run(true)], null),
+      ]),
+    ).toEqual({
+      with: { passed: 2, total: 2 },
+      without: { passed: 1, total: 2 },
+      leftOut: 1,
+    })
+  })
+
+  it('is null when no case has a second Arm', () => {
+    expect(helpedOverall([item([run(true)], null)])).toBeNull()
   })
 })

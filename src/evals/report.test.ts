@@ -42,8 +42,8 @@ describe('parseEvalReport', () => {
             with: { passed: 1, total: 1 },
             without: { passed: 0, total: 1 },
             runs: {
-              with: [{ passed: true, fired: null }],
-              without: [{ passed: false, fired: null }],
+              with: [{ passed: true, fired: null, errored: false }],
+              without: [{ passed: false, fired: null, errored: false }],
             },
           },
         ],
@@ -105,12 +105,12 @@ describe('parseEvalReport', () => {
     expect(
       outcome.kind === 'complete' && outcome.summary.cases[0]?.runs.with,
     ).toEqual([
-      { passed: true, fired: true },
-      { passed: true, fired: false },
+      { passed: true, fired: true, errored: false },
+      { passed: true, fired: false, errored: false },
     ])
     expect(
       outcome.kind === 'complete' && outcome.summary.cases[0]?.runs.without,
-    ).toEqual([{ passed: false, fired: false }])
+    ).toEqual([{ passed: false, fired: null, errored: false }])
   })
 
   it('does not count a tool_used grader on another tool as firing', () => {
@@ -126,7 +126,7 @@ describe('parseEvalReport', () => {
     )
     expect(
       outcome.kind === 'complete' && outcome.summary.cases[0]?.runs.with,
-    ).toEqual([{ passed: true, fired: null }])
+    ).toEqual([{ passed: true, fired: null, errored: false }])
   })
 
   it('has no without Arm when the run had a single one', () => {
@@ -180,5 +180,81 @@ describe('parseEvalReport', () => {
       }),
     )
     expect(outcome.kind === 'refused' && outcome.message).toContain('2.1.319')
+  })
+
+  describe('the fired indicator', () => {
+    const firedWith = (
+      grader: Record<string, unknown>,
+      skillName = 'fx-skill',
+    ) => {
+      const outcome = parseEvalReport(
+        withEdit('with-without.json', (report) => {
+          const suite = report.suite as { plugins: { name: string }[] }
+          suite.plugins = [{ name: skillName }]
+          const item = firstCase(report) as CaseDraft & { graders: unknown[] }
+          item.graders.push({ name: 'indicator', type: 'tool_used', ...grader })
+          const run = item.arms.with[0] as Entry & { graders: unknown[] }
+          run.graders.push({ name: 'indicator', passed: true })
+        }),
+      )
+      return outcome.kind === 'complete'
+        ? outcome.summary.cases[0]?.runs.with[0]?.fired
+        : undefined
+    }
+
+    it('ignores a must-not-invoke check', () => {
+      expect(
+        firedWith({ config: { tool: 'Skill', min: 0, max: 0 } }),
+      ).toBeNull()
+    })
+
+    it('needs input_match to name this Skill, with or without a plugin prefix', () => {
+      const match = '"skill"\\s*:\\s*"(?:[\\w-]+:)?fx-skill"'
+      expect(firedWith({ config: { tool: 'Skill', input_match: match } })).toBe(
+        true,
+      )
+      expect(
+        firedWith({
+          config: { tool: 'Skill', input_match: '"skill":"fx-skill:fx-skill"' },
+        }),
+      ).toBe(true)
+    })
+
+    it('ignores a Skill grader that matches another Skill', () => {
+      expect(
+        firedWith({
+          config: { tool: 'Skill', input_match: '"skill"\\s*:\\s*"other"' },
+        }),
+      ).toBeNull()
+    })
+  })
+
+  describe('runs that ended on an error', () => {
+    const outcomeWith = (edit: (entry: Entry) => void) => {
+      const outcome = parseEvalReport(
+        withEdit('with-without.json', (report) => {
+          edit(firstCase(report).arms.with[0] as Entry)
+        }),
+      )
+      return outcome.kind === 'complete' ? outcome.summary.cases[0] : undefined
+    }
+
+    it('leaves out a run that scored 0 without grading', () => {
+      const item = outcomeWith((entry) => {
+        entry.error = 'API Error: 429'
+        entry.passed = false
+        entry.graders = []
+      })
+      expect(item?.with).toEqual({ passed: 0, total: 0 })
+      expect(item?.runs.with[0]?.errored).toBe(true)
+    })
+
+    it('keeps a run with an error that was still graded', () => {
+      const item = outcomeWith((entry) => {
+        entry.error = 'timed out after 300s'
+      })
+      expect(item?.with).toEqual({ passed: 1, total: 1 })
+      expect(item?.runs.with[0]?.errored).toBe(false)
+    })
   })
 })

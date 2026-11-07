@@ -10,6 +10,7 @@ export type SkillUnsaved = {
 
 export const useSkillUnsaved = (skill: Skill, unsaved: SkillUnsaved) => {
   const [names, setNames] = useState<readonly string[]>([])
+  const [checking, setChecking] = useState(false)
   const latest = useRef(0)
 
   const check = useCallback(async () => {
@@ -18,9 +19,13 @@ export const useSkillUnsaved = (skill: Skill, unsaved: SkillUnsaved) => {
     const stored = new Set(
       (
         await Promise.all(
-          markdown.map(async ({ path }) =>
-            (await unsaved.hasStored(path)) ? [path] : [],
-          ),
+          markdown.map(async ({ path }) => {
+            try {
+              return (await unsaved.hasStored(path)) ? [path] : []
+            } catch {
+              return []
+            }
+          }),
         )
       ).flat(),
     )
@@ -42,5 +47,14 @@ export const useSkillUnsaved = (skill: Skill, unsaved: SkillUnsaved) => {
     void check()
   }, [check])
 
-  return { names, check }
+  const checkBeforeRun = useCallback(async () => {
+    setChecking(true)
+    try {
+      await check()
+    } finally {
+      setChecking(false)
+    }
+  }, [check])
+
+  return { names, checking, check: checkBeforeRun }
 }

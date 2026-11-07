@@ -1,19 +1,18 @@
-import { caseSignals, firedOverall } from '../evals/signals'
+import { caseSignals, firedOverall, helpedOverall } from '../evals/signals'
 import type { EvalsKit } from '../evals/types'
 import { unsavedNotice } from '../evals/unsaved'
 import {
   costEstimate,
   countLabel,
+  erroredText,
+  leftOutText,
   stoppedText,
   suspiciousText,
-  verdictText,
 } from '../evals/view'
 import type { Skill } from '../skills/scan-skills'
 import { EvalRunDialog } from './EvalRunDialog'
 import { useEvalPanel } from './use-eval-panel'
 import { type SkillUnsaved, useSkillUnsaved } from './use-skill-unsaved'
-
-export type { SkillUnsaved }
 
 type EvalPanelProps = {
   readonly evals: EvalsKit
@@ -41,10 +40,13 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
     await unsavedFiles.check()
     await ask()
   }
+  const checking = unsavedFiles.checking
   const last = state.status === 'ready' ? state.last : null
   const signals = last === null ? [] : last.cases.map(caseSignals)
   const suspicious = signals.filter(({ suspicious }) => suspicious.length > 0)
+  const errored = signals.filter(({ errored: count }) => count > 0)
   const fired = last === null ? null : firedOverall(last.cases)
+  const helped = last === null ? null : helpedOverall(last.cases)
 
   return (
     <section
@@ -113,10 +115,15 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                 <div>
                   <dt className="text-ink-muted">Did it help?</dt>
                   <dd className="text-ink-strong">
-                    {last.without === null
-                      ? `${countLabel(last.with)} passes with the Skill. No run without it.`
-                      : `${countLabel(last.with)} passes with, ${countLabel(last.without)} without`}
+                    {helped === null
+                      ? 'No run without the Skill to compare.'
+                      : `${countLabel(helped.with)} passes with, ${countLabel(helped.without)} without`}
                   </dd>
+                  {helped === null || helped.leftOut === 0 ? null : (
+                    <dd className="text-ink-faint">
+                      {leftOutText(helped.leftOut)}.
+                    </dd>
+                  )}
                 </div>
               </dl>
               <table className="mt-2 w-full">
@@ -137,24 +144,19 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {signals.map((item) => (
-                    <tr
-                      key={item.name}
-                      title={verdictText(item.helped.verdict)}
-                    >
+                  {last.cases.map((item, index) => (
+                    <tr key={item.name}>
                       <td className="max-w-0 truncate py-0.5 pr-2">
                         {item.name}
                       </td>
                       <td className="py-0.5 pr-2">
-                        {item.fired === null ? '–' : countLabel(item.fired)}
-                      </td>
-                      <td className="py-0.5 pr-2">
-                        {countLabel(item.helped.with)}
-                      </td>
-                      <td className="py-0.5">
-                        {item.helped.without === null
+                        {signals[index]?.fired == null
                           ? '–'
-                          : countLabel(item.helped.without)}
+                          : countLabel(signals[index].fired)}
+                      </td>
+                      <td className="py-0.5 pr-2">{countLabel(item.with)}</td>
+                      <td className="py-0.5">
+                        {item.without === null ? '–' : countLabel(item.without)}
                       </td>
                     </tr>
                   ))}
@@ -168,13 +170,27 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                     <td className="py-0.5 pr-2">
                       {fired === null ? '–' : countLabel(fired)}
                     </td>
-                    <td className="py-0.5 pr-2">{countLabel(last.with)}</td>
+                    <td className="py-0.5 pr-2">
+                      {helped === null ? '–' : countLabel(helped.with)}
+                    </td>
                     <td className="py-0.5">
-                      {last.without === null ? '–' : countLabel(last.without)}
+                      {helped === null ? '–' : countLabel(helped.without)}
                     </td>
                   </tr>
                 </tbody>
               </table>
+              {errored.length === 0 ? null : (
+                <ul className="mt-2 space-y-0.5 text-ink-faint">
+                  {errored.map((item) => (
+                    <li key={item.name}>
+                      <span className="font-medium text-ink-strong">
+                        {item.name}
+                      </span>{' '}
+                      {erroredText(item.errored)}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {suspicious.length === 0 ? null : (
                 <div className="mt-2">
                   <h5 className="text-ink-muted">Suspicious cases</h5>
@@ -216,7 +232,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
             <button
               type="button"
               className="cm-ai-button px-2 py-0.5 text-xs"
-              disabled={running || dialog.status === 'preparing'}
+              disabled={running || checking || dialog.status === 'preparing'}
               aria-busy={running || undefined}
               onClick={() => void askAfterCheck()}
             >

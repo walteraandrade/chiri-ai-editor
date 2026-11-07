@@ -9,8 +9,9 @@ import {
   skillHoldingFile,
 } from '../skills/library-view'
 import type { Skill } from '../skills/scan-skills'
-import { EvalPanel, type SkillUnsaved } from './EvalPanel'
+import { EvalPanel } from './EvalPanel'
 import type { LibraryControls } from './use-library'
+import type { SkillUnsaved } from './use-skill-unsaved'
 
 type LibraryProps<Ref> = {
   readonly library: LibraryKit<Ref>

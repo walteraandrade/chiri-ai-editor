@@ -1,14 +1,7 @@
 import { z } from 'zod'
+import { armTally, type RunRecord, sumTallies, type Tally } from './tally'
 
-export type Tally = {
-  readonly passed: number
-  readonly total: number
-}
-
-export type RunRecord = {
-  readonly passed: boolean
-  readonly fired: boolean | null
-}
+export type { RunRecord, Tally }
 
 export type CaseTally = {
   readonly name: string
@@ -42,6 +35,7 @@ const SUPPORTED_SCHEMA_VERSION = 1
 
 const entry = z.object({
   passed: z.boolean(),
+  error: z.string().nullish(),
   graders: z
     .array(z.object({ name: z.string(), passed: z.boolean() }))
     .default([]),
@@ -60,6 +54,9 @@ const reportSchema = z.object({
   costUsd: z.number(),
   partial: z.boolean(),
   partialReason: z.string().nullish(),
+  suite: z
+    .object({ plugins: z.array(z.object({ name: z.string() })).default([]) })
+    .optional(),
   cases: z.array(
     z.object({
       name: z.string(),
@@ -77,40 +74,46 @@ const envelopeSchema = z.object({
   claudeVersion: z.string().optional(),
 })
 
-const tallyOf = (entries: readonly { readonly passed: boolean }[]): Tally => ({
-  passed: entries.filter(({ passed }) => passed).length,
-  total: entries.length,
-})
-
 type EntryOf = z.infer<typeof entry>
+type GraderDefinition = z.infer<typeof graderDefinition>
 
-const skillGraderNames = (
-  definitions: readonly z.infer<typeof graderDefinition>[],
-): ReadonlySet<string> =>
-  new Set(
-    definitions
-      .filter(
-        ({ type, config }) => type === 'tool_used' && config?.tool === 'Skill',
-      )
-      .map(({ name }) => name),
-  )
+const matchesSkillName = (pattern: unknown, skillName: string): boolean => {
+  if (typeof pattern !== 'string') return true
+  try {
+    const regex = new RegExp(pattern)
+    return [skillName, `${skillName}:${skillName}`].some((name) =>
+      regex.test(JSON.stringify({ skill: name })),
+    )
+  } catch {
+    return false
+  }
+}
+
+const isFiredIndicator =
+  (skillName: string | undefined) =>
+  ({ type, config }: GraderDefinition): boolean =>
+    type === 'tool_used' &&
+    config?.tool === 'Skill' &&
+    config.max !== 0 &&
+    (skillName === undefined || matchesSkillName(config.input_match, skillName))
+
+const endedWithoutGrading = ({ error, graders }: EntryOf): boolean =>
+  error != null && graders.length === 0
 
 const recordOf = (
   entries: readonly EntryOf[],
-  skillGraders: ReadonlySet<string>,
+  indicators: ReadonlySet<string> | null,
 ): readonly RunRecord[] =>
-  entries.map(({ passed, graders }) => ({
-    passed,
+  entries.map((item) => ({
+    passed: item.passed,
+    errored: endedWithoutGrading(item),
     fired:
-      skillGraders.size === 0
+      indicators === null || indicators.size === 0
         ? null
-        : graders.some(({ name, passed: ok }) => ok && skillGraders.has(name)),
+        : item.graders.some(
+            ({ name, passed }) => passed && indicators.has(name),
+          ),
   }))
-
-const sumTallies = (tallies: readonly Tally[]): Tally => ({
-  passed: tallies.reduce((sum, { passed }) => sum + passed, 0),
-  total: tallies.reduce((sum, { total }) => sum + total, 0),
-})
 
 const versionLabel = (claudeVersion: string | undefined): string =>
   claudeVersion === undefined
@@ -164,17 +167,19 @@ export const parseEvalReport = (
       reason: report.partialReason ?? null,
       claudeVersion: report.claudeVersion,
     }
+  const skillName = report.suite?.plugins[0]?.name
   const cases = report.cases.map(({ name, arms, graders }) => {
-    const skill = skillGraderNames(graders)
+    const indicators = new Set(
+      graders.filter(isFiredIndicator(skillName)).map((item) => item.name),
+    )
+    const withRuns = recordOf(arms.with, indicators)
+    const withoutRuns =
+      arms.without === undefined ? null : recordOf(arms.without, null)
     return {
       name,
-      with: tallyOf(arms.with),
-      without: arms.without === undefined ? null : tallyOf(arms.without),
-      runs: {
-        with: recordOf(arms.with, skill),
-        without:
-          arms.without === undefined ? null : recordOf(arms.without, skill),
-      },
+      with: armTally(withRuns),
+      without: withoutRuns === null ? null : armTally(withoutRuns),
+      runs: { with: withRuns, without: withoutRuns },
     }
   })
   const withoutTallies = cases.flatMap(({ without }) =>

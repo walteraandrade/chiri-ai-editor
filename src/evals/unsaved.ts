@@ -1,3 +1,5 @@
+import { restoreUnsaved, type Unsaved } from '../document/unsaved'
+
 type UnsavedInput = {
   readonly files: readonly string[]
   readonly isOpen: (file: string) => boolean
@@ -26,3 +28,9 @@ export const unsavedNotice = (names: readonly string[]): string | null =>
   names.length === 0
     ? null
     : `Unsaved text in ${listOf(names)}. A run reads what is saved on disk.`
+
+export const storedIsUnsaved = (
+  disk: string | null,
+  stored: Unsaved | null,
+): boolean =>
+  stored !== null && (disk === null || restoreUnsaved(disk, stored).restored)

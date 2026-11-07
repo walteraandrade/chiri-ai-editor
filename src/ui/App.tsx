@@ -15,6 +15,7 @@ import {
 import { idleReviewStatus, type ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
 import type { FailureNotice } from '../editor/suggestions'
+import { storedIsUnsaved } from '../evals/unsaved'
 import { applyHistoryEvent, type HistoryEvent } from '../history/events'
 import { formatClock } from '../history/time'
 import type { VersionSummary } from '../history/types'
@@ -32,7 +33,6 @@ import type { SkillField } from '../skills/skill-frontmatter'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
-import type { SkillUnsaved } from './EvalPanel'
 import { ExternalChangeNotice } from './ExternalChangeNotice'
 import { FileControls } from './FileControls'
 import { FileName } from './FileName'
@@ -59,6 +59,7 @@ import { useLeavePrompt } from './use-leave-prompt'
 import { useLibrary } from './use-library'
 import { useMarkdownFile } from './use-markdown-file'
 import { useQuickActions } from './use-quick-actions'
+import type { SkillUnsaved } from './use-skill-unsaved'
 import { useTheme } from './use-theme'
 import { useVersionTexts } from './use-version-texts'
 import { VersionBar } from './VersionBar'
@@ -193,11 +194,19 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       isOpen: (path) =>
         library !== undefined && library.toRef(path) === openRef,
       openDirty,
-      hasStored: async (path) =>
-        library !== undefined &&
-        (await unsavedText.offered(library.toRef(path))) !== null,
+      hasStored: async (path) => {
+        if (library === undefined) return false
+        const ref = library.toRef(path)
+        const stored = await unsavedText.offered(ref)
+        if (stored === null) return false
+        const disk = await files.read(ref)
+        return storedIsUnsaved(
+          disk.kind === 'opened' ? disk.file.text : null,
+          stored,
+        )
+      },
     }),
-    [library, openRef, openDirty, unsavedText],
+    [library, openRef, openDirty, unsavedText, files],
   )
   const fileLabel = librarySkillFile?.label
   const frontmatterFileName =
