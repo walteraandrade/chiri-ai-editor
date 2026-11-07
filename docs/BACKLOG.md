@@ -10,7 +10,7 @@ Gone from the previous list: "Remember the open file across reloads" (slice 2 re
 
 ## Done: backlog stacks (2026-11-05)
 
-Merged into `main` as stacked PRs: CI ([#49](https://github.com/walteraandrade/chiri-ai-editor/issues/49): CI 1 to CI 3, Dependabot, start check; the ruleset JSON is committed but not applied yet), editor Suggestions ([#55](https://github.com/walteraandrade/chiri-ai-editor/issues/55)), AI guards ([#56](https://github.com/walteraandrade/chiri-ai-editor/issues/56)) and skills editor features ([#57](https://github.com/walteraandrade/chiri-ai-editor/issues/57)). Not built, and why, in the table below.
+Merged into `main` as stacked PRs: CI ([#49](https://github.com/walteraandrade/chiri-ai-editor/issues/49): CI 1 to CI 3, Dependabot, start check; the ruleset was applied on 2026-11-07), editor Suggestions ([#55](https://github.com/walteraandrade/chiri-ai-editor/issues/55)), AI guards ([#56](https://github.com/walteraandrade/chiri-ai-editor/issues/56)) and skills editor features ([#57](https://github.com/walteraandrade/chiri-ai-editor/issues/57)). Not built, and why, in the table below.
 
 ## Done: native skills editor
 
