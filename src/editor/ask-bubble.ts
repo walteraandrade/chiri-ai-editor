@@ -1,6 +1,7 @@
 import {
   type ChangeDesc,
   type EditorState,
+  Facet,
   StateEffect,
   StateField,
 } from '@codemirror/state'
@@ -11,12 +12,17 @@ import {
   type Tooltip,
   type TooltipView,
 } from '@codemirror/view'
-import { quickActionsFor } from '../ai/quick-actions'
+import {
+  DEFAULT_QUICK_ACTION_IDS,
+  type QuickActionId,
+  quickActionsFor,
+} from '../ai/quick-actions'
 import {
   freeTextInstruction,
   quickActionInstruction,
 } from '../suggestions/instruction'
 import { aiFlag } from './ai-flag'
+import { type AskRow, askHint, askRows } from './ask-menu'
 import { currentTarget, frontmatterOfDoc } from './current-target'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
@@ -31,6 +37,13 @@ type BubbleState = {
   readonly askOpen: boolean
   readonly dismissed: Range | null
 }
+
+export const quickActionIdsFacet = Facet.define<
+  readonly QuickActionId[],
+  readonly QuickActionId[]
+>({
+  combine: (values) => values.at(-1) ?? DEFAULT_QUICK_ACTION_IDS,
+})
 
 export const openAskEffect = StateEffect.define<null>()
 export const dismissBubbleEffect = StateEffect.define<null>()
@@ -102,19 +115,130 @@ const bubbleCoords = (view: EditorView, pos: number): Rect => {
   )
 }
 
+const highlighted = (
+  label: string,
+  match: { readonly from: number; readonly to: number } | null,
+): readonly (Node | string)[] =>
+  match === null
+    ? [label]
+    : [
+        label.slice(0, match.from),
+        el('mark', {}, [label.slice(match.from, match.to)]),
+        label.slice(match.to),
+      ]
+
+const rowContent = (row: AskRow): readonly Node[] =>
+  row.kind === 'free'
+    ? [el('span', {}, [`Ask AI: “${row.text}”`])]
+    : [
+        el('span', {}, highlighted(row.action.label, row.match)),
+        ...(row.action.skillOnly
+          ? [el('span', { class: 'cm-ai-ask-tag' }, ['Skill'])]
+          : []),
+      ]
+
+let bubbleCount = 0
+
 const buildBubble = (view: EditorView) => {
   const actions = () => view.state.facet(suggestionActionsFacet)
+  const quickActions = quickActionsFor(
+    frontmatterOfDoc(view.state.doc) !== undefined,
+    view.state.facet(quickActionIdsFacet),
+  )
+  bubbleCount += 1
+  const listId = `cm-ai-ask-list-${bubbleCount}`
+  const optionId = (index: number) => `${listId}-${index}`
+
+  let browsing = false
+  let active = 0
+  let rows: readonly AskRow[] = []
+
+  const run = (row: AskRow): void => {
+    input.value = ''
+    browsing = false
+    render()
+    actions()?.ask(
+      view,
+      row.kind === 'free'
+        ? freeTextInstruction(row.text)
+        : quickActionInstruction(row.action.id),
+    )
+    view.focus()
+  }
+
+  const paintActive = (): void => {
+    for (const [index, item] of [...list.children].entries()) {
+      item.setAttribute('aria-selected', String(index === active))
+    }
+    if (rows.length > 0) {
+      input.setAttribute('aria-activedescendant', optionId(active))
+      list.children[active]?.scrollIntoView({ block: 'nearest' })
+    } else input.removeAttribute('aria-activedescendant')
+  }
+
+  const setActive = (index: number): void => {
+    if (index === active) return
+    active = index
+    paintActive()
+  }
+
+  const render = (): void => {
+    rows = askRows(quickActions, input.value, browsing)
+    active = Math.min(active, Math.max(rows.length - 1, 0))
+    list.replaceChildren(
+      ...rows.map((row, index) =>
+        el(
+          'div',
+          {
+            class:
+              row.kind === 'free'
+                ? 'cm-ai-ask-item cm-ai-ask-free'
+                : 'cm-ai-ask-item',
+            attrs: { role: 'option', id: optionId(index) },
+            on: {
+              mousemove: () => setActive(index),
+              click: () => run(row),
+            },
+          },
+          rowContent(row),
+        ),
+      ),
+    )
+    list.hidden = rows.length === 0
+    input.setAttribute('aria-expanded', String(rows.length > 0))
+    if (hint) hint.hidden = rows.length > 0 || input.value !== ''
+    paintActive()
+  }
+
+  const move = (step: 1 | -1): void => {
+    if (rows.length === 0 && input.value.trim() === '') {
+      browsing = true
+      active = 0
+      render()
+      return
+    }
+    if (rows.length > 0) setActive((active + step + rows.length) % rows.length)
+  }
 
   const input = el('input', {
     class: 'cm-ai-bubble-input',
     attrs: {
       type: 'text',
-      placeholder: 'Ask AI…',
+      placeholder: 'Ask AI, or type an action…',
       'aria-label': 'Ask AI',
+      role: 'combobox',
+      'aria-autocomplete': 'list',
+      'aria-controls': listId,
+      'aria-expanded': 'false',
       autocomplete: 'off',
       spellcheck: 'false',
     },
     on: {
+      input: () => {
+        browsing = false
+        active = 0
+        render()
+      },
       keydown: (event) => {
         if (event.key === 'Escape') {
           event.preventDefault()
@@ -124,10 +248,24 @@ const buildBubble = (view: EditorView) => {
           view.focus()
         } else if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
           event.preventDefault()
+        } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault()
+          move(event.key === 'ArrowDown' ? 1 : -1)
         }
       },
     },
   })
+
+  const list = el('div', {
+    class: 'cm-ai-ask-list',
+    attrs: { id: listId, role: 'listbox', 'aria-label': 'Quick actions' },
+  })
+
+  const hintText = askHint(quickActions)
+  const hint =
+    hintText === undefined
+      ? undefined
+      : el('div', { class: 'cm-ai-ask-hint' }, [hintText])
 
   const form = el(
     'form',
@@ -136,35 +274,12 @@ const buildBubble = (view: EditorView) => {
       on: {
         submit: (event) => {
           event.preventDefault()
-          const text = input.value.trim()
-          if (text === '') return
-          input.value = ''
-          actions()?.ask(view, freeTextInstruction(text))
-          view.focus()
+          const row = rows[active]
+          if (row) run(row)
         },
       },
     },
     [aiFlag(), input],
-  )
-
-  const buttons = quickActionsFor(
-    frontmatterOfDoc(view.state.doc) !== undefined,
-  ).map((action, index) =>
-    el(
-      'button',
-      {
-        class: 'cm-ai-chip',
-        attrs: { type: 'button', style: `--i: ${index}` },
-        on: {
-          mousedown: (event) => event.preventDefault(),
-          click: () => {
-            actions()?.ask(view, quickActionInstruction(action.id))
-            view.focus()
-          },
-        },
-      },
-      [action.label],
-    ),
   )
 
   const dom = el(
@@ -184,15 +299,10 @@ const buildBubble = (view: EditorView) => {
         },
       },
     },
-    [
-      el(
-        'div',
-        { class: 'cm-ai-bubble-actions', attrs: { role: 'toolbar' } },
-        buttons,
-      ),
-      form,
-    ],
+    [form, ...(hint ? [hint] : []), list],
   )
+
+  render()
 
   const focusIfAsking = (state: EditorState): void => {
     if (isAsking(state)) input.focus()

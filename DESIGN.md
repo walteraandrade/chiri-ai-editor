@@ -96,7 +96,7 @@ One family carries the product. League Spartan appears once, in the "Chiri" word
 - **Display** (600, 1.5rem): the wordmark.
 - **Headline** (700, 1.85em of body): Document `#` headings, inside the editor.
 - **Body** (400, 1.0625rem, line-height 1.75): the Document. The column is 48rem wide.
-- **Label** (400, 0.8125rem): buttons, chips, Cards, the bubble.
+- **Label** (400, 0.8125rem): buttons, Cards, the bubble and its action list.
 - **Flag** (600, 0.6875rem): the AI name tag.
 
 ## 4. Elevation
@@ -112,9 +112,11 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 - **Disabled:** no fill, a dashed hairline and faint text, since a Palette cannot dim a color.
 - **Busy:** a slow sweep of `--color-ai-glow` across the button.
 
-### Chips (Quick actions)
-- **Style:** same as buttons; hover turns to the raised color with AI text, since a chip is a request to the AI.
-- **Entrance:** rise 3px and fade, staggered 35ms per chip.
+### Action list (Quick actions)
+- **At rest:** the bubble shows only its input and a faint hint naming the first Quick action and `↓`.
+- **Typing:** a list under the input shows the Quick actions whose name contains the text, prefixes first, and always ends with "Ask AI: “…”" for free text. `↓` on an empty input lists them all.
+- **Style:** rows on the fill color, split by raised hairlines, the match underlined. The highlighted row takes the raised color, AI text and a 1px AI outline, since a Palette may paint fill and raised the same. Skill actions carry a faint "Skill" tag.
+- **Keyboard:** `↑` `↓` move and wrap, `Enter` runs the highlighted row. No entrance motion: the list changes on every keystroke.
 
 ### The AI flag (signature)
 - A small tag in the AI color, reading "AI", in canvas-colored text. It marks every AI surface: the caret, the bubble's input, the Card's Rationale.

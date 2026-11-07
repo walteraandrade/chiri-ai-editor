@@ -298,7 +298,6 @@
   animation-fill-mode: backwards;
 }
 
-.cm-ai-bubble-actions,
 .cm-ai-card-actions {
   display: flex;
   flex-wrap: wrap;
@@ -331,7 +330,75 @@
   color: var(--color-ink-muted);
 }
 
-.cm-ai-chip,
+.cm-ai-ask-hint {
+  padding-left: 0.15rem;
+  color: var(--color-ink-faint);
+  font-size: 0.75rem;
+}
+
+.cm-ai-ask-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 14rem;
+  overflow-y: auto;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-fill);
+}
+
+.cm-ai-ask-list[hidden],
+.cm-ai-ask-hint[hidden] {
+  display: none;
+}
+
+.cm-ai-ask-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-state) var(--ease-out-quart),
+    color var(--motion-state) var(--ease-out-quart);
+}
+
+.cm-ai-ask-item + .cm-ai-ask-item {
+  border-top: 1px solid var(--color-raised);
+}
+
+.cm-ai-ask-item[aria-selected="true"] {
+  outline: 1px solid var(--color-ai);
+  outline-offset: -1px;
+  background: var(--color-ai-tint);
+  color: var(--color-ai-text);
+}
+
+.cm-ai-ask-free {
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+.cm-ai-ask-item mark {
+  background: transparent;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cm-ai-ask-tag {
+  flex-shrink: 0;
+  color: var(--color-ink-faint);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cm-ai-ask-item[aria-selected="true"] .cm-ai-ask-tag {
+  color: inherit;
+}
+
 .cm-ai-button {
   display: inline-flex;
   align-items: center;
@@ -347,23 +414,11 @@
     transform var(--motion-press) var(--ease-out-quart);
 }
 
-.cm-ai-chip {
-  animation: rise-in var(--motion-enter) var(--ease-out-expo) backwards;
-  animation-delay: calc(40ms + var(--i, 0) * 35ms);
-}
-
-.cm-ai-chip:hover,
 .cm-ai-button:hover {
   background: var(--color-fill-hover);
   color: var(--color-ink-strong);
 }
 
-.cm-ai-chip:hover {
-  background: var(--color-ai-tint);
-  color: var(--color-ai-text);
-}
-
-.cm-ai-chip:active,
 .cm-ai-button:active:not(:disabled) {
   transform: scale(0.96);
 }
@@ -375,7 +430,6 @@
 }
 
 .cm-ai-bubble-input:focus-visible,
-.cm-ai-chip:focus-visible,
 .cm-ai-button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;

@@ -54,11 +54,22 @@ export const QUICK_ACTIONS: readonly QuickAction[] = [
   },
 ]
 
-export const quickActionsFor = (isSkill: boolean): readonly QuickAction[] =>
-  QUICK_ACTIONS.filter((action) => isSkill || action.skillOnly !== true)
+export const DEFAULT_QUICK_ACTION_IDS: readonly QuickActionId[] = [
+  'shorter',
+  'clearer',
+  'fix-grammar',
+]
 
 export const getQuickAction = (id: QuickActionId): QuickAction => {
   const action = QUICK_ACTIONS.find((candidate) => candidate.id === id)
   if (!action) throw new Error(`Unknown Quick action: ${id}`)
   return action
 }
+
+export const quickActionsFor = (
+  isSkill: boolean,
+  ids: readonly QuickActionId[] = DEFAULT_QUICK_ACTION_IDS,
+): readonly QuickAction[] =>
+  ids
+    .map(getQuickAction)
+    .filter((action) => isSkill || action.skillOnly !== true)

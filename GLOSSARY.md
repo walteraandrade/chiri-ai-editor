@@ -15,7 +15,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Target** | The range an AI request is about: the selection, or the Block under the cursor when nothing is selected. |
 | **Neighbors** | The 2 Blocks before and the 2 after the Target, plus the document title (first `#`) and the current section heading. Sent as context. |
 | **Instruction** | What the user asks for: a Quick action or free text. |
-| **Quick action** | A preset Instruction: Shorter, Clearer, More formal, Fix grammar. |
+| **Quick action** | A preset Instruction, picked by typing its name in the bubble's input. On by default: Shorter, Clearer, Fix grammar. Built in but off: More formal, and for skills Make this an instruction and Cut what the agent already knows. |
 | **Suggestion** | A proposed replacement for a range of the Document. It lives outside the Document (an overlay) until accepted. Holds: range, original text, Replacement, Rationale, refine history. |
 | **Replacement** | The new text the AI proposes for a Suggestion's range. |
 | **Rationale** | One short sentence from the AI explaining the change, in the Document's language. Shown on hover, or when the cursor is inside the Suggestion; always shown on the Active Suggestion's margin card. |
