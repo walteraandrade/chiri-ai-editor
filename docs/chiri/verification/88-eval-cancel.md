@@ -14,12 +14,26 @@ Throwaway skills lived in the session scratchpad: `cancel-skill` (one `greet` Ev
 | After the cancel: `pgrep -af "[c]laude plugin eval"` prints nothing; no `chiri-eval-*` in `/tmp`; `eval-runs/<hash>/` holds only `last/` (no `next/`); `sha256sum` of `last/result.json` equals the value taken before the run | Pass |
 | A Skill with no Evals: Run is disabled at zero cases in the dialog, as designed. To reach the CLI's `cases: []`, `evals/nograder/prompt.md` was created (a case for `prepare`, which counts `prompt.md`) with no grader, which the CLI rejects (`graders: Required`): exit 1, `cases: []`, no model call. Run from the dialog: the panel says "No Evals in this skill" and "No complete run yet" ([88-3](img/88-3.png)); no Stage or process left | Pass |
 
+## Review fixes, re-checked in the window
+
+Same ports and env, dev server restarted on the same userData.
+
+| Check | Result |
+|---|---|
+| Run started (3 Evals, 5 runs), then the Skill's row collapsed and reopened: the panel shows `Running…` and Cancel again ([88-4](img/88-4.png)) | Pass |
+| Process tree during the run (`pstree -p`): `claude plugin eval` (own process group, from `detached: true`) with a child `claude` and threads | Seen |
+| Cancel: `pgrep -g <pgid>` prints nothing and neither the parent nor the child pid exists; no `chiri-eval-*` Stage; `next/` gone | Pass |
+| The panel says "Cancelled. Cost about US$0.0061, the CLI's figure." above the unchanged earlier run ([88-5](img/88-5.png)) | Pass |
+
+The SIGTERM-ignoring child with a grandchild is a unit test with real processes (`runner.test.ts`), not a window check.
+
 ## Runs
 
 | Run | Model | Cost (US$, CLI's `costUsd`) |
 |---|---|---|
 | App: complete run, 1 Eval, 1 run | `haiku` | 0.0027 |
 | App: 3 Evals, 5 runs, cancelled | `haiku` | not read: the JSON lived in `next/`, which cancel deletes by design |
+| App, after the review fixes: 3 Evals, 5 runs, cancelled | `haiku` | 0.0061 (shown by the panel) |
 | Shell, same command, SIGTERM after 6 s: exit 143, `partial: true`, `partialReason: "interrupted"` | `haiku` | 0.0015 |
 | App and shell: Skill with an invalid case, `cases: []` | `haiku` | 0 |
 

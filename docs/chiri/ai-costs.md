@@ -181,6 +181,7 @@ Runs of `claude plugin eval` through the Chiri app ([ADR 0018](adr/0018-skill-ev
 | 2026-11-07 | #87 | Eval run from the app: 2 Evals, 1 run, with and without (the hook and sentinel checks) | `haiku` | 2.1.319 | 0.0061 | [87-eval-run.md](verification/87-eval-run.md) |
 | 2026-11-07 | #87 review | Stage with `.claude/settings.json` hooks and a `CLAUDE.md` at its root, from a shell: neither loaded | `haiku` | 2.1.319 | 0.0018 | [87-eval-run.md](verification/87-eval-run.md) |
 | 2026-11-07 | #88 | Complete run from the app: 1 Eval, 1 run, with and without (the earlier run to keep) | `haiku` | 2.1.319 | 0.0027 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
-| 2026-11-07 | #88 | Run from the app, 3 Evals, 5 runs, cancelled mid-run (JSON deleted with `next/`, cost not read) | `haiku` | 2.1.319 | not read | [88-eval-cancel.md](verification/88-eval-cancel.md) |
+| 2026-11-07 | #88 | Run from the app, 3 Evals, 5 runs, cancelled mid-run (first attempt, before the app kept the cost; JSON deleted with `next/`) | `haiku` | 2.1.319 | not read | [88-eval-cancel.md](verification/88-eval-cancel.md) |
 | 2026-11-07 | #88 | Same command from a shell, 3 Evals, 5 runs, SIGTERM after 6 s: exit 143, `interrupted` | `haiku` | 2.1.319 | 0.0015 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
 | 2026-11-07 | #88 | Skill whose only case is invalid for the CLI (`cases: []`), from the app and once from a shell | `haiku` | 2.1.319 | 0 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
+| 2026-11-07 | #88 review | Run from the app, 3 Evals, 5 runs, cancelled mid-run; panel showed "Cancelled. Cost about US$0.0061" | `haiku` | 2.1.319 | 0.0061 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
