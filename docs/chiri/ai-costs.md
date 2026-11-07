@@ -179,3 +179,4 @@ Runs of `claude plugin eval` through the Chiri app ([ADR 0018](adr/0018-skill-ev
 | 2026-11-07 | ADR 0018 spike | Control on the real folder with `hooks/`: the hook fired | `haiku` | 2.1.319 | 0.0020 | not kept |
 | 2026-11-07 | #87 | Fixture run, 1 case, with and without the Skill, from a shell | `haiku` | 2.1.319 | 0.0027 | [87-eval-run.md](verification/87-eval-run.md) |
 | 2026-11-07 | #87 | Eval run from the app: 2 Evals, 1 run, with and without (the hook and sentinel checks) | `haiku` | 2.1.319 | 0.0061 | [87-eval-run.md](verification/87-eval-run.md) |
+| 2026-11-07 | #87 review | Stage with `.claude/settings.json` hooks and a `CLAUDE.md` at its root, from a shell: neither loaded | `haiku` | 2.1.319 | 0.0018 | [87-eval-run.md](verification/87-eval-run.md) |

@@ -27,3 +27,7 @@ Both open checks hold on this machine and this CLI version, for one outside file
 | From the app, 2 Evals, 1 run, with and without | `haiku` | 0.00613 |
 
 The fixture run is also in [ai-costs.md](../ai-costs.md#eval-runs). A first fixture attempt with a fake `HOME` hit `auth_failed` (cost 0); its shape is the basis of `src/evals/fixtures/auth-failed.json`. Total spend of this slice's checks: about US$0.009.
+
+## Review question: project config in the Stage
+
+The Stage keeps `.claude/` and `CLAUDE.md`, since ADR 0018 does not list them. Checked from a shell, with the command line of `command.ts` and `--ablation none`: a Stage holding `.claude/settings.json` with `SessionStart` and `PreToolUse` hooks that touch a marker, and a `CLAUDE.md` asking for a marker word in every reply. The hook marker was absent and a regex grader for the word failed, so neither loaded. One run, `haiku`, CLI 2.1.319, US$0.0018. This matches the CLI docs: no `.claude/` or `CLAUDE.md` loads from above the workspace or inside it.
