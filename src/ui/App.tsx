@@ -199,9 +199,9 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         const ref = library.toRef(path)
         const stored = await unsavedText.offered(ref)
         if (stored === null) return false
-        const disk = await files.read(ref)
+        const disk = await files.read(ref).catch(() => null)
         return storedIsUnsaved(
-          disk.kind === 'opened' ? disk.file.text : null,
+          disk?.kind === 'opened' ? disk.file.text : null,
           stored,
         )
       },
