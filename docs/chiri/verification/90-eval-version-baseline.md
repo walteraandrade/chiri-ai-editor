@@ -10,13 +10,25 @@ Real JSON with `--ablation none` (shell probe, US$0.0027): `arms` holds only `wi
 
 | Check | Result |
 |---|---|
-| Dialog: "Compare against" lists No Skill and both Versions as History labels; picking the Started Version re-prepares and shows two risk lists (today's Stage, the Version's Stage), the note that the older Stage has the Version's SKILL.md and today's other files, and that the cost limit covers both runs ([90-2](img/90-2.png)) | Pass |
+| Dialog: "Compare against" lists No Skill and both Versions as History labels; picking the Started Version re-prepares and shows two risk lists (today's Stage, the Version's Stage), the note that the older Stage has the Version's SKILL.md and today's other files, and that the cost limit covers both runs ([90-3](img/90-3.png)) | Pass |
 | Run 1 (Started Version, 2 runs, limit 0.3, cost about US$0.0109): `today` run US$0.0054, `version` run US$0.0055, both with `ablation: none`. Panel: "Compared today's SKILL.md with the Version from 06:02 PM. The older Stage uses today's other files", fired 2/2 and 2/2, "4/4 passes with today's SKILL.md, 2/4 with the Version", table `plain` 2/2 2/2, `status-line` 2/2 today, 0/2 Version; Suspicious: `plain` passes today's SKILL.md and the Version ([90-4](img/90-4.png)) | Pass |
 | `last/` holds `baseline.json`, `today/` and `version/`; no `/tmp/chiri-eval-*` Stage left; no `next/` | Pass |
 | Page reloaded: the panel read the same summary from disk with the baseline named | Pass |
 | Cancel during the second run (5 runs): "Cancelled. Cost about US$0.0195" (first run's cost), both Stages and `next/` gone, `last/` untouched, no `claude` process left | Pass |
 | Cancel during the first run (5 runs): second run never started (only `next/today` existed), "Cancelled. Cost about US$0.0024", both Stages and `next/` gone, no process | Pass |
-| Run button grey in [90-2](img/90-2.png) right after picking a Version (the dialog was refreshing); enabled afterwards, and read enabled 0.5 s to 3 s after a pick in a later check | Not reproduced |
+
+## Review fixes
+
+Rechecked on the same userData after the review fixes, no new model call (the `last/` of run 1 was reused):
+
+| Check | Result |
+|---|---|
+| Panel after restart: two buttons, "Open today's report" and "Open the Version's report"; both opened without an error ([90-4](img/90-4.png)) | Pass |
+| Dialog: the older Version is listed with "(same as saved)" for the Version whose text equals the file on disk ([90-2](img/90-2.png)) | Pass |
+| Dialog right after a pick (read from the DOM 30 ms later, too short for a screenshot): "Compare against" disabled, "Checking this Version…" shown in place of the risk lists, Run disabled; settled state shows both Stages' risk lists ([90-3](img/90-3.png)) | Pass |
+| Run looks grey even when enabled: `text-accent-soft` is a grey in the Omarchy dev theme; `disabled` was false. This explains the grey Run in the first screenshots; it is not a state bug | Explained |
+
+Not shown in the window, covered by tests: stale prepare overlap, stale pick keeping the dialog open, the limit floor, the "half for each side" message.
 
 ## Runs
 
