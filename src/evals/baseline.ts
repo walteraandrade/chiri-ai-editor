@@ -38,9 +38,10 @@ export const versionOptionLabel = (
   versions: VersionList,
   version: VersionSummary,
   formatTime: (at: number) => string,
+  sameAsSaved = false,
 ): string => {
   const { label, headline } = describeVersion(versions, version, formatTime)
-  return `${formatTime(version.at)} · ${label}: ${headline}`
+  return `${formatTime(version.at)} · ${label}: ${headline}${sameAsSaved ? ' (same as saved)' : ''}`
 }
 
 export const TODAY_LABEL = "today's SKILL.md"

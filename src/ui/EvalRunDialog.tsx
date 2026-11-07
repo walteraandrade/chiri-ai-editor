@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { type RunBaseline, versionOptionLabel } from '../evals/baseline'
+import { runCopy } from '../evals/baseline-view'
+import { firstRunLimit, LIMIT_TOO_SMALL } from '../evals/limits'
 import { riskLines } from '../evals/risks'
 import {
   checkEvalSettings,
@@ -58,7 +60,16 @@ export function EvalRunDialog({
     model,
     maxCostUsd: Number(cost),
   }
-  const problems = checkEvalSettings(settings)
+  const copy = runCopy(baseline.kind)
+  const problems = [
+    ...checkEvalSettings(settings),
+    ...(baseline.kind === 'version' &&
+    Number.isFinite(settings.maxCostUsd) &&
+    settings.maxCostUsd > 0 &&
+    firstRunLimit(settings.maxCostUsd) === null
+      ? [LIMIT_TOO_SMALL]
+      : []),
+  ]
   const lines = riskLines(prepared.risks)
   const olderLines =
     prepared.baselineRisks === null ? null : riskLines(prepared.baselineRisks)
@@ -98,7 +109,7 @@ export function EvalRunDialog({
         <p className="mt-2 text-sm">
           {noCases
             ? 'This Skill has no Evals. Add a folder under evals/ with a prompt.md and a graders/ folder.'
-            : `${prepared.caseCount} ${prepared.caseCount === 1 ? 'Eval' : 'Evals'}, each run ${baseline.kind === 'none' ? 'with and without the Skill' : "with today's SKILL.md and with the Version"}, by the real agent through Claude CLI ${prepared.claudeVersion}.`}
+            : copy.intro(prepared.caseCount, prepared.claudeVersion)}
         </p>
         <label
           htmlFor={baselineId}
@@ -109,23 +120,25 @@ export function EvalRunDialog({
         <select
           id={baselineId}
           value={selectValue(baseline)}
+          disabled={refreshing}
           className="cm-ai-bubble-input w-full"
           onChange={(event) => onPick(baselineOf(event.target.value))}
         >
           <option value={NONE_VALUE}>No Skill</option>
           {versions.map((version) => (
             <option key={version.id} value={String(version.id)}>
-              {versionOptionLabel(prepared.versions, version, formatTime)}
+              {versionOptionLabel(
+                prepared.versions,
+                version,
+                formatTime,
+                prepared.sameAsSaved.includes(version.id),
+              )}
             </option>
           ))}
         </select>
-        {baseline.kind === 'version' ? (
-          <p className="mt-1 text-ink-faint text-xs">
-            Two Stages run, one after the other. The older one has the Version's
-            SKILL.md and today's other files, because History keeps only
-            SKILL.md.
-          </p>
-        ) : null}
+        {copy.stageNote === null ? null : (
+          <p className="mt-1 text-ink-faint text-xs">{copy.stageNote}</p>
+        )}
         <h3 className="mt-4 font-medium text-ink-muted text-xs">
           What a run can reach
         </h3>
@@ -141,12 +154,17 @@ export function EvalRunDialog({
         <h3 className="mt-4 font-medium text-ink-muted text-xs">
           Found on this Skill
         </h3>
-        <RiskList
-          title={olderLines === null ? null : "Today's Stage"}
-          lines={lines}
-        />
-        {olderLines === null ? null : (
-          <RiskList title="The Version's Stage" lines={olderLines} />
+        {refreshing ? (
+          <p role="status" className="mt-1 text-ink-faint text-sm">
+            Checking this Version…
+          </p>
+        ) : (
+          <>
+            <RiskList title={copy.todayTitle} lines={lines} />
+            {olderLines === null ? null : (
+              <RiskList title={copy.olderTitle} lines={olderLines} />
+            )}
+          </>
         )}
         {unsavedNotice === null ? null : (
           <p role="status" className="mt-4 text-ink-strong text-sm">
@@ -216,10 +234,7 @@ export function EvalRunDialog({
           </ul>
         )}
         <p className="mt-2 text-ink-faint text-xs">
-          {baseline.kind === 'none'
-            ? 'The CLI stops the run at the cost limit.'
-            : 'The cost limit covers both runs: the first gets half, the second what is left.'}{' '}
-          A run reads what is saved on disk.
+          {copy.limitNote} A run reads what is saved on disk.
         </p>
         <div className="mt-5 flex justify-end gap-2 text-sm">
           <button type="button" className="cm-ai-button" onClick={onClose}>

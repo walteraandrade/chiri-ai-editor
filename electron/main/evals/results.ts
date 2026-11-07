@@ -27,7 +27,10 @@ export type ResultsStore = {
   readonly promote: (skillKey: string) => Promise<void>
   readonly discard: (skillKey: string) => Promise<void>
   readonly readLast: (skillKey: string) => Promise<LastRun | null>
-  readonly lastReport: (skillKey: string) => Promise<string | null>
+  readonly lastReport: (
+    skillKey: string,
+    part?: RunPart,
+  ) => Promise<string | null>
 }
 
 export const skillKeyOf = (realPath: string): string =>
@@ -132,14 +135,11 @@ export const createResultsStore = (
           : null,
       }
     },
-    lastReport: async (skillKey) => {
+    lastReport: async (skillKey, part = 'today') => {
       const { pair } = await lastLayout(skillKey)
+      if (!pair && part === 'version') return null
       const dir = lastDir(skillKey)
-      const file = join(
-        pair ? join(dir, 'today') : dir,
-        REPORT_DIR,
-        REPORT_FILE,
-      )
+      const file = join(pair ? join(dir, part) : dir, REPORT_DIR, REPORT_FILE)
       try {
         return (await stat(file)).isFile() ? file : null
       } catch {

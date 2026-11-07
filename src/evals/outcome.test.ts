@@ -97,6 +97,17 @@ describe('mapRunOutcome', () => {
     )
   })
 
+  it("keeps the user's limit visible and adds a note for a shared limit", () => {
+    expect(
+      message({
+        reportText: withReason('cost_ceiling'),
+        exitCode: 2,
+        maxCostUsd: 1,
+        limitNote: 'half for each side',
+      }),
+    ).toBe('Stopped at the cost limit (US$1.00, half for each side)')
+  })
+
   it('says Claude is not logged in', () => {
     expect(
       message({ reportText: withReason('auth_failed'), exitCode: 2 }),

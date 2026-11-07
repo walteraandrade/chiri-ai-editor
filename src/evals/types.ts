@@ -12,6 +12,12 @@ export type EvalPrepareRequest = EvalSkillRequest & {
   readonly baseline: RunBaseline
 }
 
+export type ReportPart = 'today' | 'version'
+
+export type EvalOpenReportRequest = EvalSkillRequest & {
+  readonly part?: ReportPart
+}
+
 export type EvalRunRequest = EvalPrepareRequest & EvalSettings
 
 export type StoppedRun = {
@@ -39,6 +45,7 @@ export type EvalPrepareResult =
       readonly risks: readonly Risk[]
       readonly baselineRisks: readonly Risk[] | null
       readonly versions: VersionList
+      readonly sameAsSaved: readonly number[]
     }
   | { readonly kind: 'no-cli' }
   | { readonly kind: 'failed'; readonly reason: string }
@@ -65,7 +72,7 @@ export type EvalsKit = {
   readonly prepare: (request: EvalPrepareRequest) => Promise<EvalPrepareResult>
   readonly run: (request: EvalRunRequest) => Promise<EvalRunResult>
   readonly openReport: (
-    request: EvalSkillRequest,
+    request: EvalOpenReportRequest,
   ) => Promise<EvalOpenReportResult>
   readonly cancel: () => Promise<EvalCancelResult>
 }

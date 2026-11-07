@@ -375,7 +375,7 @@ describe('run against a Version', () => {
     const result = await handlers.run(REQUEST)
     expect(result).toMatchObject({
       kind: 'not-complete',
-      message: 'Stopped at the cost limit (US$0.50)',
+      message: 'Stopped at the cost limit (US$0.50, what the first side left)',
     })
     expect(result.kind === 'not-complete' ? result.costUsd : 0).toBeCloseTo(
       0.07,
@@ -398,7 +398,8 @@ describe('run against a Version', () => {
     const result = await handlers.run(REQUEST)
     expect(result).toEqual({
       kind: 'not-complete',
-      message: 'Stopped at the cost limit (US$0.50)',
+      message:
+        'Stopped at the cost limit (US$0.50, nothing left for the second side)',
       costUsd: 0.5,
     })
     expect(jobs).toHaveLength(1)
@@ -530,5 +531,118 @@ describe('cancelling a run against a Version', () => {
     const result = await handlers.run(REQUEST)
     expect(result).toMatchObject({ kind: 'not-complete', message: 'Cancelled' })
     expect(jobs).toHaveLength(1)
+  })
+})
+
+describe('cost limit messages and floor', () => {
+  it("says the first side stopped at its half and keeps the user's limit visible", async () => {
+    const stopped = JSON.parse(fixture('auth-failed.json')) as Report
+    stopped.partialReason = 'cost_ceiling'
+    const { deps, jobs } = setup({
+      reports: [JSON.stringify(stopped), withArmOnly()],
+      exits: [{ exitCode: 2, signal: null }],
+    })
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare(PREPARE)
+    const result = await handlers.run({ ...REQUEST, maxCostUsd: 1 })
+    expect(result).toMatchObject({
+      kind: 'not-complete',
+      message: 'Stopped at the cost limit (US$1.00, half for each side)',
+    })
+    expect(jobs).toHaveLength(1)
+  })
+
+  it('refuses a Version run whose half is below the smallest limit, before staging', async () => {
+    const { deps, jobs, stagedTexts } = setup()
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare(PREPARE)
+    stagedTexts.length = 0
+    const result = await handlers.run({ ...REQUEST, maxCostUsd: 0.00015 })
+    expect(result).toEqual({
+      kind: 'failed',
+      reason: 'The cost limit is too small to share between two runs',
+    })
+    expect(jobs).toEqual([])
+    expect(stagedTexts).toEqual([])
+  })
+
+  it('never passes a run more than the limit the user set', async () => {
+    const { deps, jobs } = setup({
+      reports: [
+        withArmOnly((report) => {
+          report.costUsd = 0.1234
+        }),
+        withArmOnly(),
+      ],
+    })
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare(PREPARE)
+    await handlers.run({ ...REQUEST, maxCostUsd: 0.3 })
+    const limits = jobs.map((job) => Number(argAfter(job, '--max-cost-usd')))
+    expect(limits[0]).toBeLessThanOrEqual(0.15)
+    expect(0.1234 + (limits[1] ?? 0)).toBeLessThanOrEqual(0.3)
+  })
+})
+
+describe('prepare overlap', () => {
+  it('keeps the latest prepare when an older one finishes last', async () => {
+    const { deps, jobs } = setup()
+    let releaseFirst: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    let calls = 0
+    const handlers = createEvalHandlers({
+      ...deps,
+      stage: async (path, text) => {
+        calls += 1
+        if (calls === 1) await gate
+        return deps.stage(path, text)
+      },
+    })
+    const slow = handlers.prepare({
+      skillPath: SKILL,
+      baseline: { kind: 'none' },
+    })
+    await vi.waitFor(() => expect(calls).toBe(1))
+    await handlers.prepare(PREPARE)
+    releaseFirst()
+    await slow
+    expect((await handlers.run(REQUEST)).kind).toBe('completed')
+    expect(jobs).toHaveLength(2)
+  })
+})
+
+describe('same as saved', () => {
+  it("lists the Versions whose text is today's saved text", async () => {
+    const { deps } = setup()
+    const handlers = createEvalHandlers({
+      ...deps,
+      history: {
+        versions: () => [version(7, 1000), version(8, 2000)],
+        text: (_path, id) => (id === 8 ? TODAY : OLDER),
+      },
+    })
+    expect(await handlers.prepare(PREPARE)).toMatchObject({
+      sameAsSaved: [8],
+    })
+  })
+})
+
+describe('open report by side', () => {
+  it('opens either side of a Version run and refuses another side', async () => {
+    const { deps } = setup()
+    const openPath = vi.fn(async () => '')
+    const handlers = createEvalHandlers({ ...deps, openPath })
+    await handlers.prepare(PREPARE)
+    await handlers.run(REQUEST)
+    await handlers.openReport({ skillPath: SKILL })
+    await handlers.openReport({ skillPath: SKILL, part: 'version' })
+    const opened = openPath.mock.calls.map(([file]) => String(file))
+    expect(opened[0]).toContain(join('last', 'today', 'report'))
+    expect(opened[1]).toContain(join('last', 'version', 'report'))
+    expect(
+      (await handlers.openReport({ skillPath: SKILL, part: '../x' })).kind,
+    ).toBe('failed')
   })
 })

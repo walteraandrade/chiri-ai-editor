@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NO_BASELINE, type RunBaseline } from '../evals/baseline'
+import {
+  type EvalDialogState,
+  settlePick,
+  startPick,
+} from '../evals/dialog-state'
 import type { EvalSummary } from '../evals/report'
 import type { EvalSettings } from '../evals/settings'
-import type { EvalPrepareResult, EvalsKit, StoppedRun } from '../evals/types'
+import type { EvalsKit, ReportPart, StoppedRun } from '../evals/types'
 
 export type EvalPanelState =
   | { readonly status: 'loading' }
@@ -17,16 +22,6 @@ export type EvalPanelState =
   | { readonly status: 'no-cli' }
   | { readonly status: 'failed'; readonly reason: string }
 
-export type EvalDialogState =
-  | { readonly status: 'closed' }
-  | { readonly status: 'preparing' }
-  | {
-      readonly status: 'confirm'
-      readonly prepared: Extract<EvalPrepareResult, { kind: 'ready' }>
-      readonly baseline: RunBaseline
-      readonly refreshing: boolean
-    }
-
 const POLL_MS = 1500
 
 const REASONS = {
@@ -37,7 +32,14 @@ const REASONS = {
 
 export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
   const [state, setState] = useState<EvalPanelState>({ status: 'loading' })
-  const [dialog, setDialog] = useState<EvalDialogState>({ status: 'closed' })
+  const [dialog, setDialogState] = useState<EvalDialogState>({
+    status: 'closed',
+  })
+  const dialogRef = useRef<EvalDialogState>({ status: 'closed' })
+  const setDialog = useCallback((next: EvalDialogState) => {
+    dialogRef.current = next
+    setDialogState(next)
+  }, [])
   const [message, setMessage] = useState<string | null>(null)
   const latest = useRef(0)
 
@@ -98,32 +100,23 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
     setDialog({ status: 'closed' })
     if (prepared.kind === 'no-cli') setState({ status: 'no-cli' })
     else setMessage(prepared.reason)
-  }, [evals, skillPath])
+  }, [evals, skillPath, setDialog])
 
   const pick = useCallback(
     async (baseline: RunBaseline) => {
-      setDialog((previous) =>
-        previous.status === 'confirm'
-          ? { ...previous, baseline, refreshing: true }
-          : previous,
-      )
+      const started = startPick(dialogRef.current, baseline)
+      setDialog(started)
       const prepared = await evals.prepare({ skillPath, baseline })
-      if (prepared.kind === 'ready') {
-        setDialog((previous) =>
-          previous.status === 'confirm' && previous.baseline === baseline
-            ? { status: 'confirm', prepared, baseline, refreshing: false }
-            : previous,
-        )
-        return
-      }
-      setDialog({ status: 'closed' })
-      if (prepared.kind === 'no-cli') setState({ status: 'no-cli' })
-      else setMessage(prepared.reason)
+      const settled = settlePick(dialogRef.current, baseline, prepared)
+      setDialog(settled.dialog)
+      if (settled.effect.kind === 'no-cli') setState({ status: 'no-cli' })
+      else if (settled.effect.kind === 'message')
+        setMessage(settled.effect.reason)
     },
-    [evals, skillPath],
+    [evals, skillPath, setDialog],
   )
 
-  const close = useCallback(() => setDialog({ status: 'closed' }), [])
+  const close = useCallback(() => setDialog({ status: 'closed' }), [setDialog])
 
   const run = useCallback(
     async (settings: EvalSettings, baseline: RunBaseline) => {
@@ -150,7 +143,7 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
         result.kind === 'failed' ? result.reason : REASONS[result.kind],
       )
     },
-    [evals, skillPath, patchReady],
+    [evals, skillPath, patchReady, setDialog],
   )
 
   const cancel = useCallback(async () => {
@@ -164,10 +157,13 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
     }
   }, [evals, patchReady])
 
-  const openReport = useCallback(async () => {
-    const result = await evals.openReport({ skillPath })
-    if (result.kind === 'failed') setMessage(result.reason)
-  }, [evals, skillPath])
+  const openReport = useCallback(
+    async (part: ReportPart) => {
+      const result = await evals.openReport({ skillPath, part })
+      if (result.kind === 'failed') setMessage(result.reason)
+    },
+    [evals, skillPath],
+  )
 
   return {
     state,

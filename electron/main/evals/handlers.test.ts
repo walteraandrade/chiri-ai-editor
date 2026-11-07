@@ -154,6 +154,7 @@ describe('prepare', () => {
       risks: [{ kind: 'shell-commands', lines: ['!`ls`'] }],
       baselineRisks: null,
       versions: [],
+      sameAsSaved: [],
     })
     expect(cleanup).toHaveBeenCalledTimes(1)
   })

@@ -1,15 +1,13 @@
+import { summaryView } from '../evals/baseline-view'
 import { caseSignals, firedOverall, helpedOverall } from '../evals/signals'
 import type { EvalsKit } from '../evals/types'
 import { unsavedNotice } from '../evals/unsaved'
 import {
-  armLabelsOf,
   costEstimate,
   countLabel,
   erroredText,
-  leftOutText,
   stoppedText,
   suspiciousText,
-  unpairedText,
 } from '../evals/view'
 import { formatClock } from '../history/time'
 import type { Skill } from '../skills/scan-skills'
@@ -51,10 +49,10 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
   const errored = signals.filter(({ errored: count }) => count > 0)
   const fired = last === null ? null : firedOverall(last.cases)
   const helped = last === null ? null : helpedOverall(last.cases)
-  const versionRun = last?.baseline.kind === 'version'
-  const labels = armLabelsOf(last?.baseline ?? { kind: 'none' }, (at) =>
+  const view = summaryView(last?.baseline ?? { kind: 'none' }, (at) =>
     formatClock(at, Date.now()),
   )
+  const versionRun = last?.baseline.kind === 'version'
   const firedSecond =
     last === null || !versionRun ? null : firedOverall(last.cases, 'second')
 
@@ -113,41 +111,22 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
               <p className="text-ink-faint">
                 Last complete run, {new Date(last.startedAt).toLocaleString()}
               </p>
-              {versionRun ? (
-                <p className="text-ink-faint">
-                  Compared today's SKILL.md with {labels.second}. The older
-                  Stage uses today's other files, because History keeps only
-                  SKILL.md.
-                </p>
-              ) : null}
+              {view.comparedNote === null ? null : (
+                <p className="text-ink-faint">{view.comparedNote}</p>
+              )}
               <dl className="mt-1 space-y-1">
                 <div>
                   <dt className="text-ink-muted">Did the Skill fire?</dt>
                   <dd className="text-ink-strong">
-                    {fired === null
-                      ? 'Not checked. No Eval has a tool_used Skill grader.'
-                      : versionRun
-                        ? `${countLabel(fired)} runs with ${labels.first}${firedSecond === null ? '' : `, ${countLabel(firedSecond)} with ${labels.second}`}`
-                        : `${countLabel(fired)} runs with the Skill`}
+                    {view.firedText(fired, firedSecond)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-ink-muted">Did it help?</dt>
-                  <dd className="text-ink-strong">
-                    {helped === null
-                      ? versionRun
-                        ? 'No Eval ran in both Stages to compare.'
-                        : 'No run without the Skill to compare.'
-                      : versionRun
-                        ? `${countLabel(helped.with)} passes with ${labels.first}, ${countLabel(helped.without)} with ${labels.second}`
-                        : `${countLabel(helped.with)} passes with, ${countLabel(helped.without)} without`}
-                  </dd>
+                  <dd className="text-ink-strong">{view.helpedText(helped)}</dd>
                   {helped === null || helped.leftOut === 0 ? null : (
                     <dd className="text-ink-faint">
-                      {versionRun
-                        ? unpairedText(helped.leftOut)
-                        : leftOutText(helped.leftOut)}
-                      .
+                      {view.leftOut(helped.leftOut)}.
                     </dd>
                   )}
                 </div>
@@ -162,10 +141,10 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                       Fired
                     </th>
                     <th scope="col" className="py-0.5 pr-2 font-normal">
-                      {versionRun ? 'Today' : 'With'}
+                      {view.columns.first}
                     </th>
                     <th scope="col" className="py-0.5 font-normal">
-                      {versionRun ? 'Version' : 'Without'}
+                      {view.columns.second}
                     </th>
                   </tr>
                 </thead>
@@ -229,7 +208,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                           <span className="font-medium text-ink-strong">
                             {item.name}
                           </span>{' '}
-                          {suspiciousText(kind, labels)}
+                          {suspiciousText(kind, view.labels)}
                         </li>
                       )),
                     )}
@@ -242,13 +221,24 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
               <p className="mt-1 text-ink-faint">
                 Cost {costEstimate(last.costUsd)}, the CLI's figure.
               </p>
-              <button
-                type="button"
-                className="cm-ai-button mt-1 px-2 py-0.5 text-xs"
-                onClick={() => void openReport()}
-              >
-                Open report
-              </button>
+              <div className="mt-1 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="cm-ai-button px-2 py-0.5 text-xs"
+                  onClick={() => void openReport('today')}
+                >
+                  {versionRun ? "Open today's report" : 'Open report'}
+                </button>
+                {versionRun ? (
+                  <button
+                    type="button"
+                    className="cm-ai-button px-2 py-0.5 text-xs"
+                    onClick={() => void openReport('version')}
+                  >
+                    Open the Version's report
+                  </button>
+                ) : null}
+              </div>
             </div>
           )}
           {notice === null ? null : (

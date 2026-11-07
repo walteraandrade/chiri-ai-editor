@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   parseCancelRequest,
+  parseOpenReportRequest,
   parseRunRequest,
   parseSkillRequest,
 } from './request'
@@ -86,5 +87,26 @@ describe('parseCancelRequest', () => {
     ['null', null],
   ])('refuses %s', (_name, input) => {
     expect(parseCancelRequest(input)).toBeNull()
+  })
+})
+
+describe('parseOpenReportRequest', () => {
+  const skillPath = '/home/u/.claude/skills/pdf'
+
+  it('accepts a path alone or with a side', () => {
+    expect(parseOpenReportRequest({ skillPath })).toEqual({ skillPath })
+    expect(parseOpenReportRequest({ skillPath, part: 'version' })).toEqual({
+      skillPath,
+      part: 'version',
+    })
+  })
+
+  it.each([
+    ['another side', { skillPath, part: 'both' }],
+    ['a path as side', { skillPath, part: '../x' }],
+    ['an extra field', { skillPath, file: '/etc/passwd' }],
+    ['no path', { part: 'today' }],
+  ])('refuses %s', (_name, input) => {
+    expect(parseOpenReportRequest(input)).toBeNull()
   })
 })

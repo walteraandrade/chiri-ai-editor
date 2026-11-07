@@ -39,6 +39,12 @@ describe('labels', () => {
     )
   })
 
+  it('marks a Version whose text is the saved one', () => {
+    expect(versionOptionLabel([edited], edited, (at) => `t${at}`, true)).toBe(
+      't1000 · You: You added 3 words (same as saved)',
+    )
+  })
+
   it('names both sides of the comparison', () => {
     expect(TODAY_LABEL).toBe("today's SKILL.md")
     expect(versionLabel(5, (at) => `t${at}`)).toBe('the Version from t5')

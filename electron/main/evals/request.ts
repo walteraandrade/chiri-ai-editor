@@ -6,6 +6,7 @@ import {
   MODEL_PATTERN,
 } from '../../../src/evals/settings'
 import type {
+  EvalOpenReportRequest,
   EvalPrepareRequest,
   EvalRunRequest,
   EvalSkillRequest,
@@ -39,6 +40,18 @@ const runRequest = z.strictObject({
 
 export const parseSkillRequest = (input: unknown): EvalSkillRequest | null => {
   const parsed = skillRequest.safeParse(input)
+  return parsed.success ? parsed.data : null
+}
+
+const openReportRequest = z.strictObject({
+  skillPath: pathSchema,
+  part: z.enum(['today', 'version']).optional(),
+})
+
+export const parseOpenReportRequest = (
+  input: unknown,
+): EvalOpenReportRequest | null => {
+  const parsed = openReportRequest.safeParse(input)
   return parsed.success ? parsed.data : null
 }
 

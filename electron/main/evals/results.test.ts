@@ -130,6 +130,8 @@ describe('createResultsStore', () => {
     writeFileSync(older.jsonFile, 'V')
     mkdirSync(today.outputDir)
     writeFileSync(join(today.outputDir, 'report.html'), '<p>t</p>')
+    mkdirSync(older.outputDir)
+    writeFileSync(join(older.outputDir, 'report.html'), '<p>v</p>')
     expect(await results.readNext(KEY, 'today')).toBe('T')
     expect(await results.readNext(KEY, 'version')).toBe('V')
     const baseline = '{"kind":"version","versionId":3,"at":9}'
@@ -143,6 +145,9 @@ describe('createResultsStore', () => {
     expect(await results.lastReport(KEY)).toBe(
       join(dir, 'eval-runs', KEY, 'last', 'today', 'report', 'report.html'),
     )
+    expect(await results.lastReport(KEY, 'version')).toBe(
+      join(dir, 'eval-runs', KEY, 'last', 'version', 'report', 'report.html'),
+    )
   })
 
   it('reads a run with no baseline file as a single report', async () => {
@@ -155,5 +160,6 @@ describe('createResultsStore', () => {
       firstText: 'one',
       secondText: null,
     })
+    expect(await results.lastReport(KEY, 'version')).toBeNull()
   })
 })
