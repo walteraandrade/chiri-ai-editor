@@ -31,6 +31,7 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
   const [state, setState] = useState<EvalPanelState>({ status: 'loading' })
   const [dialog, setDialog] = useState<EvalDialogState>({ status: 'closed' })
   const [running, setRunning] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const latest = useRef(0)
 
@@ -74,9 +75,11 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
     async (settings: EvalSettings) => {
       setDialog({ status: 'closed' })
       setRunning(true)
+      setCancelling(false)
       setMessage(null)
       const result = await evals.run({ skillPath, ...settings })
       setRunning(false)
+      setCancelling(false)
       if (result.kind === 'completed') {
         setState((previous) =>
           previous.status === 'ready'
@@ -96,6 +99,15 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
     [evals, skillPath],
   )
 
+  const cancel = useCallback(async () => {
+    setCancelling(true)
+    const result = await evals.cancel()
+    if (result.kind === 'failed') {
+      setCancelling(false)
+      setMessage(result.reason)
+    }
+  }, [evals])
+
   const openReport = useCallback(async () => {
     const result = await evals.openReport({ skillPath })
     if (result.kind === 'failed') setMessage(result.reason)
@@ -105,11 +117,13 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
     state,
     dialog,
     running,
+    cancelling,
     message,
     refresh,
     ask,
     close,
     run,
+    cancel,
     openReport,
   }
 }

@@ -1,14 +1,20 @@
 import { buildEvalArgs } from '../../../src/evals/command'
+import { mapRunOutcome } from '../../../src/evals/outcome'
 import { parseEvalReport } from '../../../src/evals/report'
 import { findRisks, type Risk } from '../../../src/evals/risks'
 import type {
+  EvalCancelResult,
   EvalOpenReportResult,
   EvalPrepareResult,
   EvalRunResult,
   EvalStatus,
 } from '../../../src/evals/types'
 import { attempt } from './attempt'
-import { parseRunRequest, parseSkillRequest } from './request'
+import {
+  parseCancelRequest,
+  parseRunRequest,
+  parseSkillRequest,
+} from './request'
 import type { ResultsStore } from './results'
 import { skillKeyOf } from './results'
 import type { EvalRunner } from './runner'
@@ -29,6 +35,7 @@ export type EvalHandlers = {
   readonly prepare: (input: unknown) => Promise<EvalPrepareResult>
   readonly run: (input: unknown) => Promise<EvalRunResult>
   readonly openReport: (input: unknown) => Promise<EvalOpenReportResult>
+  readonly cancel: (input: unknown) => Promise<EvalCancelResult>
   readonly isRunning: () => boolean
   readonly shutdown: () => Promise<void>
 }
@@ -42,7 +49,7 @@ const NOT_A_SKILL = {
 
 const SHUTDOWN_WAIT_MS = 5000
 
-const COMPLETE_EXIT_CODES: readonly (number | null)[] = [0, 1]
+const CANCELLED = { kind: 'not-complete', message: 'Cancelled' } as const
 
 const sameRisks = (left: readonly Risk[], right: readonly Risk[]): boolean =>
   JSON.stringify(left) === JSON.stringify(right)
@@ -50,14 +57,10 @@ const sameRisks = (left: readonly Risk[], right: readonly Risk[]): boolean =>
 const stageRisks = (stage: Stage): readonly Risk[] =>
   findRisks({ skillText: stage.skillText, leftOut: stage.leftOut })
 
-const exitMessage = (exitCode: number | null, signal: string | null): string =>
-  signal !== null
-    ? `Claude stopped with ${signal}`
-    : `Claude exited with code ${String(exitCode)}`
-
 export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
   const prepared = new Map<string, readonly Risk[]>()
   let running = false
+  let abort = new AbortController()
   let inflight: Promise<unknown> = Promise.resolve()
 
   const libraryRealPath = async (path: string): Promise<string | null> => {
@@ -123,19 +126,17 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
 
   const finish = async (
     key: string,
-    exitCode: number | null,
-    signal: string | null,
+    exit: { readonly exitCode: number | null; readonly signal: string | null },
+    maxCostUsd: number,
+    cancelled: boolean,
   ): Promise<EvalRunResult> => {
-    const text = await deps.results.readNext(key)
-    if (text === null)
-      return { kind: 'not-complete', message: exitMessage(exitCode, signal) }
-    const outcome = parseEvalReport(text)
-    if (outcome.kind === 'refused')
-      return { kind: 'not-complete', message: outcome.message }
-    if (outcome.kind === 'complete' && outcome.summary.cases.length === 0)
-      return { kind: 'not-complete', message: 'No Evals in this skill' }
-    if (outcome.kind === 'partial' || !COMPLETE_EXIT_CODES.includes(exitCode))
-      return { kind: 'not-complete', message: exitMessage(exitCode, signal) }
+    const outcome = mapRunOutcome({
+      reportText: await deps.results.readNext(key),
+      ...exit,
+      cancelled,
+      maxCostUsd,
+    })
+    if (outcome.kind === 'not-complete') return outcome
     await deps.results.promote(key)
     return { kind: 'completed', summary: outcome.summary }
   }
@@ -146,6 +147,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     executable: string,
     request: NonNullable<ReturnType<typeof parseRunRequest>>,
   ): Promise<EvalRunResult> => {
+    const { signal } = abort
     const remembered = prepared.get(key)
     prepared.delete(key)
     const stage = await attempt(() => deps.stage(real))
@@ -160,12 +162,13 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
       }
       const next = await deps.results.begin(key)
       const args = buildEvalArgs({ ...request, ...next })
+      if (signal.aborted) return CANCELLED
       const exit = await deps.runner.run({
         executable,
         args,
         cwd: stage.dir,
       })
-      return await finish(key, exit.exitCode, exit.signal)
+      return await finish(key, exit, request.maxCostUsd, signal.aborted)
     } catch {
       return { kind: 'failed', reason: 'Could not run claude' }
     } finally {
@@ -179,6 +182,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     if (request === null) return INVALID
     if (running) return { kind: 'busy' }
     running = true
+    abort = new AbortController()
     let finish: () => void = () => undefined
     inflight = new Promise<void>((resolve) => {
       finish = resolve
@@ -188,6 +192,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
       if (real === null) return NOT_A_SKILL
       const executable = await deps.findClaude()
       if (executable === null) return { kind: 'no-cli' }
+      if (abort.signal.aborted) return CANCELLED
       return await execute(real, skillKeyOf(real), executable, request)
     } finally {
       running = false
@@ -195,9 +200,20 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     }
   }
 
-  const shutdown = async (): Promise<void> => {
-    if (!running) return
+  const stopRun = (): boolean => {
+    if (!running) return false
+    abort.abort()
     deps.runner.kill()
+    return true
+  }
+
+  const cancel = async (input: unknown): Promise<EvalCancelResult> => {
+    if (parseCancelRequest(input) === null) return INVALID
+    return stopRun() ? { kind: 'cancelling' } : { kind: 'idle' }
+  }
+
+  const shutdown = async (): Promise<void> => {
+    if (!stopRun()) return
     await Promise.race([
       inflight,
       new Promise((r) => setTimeout(r, SHUTDOWN_WAIT_MS)),
@@ -223,6 +239,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     prepare,
     run,
     openReport,
+    cancel,
     isRunning: () => running,
     shutdown,
   }

@@ -1,4 +1,5 @@
 import type {
+  EvalCancelResult,
   EvalOpenReportResult,
   EvalPrepareResult,
   EvalRunRequest,
@@ -36,6 +37,7 @@ export const EVALS_STATUS_CHANNEL = 'evals:status'
 export const EVALS_PREPARE_CHANNEL = 'evals:prepare'
 export const EVALS_RUN_CHANNEL = 'evals:run'
 export const EVALS_OPEN_REPORT_CHANNEL = 'evals:open-report'
+export const EVALS_CANCEL_CHANNEL = 'evals:cancel'
 
 export const KEY_STATE_CHANNEL = 'key:state'
 export const KEY_SAVE_CHANNEL = 'key:save'
@@ -128,6 +130,7 @@ export type ChiriApi = {
   readonly evalOpenReport: (
     request: EvalSkillRequest,
   ) => Promise<EvalOpenReportResult>
+  readonly evalCancel: () => Promise<EvalCancelResult>
   readonly keyState: () => Promise<KeyState>
   readonly saveKey: (key: string) => Promise<KeyState>
   readonly keepKeyAsPlainText: () => Promise<KeyState>

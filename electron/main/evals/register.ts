@@ -1,6 +1,7 @@
 import { homedir } from 'node:os'
 import { app, type IpcMainInvokeEvent, ipcMain, shell } from 'electron'
 import {
+  EVALS_CANCEL_CHANNEL,
   EVALS_OPEN_REPORT_CHANNEL,
   EVALS_PREPARE_CHANNEL,
   EVALS_RUN_CHANNEL,
@@ -57,4 +58,5 @@ export const registerEvalHandlers = (
   handle(EVALS_PREPARE_CHANNEL, handlers.prepare)
   handle(EVALS_RUN_CHANNEL, handlers.run)
   handle(EVALS_OPEN_REPORT_CHANNEL, handlers.openReport)
+  handle(EVALS_CANCEL_CHANNEL, handlers.cancel)
 }

@@ -14,11 +14,13 @@ export function EvalPanel({ evals, skill }: EvalPanelProps) {
     state,
     dialog,
     running,
+    cancelling,
     message,
     refresh,
     ask,
     close,
     run,
+    cancel,
     openReport,
   } = useEvalPanel(evals, skill.realPath)
   const last = state.status === 'ready' ? state.last : null
@@ -135,6 +137,16 @@ export function EvalPanel({ evals, skill }: EvalPanelProps) {
             >
               {running ? 'Running…' : 'Run Evals'}
             </button>
+            {running ? (
+              <button
+                type="button"
+                className="cm-ai-button ml-2 px-2 py-0.5 text-xs"
+                disabled={cancelling}
+                onClick={() => void cancel()}
+              >
+                {cancelling ? 'Cancelling…' : 'Cancel'}
+              </button>
+            ) : null}
           </div>
         </>
       ) : null}

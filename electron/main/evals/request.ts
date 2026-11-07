@@ -10,6 +10,8 @@ import { pathSchema } from '../files/requests'
 
 const skillRequest = z.strictObject({ skillPath: pathSchema })
 
+const cancelRequest = z.union([z.undefined(), z.strictObject({})])
+
 const runRequest = z.strictObject({
   skillPath: pathSchema,
   runs: z.number().int().min(MIN_RUNS).max(MAX_RUNS),
@@ -26,3 +28,6 @@ export const parseRunRequest = (input: unknown): EvalRunRequest | null => {
   const parsed = runRequest.safeParse(input)
   return parsed.success ? parsed.data : null
 }
+
+export const parseCancelRequest = (input: unknown): true | null =>
+  cancelRequest.safeParse(input).success ? true : null

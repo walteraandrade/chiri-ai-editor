@@ -35,6 +35,11 @@ export type EvalRunResult =
   | { readonly kind: 'no-cli' }
   | { readonly kind: 'failed'; readonly reason: string }
 
+export type EvalCancelResult =
+  | { readonly kind: 'cancelling' }
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'failed'; readonly reason: string }
+
 export type EvalOpenReportResult =
   | { readonly kind: 'opened' }
   | { readonly kind: 'failed'; readonly reason: string }
@@ -46,4 +51,5 @@ export type EvalsKit = {
   readonly openReport: (
     request: EvalSkillRequest,
   ) => Promise<EvalOpenReportResult>
+  readonly cancel: () => Promise<EvalCancelResult>
 }
