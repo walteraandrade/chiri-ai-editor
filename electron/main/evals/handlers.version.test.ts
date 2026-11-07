@@ -317,7 +317,7 @@ describe('run against a Version', () => {
 
   it("opens the report of today's side", async () => {
     const { deps } = setup()
-    const openPath = vi.fn(async () => '')
+    const openPath = vi.fn(async (_file: string) => '')
     const handlers = createEvalHandlers({ ...deps, openPath })
     await handlers.prepare(PREPARE)
     await handlers.run(REQUEST)
@@ -632,7 +632,7 @@ describe('same as saved', () => {
 describe('open report by side', () => {
   it('opens either side of a Version run and refuses another side', async () => {
     const { deps } = setup()
-    const openPath = vi.fn(async () => '')
+    const openPath = vi.fn(async (_file: string) => '')
     const handlers = createEvalHandlers({ ...deps, openPath })
     await handlers.prepare(PREPARE)
     await handlers.run(REQUEST)
