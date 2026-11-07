@@ -1,4 +1,5 @@
 import type { Tally } from './report'
+import type { SuspiciousKind, Verdict } from './signals'
 
 export const countLabel = ({ passed, total }: Tally): string =>
   `${passed}/${total}`
@@ -25,3 +26,19 @@ export const stoppedText = ({
   costUsd === null
     ? message
     : `${message}. Cost ${costEstimate(costUsd)}, the CLI's figure.`
+
+export const suspiciousText = (kind: SuspiciousKind): string =>
+  kind === 'passes-in-both'
+    ? 'passes with and without the Skill, so it does not tell them apart'
+    : kind === 'fails-in-both'
+      ? 'fails with and without the Skill, so it is likely broken'
+      : 'its runs disagree, so it is noisy'
+
+export const verdictText = (verdict: Verdict | null): string =>
+  verdict === 'more'
+    ? 'More passes with the Skill'
+    : verdict === 'fewer'
+      ? 'Fewer passes with the Skill'
+      : verdict === 'same'
+        ? 'Same passes with and without'
+        : 'No run without the Skill to compare'

@@ -41,6 +41,10 @@ describe('parseEvalReport', () => {
             name: 'greet',
             with: { passed: 1, total: 1 },
             without: { passed: 0, total: 1 },
+            runs: {
+              with: [{ passed: true, fired: null }],
+              without: [{ passed: false, fired: null }],
+            },
           },
         ],
         with: { passed: 1, total: 1 },
@@ -78,6 +82,51 @@ describe('parseEvalReport', () => {
     expect(
       outcome.kind === 'complete' && outcome.summary.cases[0]?.with,
     ).toEqual({ passed: 2, total: 3 })
+  })
+
+  it('records per run whether a tool_used Skill grader passed', () => {
+    const outcome = parseEvalReport(
+      withEdit('with-without.json', (report) => {
+        const item = firstCase(report) as CaseDraft & {
+          graders: unknown[]
+        }
+        item.graders.push({
+          name: 'skill-fired',
+          type: 'tool_used',
+          config: { tool: 'Skill' },
+        })
+        const run = item.arms.with[0] as Entry & { graders: unknown[] }
+        run.graders.push({ name: 'skill-fired', passed: true })
+        const bare = structuredClone(run)
+        bare.graders = [{ name: 'skill-fired', passed: false }]
+        item.arms.with.push(bare)
+      }),
+    )
+    expect(
+      outcome.kind === 'complete' && outcome.summary.cases[0]?.runs.with,
+    ).toEqual([
+      { passed: true, fired: true },
+      { passed: true, fired: false },
+    ])
+    expect(
+      outcome.kind === 'complete' && outcome.summary.cases[0]?.runs.without,
+    ).toEqual([{ passed: false, fired: false }])
+  })
+
+  it('does not count a tool_used grader on another tool as firing', () => {
+    const outcome = parseEvalReport(
+      withEdit('with-without.json', (report) => {
+        const item = firstCase(report) as CaseDraft & { graders: unknown[] }
+        item.graders.push({
+          name: 'read',
+          type: 'tool_used',
+          config: { tool: 'Read' },
+        })
+      }),
+    )
+    expect(
+      outcome.kind === 'complete' && outcome.summary.cases[0]?.runs.with,
+    ).toEqual([{ passed: true, fired: null }])
   })
 
   it('has no without Arm when the run had a single one', () => {

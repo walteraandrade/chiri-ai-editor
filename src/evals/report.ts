@@ -5,10 +5,19 @@ export type Tally = {
   readonly total: number
 }
 
+export type RunRecord = {
+  readonly passed: boolean
+  readonly fired: boolean | null
+}
+
 export type CaseTally = {
   readonly name: string
   readonly with: Tally
   readonly without: Tally | null
+  readonly runs: {
+    readonly with: readonly RunRecord[]
+    readonly without: readonly RunRecord[] | null
+  }
 }
 
 export type EvalSummary = {
@@ -31,7 +40,18 @@ export type ReportOutcome =
 
 const SUPPORTED_SCHEMA_VERSION = 1
 
-const entry = z.object({ passed: z.boolean() })
+const entry = z.object({
+  passed: z.boolean(),
+  graders: z
+    .array(z.object({ name: z.string(), passed: z.boolean() }))
+    .default([]),
+})
+
+const graderDefinition = z.object({
+  name: z.string(),
+  type: z.string(),
+  config: z.record(z.string(), z.unknown()).nullish(),
+})
 
 const reportSchema = z.object({
   schemaVersion: z.literal(SUPPORTED_SCHEMA_VERSION),
@@ -43,6 +63,7 @@ const reportSchema = z.object({
   cases: z.array(
     z.object({
       name: z.string(),
+      graders: z.array(graderDefinition).default([]),
       arms: z.object({
         with: z.array(entry),
         without: z.array(entry).optional(),
@@ -60,6 +81,31 @@ const tallyOf = (entries: readonly { readonly passed: boolean }[]): Tally => ({
   passed: entries.filter(({ passed }) => passed).length,
   total: entries.length,
 })
+
+type EntryOf = z.infer<typeof entry>
+
+const skillGraderNames = (
+  definitions: readonly z.infer<typeof graderDefinition>[],
+): ReadonlySet<string> =>
+  new Set(
+    definitions
+      .filter(
+        ({ type, config }) => type === 'tool_used' && config?.tool === 'Skill',
+      )
+      .map(({ name }) => name),
+  )
+
+const recordOf = (
+  entries: readonly EntryOf[],
+  skillGraders: ReadonlySet<string>,
+): readonly RunRecord[] =>
+  entries.map(({ passed, graders }) => ({
+    passed,
+    fired:
+      skillGraders.size === 0
+        ? null
+        : graders.some(({ name, passed: ok }) => ok && skillGraders.has(name)),
+  }))
 
 const sumTallies = (tallies: readonly Tally[]): Tally => ({
   passed: tallies.reduce((sum, { passed }) => sum + passed, 0),
@@ -118,11 +164,19 @@ export const parseEvalReport = (
       reason: report.partialReason ?? null,
       claudeVersion: report.claudeVersion,
     }
-  const cases = report.cases.map(({ name, arms }) => ({
-    name,
-    with: tallyOf(arms.with),
-    without: arms.without === undefined ? null : tallyOf(arms.without),
-  }))
+  const cases = report.cases.map(({ name, arms, graders }) => {
+    const skill = skillGraderNames(graders)
+    return {
+      name,
+      with: tallyOf(arms.with),
+      without: arms.without === undefined ? null : tallyOf(arms.without),
+      runs: {
+        with: recordOf(arms.with, skill),
+        without:
+          arms.without === undefined ? null : recordOf(arms.without, skill),
+      },
+    }
+  })
   const withoutTallies = cases.flatMap(({ without }) =>
     without === null ? [] : [without],
   )

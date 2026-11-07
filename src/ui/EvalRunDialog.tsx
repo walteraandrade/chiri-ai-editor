@@ -15,6 +15,7 @@ type Prepared = Extract<EvalPrepareResult, { kind: 'ready' }>
 type EvalRunDialogProps = {
   readonly skillName: string
   readonly prepared: Prepared
+  readonly unsavedNotice: string | null
   readonly onRun: (settings: EvalSettings) => void
   readonly onClose: () => void
 }
@@ -22,6 +23,7 @@ type EvalRunDialogProps = {
 export function EvalRunDialog({
   skillName,
   prepared,
+  unsavedNotice,
   onRun,
   onClose,
 }: EvalRunDialogProps) {
@@ -97,6 +99,11 @@ export function EvalRunDialog({
               <li key={line}>{line}</li>
             ))}
           </ul>
+        )}
+        {unsavedNotice === null ? null : (
+          <p role="status" className="mt-4 text-ink-strong text-sm">
+            {unsavedNotice} Save first to measure your edits.
+          </p>
         )}
         <div className="mt-4 grid grid-cols-3 gap-3">
           <div>

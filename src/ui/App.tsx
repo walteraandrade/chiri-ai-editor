@@ -32,6 +32,7 @@ import type { SkillField } from '../skills/skill-frontmatter'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
+import type { SkillUnsaved } from './EvalPanel'
 import { ExternalChangeNotice } from './ExternalChangeNotice'
 import { FileControls } from './FileControls'
 import { FileName } from './FileName'
@@ -186,6 +187,18 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             (path) => library.toRef(path) === openRef,
           ),
         }
+  const openDirty = file.session?.dirty ?? false
+  const skillUnsaved = useMemo<SkillUnsaved>(
+    () => ({
+      isOpen: (path) =>
+        library !== undefined && library.toRef(path) === openRef,
+      openDirty,
+      hasStored: async (path) =>
+        library !== undefined &&
+        (await unsavedText.offered(library.toRef(path))) !== null,
+    }),
+    [library, openRef, openDirty, unsavedText],
+  )
   const fileLabel = librarySkillFile?.label
   const frontmatterFileName =
     librarySkillFile?.file?.fileName ?? file.session?.name ?? null
@@ -452,6 +465,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         onOpen={(ref) => void file.openRef(ref)}
         onNewSkill={() => setNewSkillOpen(true)}
         evals={evals ?? null}
+        unsaved={skillUnsaved}
       />
       {newSkillOpen && libraryControls.state.status === 'ready' ? (
         <NewSkillDialog

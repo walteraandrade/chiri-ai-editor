@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { costEstimate, countLabel, stoppedText } from './view'
+import { costEstimate, countLabel, stoppedText, suspiciousText } from './view'
 
 describe('countLabel', () => {
   it('shows passes over entries', () => {
@@ -24,5 +24,15 @@ describe('stoppedText', () => {
     expect(stoppedText({ message: 'Cancelled', costUsd: null })).toBe(
       'Cancelled',
     )
+  })
+})
+
+describe('suspiciousText', () => {
+  it('names each kind in plain words', () => {
+    expect(suspiciousText('passes-in-both')).toContain(
+      'does not tell them apart',
+    )
+    expect(suspiciousText('fails-in-both')).toContain('likely broken')
+    expect(suspiciousText('runs-disagree')).toContain('noisy')
   })
 })
