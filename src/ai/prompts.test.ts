@@ -10,7 +10,11 @@ import {
   DESCRIPTION_SYSTEM_PROMPT,
   SYSTEM_PROMPT,
 } from './prompts'
-import { QUICK_ACTIONS, quickActionsFor } from './quick-actions'
+import {
+  DEFAULT_QUICK_ACTION_IDS,
+  QUICK_ACTIONS,
+  quickActionsFor,
+} from './quick-actions'
 
 const DOC = [
   '# Guide',
@@ -73,14 +77,24 @@ describe('QUICK_ACTIONS', () => {
     }
   })
 
-  it('offers the skill actions only for a skill', () => {
-    expect(quickActionsFor(false).map((action) => action.id)).toEqual([
+  it('offers Shorter, Clearer and Fix grammar by default', () => {
+    expect(DEFAULT_QUICK_ACTION_IDS).toEqual([
       'shorter',
       'clearer',
-      'more-formal',
       'fix-grammar',
     ])
-    expect(quickActionsFor(true)).toEqual(QUICK_ACTIONS)
+    expect(quickActionsFor(false).map((action) => action.id)).toEqual(
+      DEFAULT_QUICK_ACTION_IDS,
+    )
+  })
+
+  it('offers the chosen actions in their order, skill actions only for a skill', () => {
+    const ids = ['cut-known', 'more-formal', 'shorter'] as const
+    expect(quickActionsFor(false, ids).map((action) => action.id)).toEqual([
+      'more-formal',
+      'shorter',
+    ])
+    expect(quickActionsFor(true, ids).map((action) => action.id)).toEqual(ids)
   })
 
   it('has unique ids', () => {
