@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { costEstimate, countLabel } from './view'
+import { costEstimate, countLabel, stoppedText } from './view'
 
 describe('countLabel', () => {
   it('shows passes over entries', () => {
@@ -13,5 +13,16 @@ describe('costEstimate', () => {
     expect(costEstimate(0.00265497)).toBe('about US$0.0027')
     expect(costEstimate(0.5)).toBe('about US$0.50')
     expect(costEstimate(0)).toBe('about US$0')
+  })
+})
+
+describe('stoppedText', () => {
+  it('adds the cost when it is known', () => {
+    expect(stoppedText({ message: 'Cancelled', costUsd: 0.0015 })).toBe(
+      "Cancelled. Cost about US$0.0015, the CLI's figure.",
+    )
+    expect(stoppedText({ message: 'Cancelled', costUsd: null })).toBe(
+      'Cancelled',
+    )
   })
 })

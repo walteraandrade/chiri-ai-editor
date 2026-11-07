@@ -1,4 +1,4 @@
-import { type EvalSummary, parseEvalReport } from './report'
+import { type EvalSummary, parseEvalReport, reportCost } from './report'
 
 export type OutcomeInput = {
   readonly reportText: string | null
@@ -6,11 +6,16 @@ export type OutcomeInput = {
   readonly signal: string | null
   readonly cancelled: boolean
   readonly maxCostUsd: number
+  readonly cliVersion: string | null
 }
 
 export type RunOutcome =
   | { readonly kind: 'complete'; readonly summary: EvalSummary }
-  | { readonly kind: 'not-complete'; readonly message: string }
+  | {
+      readonly kind: 'not-complete'
+      readonly message: string
+      readonly costUsd: number | null
+    }
 
 const COMPLETE_EXIT_CODES: readonly (number | null)[] = [0, 1]
 const CANCEL_EXIT_CODES: readonly (number | null)[] = [130, 143]
@@ -18,9 +23,10 @@ const CANCEL_SIGNALS: readonly (string | null)[] = ['SIGTERM', 'SIGINT']
 
 const CANCELLED = 'Cancelled'
 
-const stop = (message: string): RunOutcome => ({
+const stop = (message: string, costUsd: number | null): RunOutcome => ({
   kind: 'not-complete',
   message,
+  costUsd,
 })
 
 const limitLabel = (maxCostUsd: number): string =>
@@ -58,7 +64,10 @@ const partialMessage = (
     return `Stopped at the cost limit (US$${limitLabel(maxCostUsd)})`
   if (reason === 'auth_failed') return 'Claude is not logged in'
   if (endedByCancel(exitCode, signal)) return CANCELLED
-  return `Claude stopped early${reason === null ? '' : ` (${reason})`} with exit code ${String(exitCode)}`
+  const early = `Claude stopped early${reason === null ? '' : ` (${reason})`}`
+  return signal !== null
+    ? `${early} with ${signal}`
+    : `${early} with exit code ${String(exitCode)}`
 }
 
 export const mapRunOutcome = ({
@@ -67,16 +76,21 @@ export const mapRunOutcome = ({
   signal,
   cancelled,
   maxCostUsd,
+  cliVersion,
 }: OutcomeInput): RunOutcome => {
-  if (cancelled) return stop(CANCELLED)
-  if (reportText === null) return stop(noReportMessage(exitCode, signal))
-  const report = parseEvalReport(reportText)
-  if (report.kind === 'refused') return stop(report.message)
+  const costUsd = reportText === null ? null : reportCost(reportText)
+  if (cancelled) return stop(CANCELLED, costUsd)
+  if (reportText === null) return stop(noReportMessage(exitCode, signal), null)
+  const report = parseEvalReport(reportText, cliVersion ?? undefined)
+  if (report.kind === 'refused') return stop(report.message, costUsd)
   if (report.kind === 'partial')
-    return stop(partialMessage(report.reason, exitCode, signal, maxCostUsd))
+    return stop(
+      partialMessage(report.reason, exitCode, signal, maxCostUsd),
+      costUsd,
+    )
+  if (report.summary.cases.length === 0)
+    return stop('No Evals in this skill', costUsd)
   if (!COMPLETE_EXIT_CODES.includes(exitCode))
-    return stop(exitMessage(exitCode, signal))
-  if (report.summary.cases.length === 0 && exitCode === 1)
-    return stop('No Evals in this skill')
+    return stop(exitMessage(exitCode, signal), costUsd)
   return { kind: 'complete', summary: report.summary }
 }

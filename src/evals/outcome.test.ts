@@ -23,6 +23,7 @@ const input = (overrides: Partial<OutcomeInput>): OutcomeInput => ({
   signal: null,
   cancelled: false,
   maxCostUsd: 0.3,
+  cliVersion: '2.1.319',
   ...overrides,
 })
 
@@ -124,6 +125,13 @@ describe('mapRunOutcome', () => {
     expect(message({ reportText: withReason(null), exitCode: 2 })).toBe(
       'Claude stopped early with exit code 2',
     )
+    expect(
+      message({
+        reportText: withReason('new_reason'),
+        exitCode: null,
+        signal: 'SIGKILL',
+      }),
+    ).toBe('Claude stopped early (new_reason) with SIGKILL')
   })
 
   it('gives the Adapter message with the CLI version for another schemaVersion', () => {
@@ -138,14 +146,21 @@ describe('mapRunOutcome', () => {
 
   it('gives the Adapter message for unparsable JSON', () => {
     expect(message({ reportText: 'not json' })).toBe(
+      'The Eval report could not be read (Claude CLI 2.1.319)',
+    )
+  })
+
+  it('says an unknown version only when the CLI version is unknown too', () => {
+    expect(message({ reportText: 'not json', cliVersion: null })).toBe(
       'The Eval report could not be read (an unknown Claude CLI version)',
     )
   })
 
-  it('says No Evals in this skill for exit 1 and no cases', () => {
-    expect(message({ reportText: noCases, exitCode: 1 })).toBe(
-      'No Evals in this skill',
-    )
+  it('says No Evals in this skill for no cases, whatever the exit code', () => {
+    for (const exitCode of [0, 1, 2])
+      expect(message({ reportText: noCases, exitCode })).toBe(
+        'No Evals in this skill',
+      )
   })
 
   it('does not call a complete report with an unexpected exit code complete', () => {
@@ -163,6 +178,29 @@ describe('mapRunOutcome', () => {
       mapRunOutcome(
         input({ reportText: withReason('interrupted'), exitCode: 130 }),
       ),
-    ).toEqual({ kind: 'not-complete', message: 'Cancelled' })
+    ).toEqual({ kind: 'not-complete', message: 'Cancelled', costUsd: 0 })
+  })
+
+  it('keeps the cost of a stopped run from any report that parses', () => {
+    const cost = (
+      text: string | null,
+      overrides: Partial<OutcomeInput> = {},
+    ) => {
+      const outcome = mapRunOutcome(input({ reportText: text, ...overrides }))
+      return outcome.kind === 'not-complete' ? outcome.costUsd : 'complete'
+    }
+    expect(cost(withReason('cost_ceiling'), { exitCode: 2 })).toBe(0)
+    expect(cost(noCases, { exitCode: 1 })).toBe(JSON.parse(noCases).costUsd)
+    expect(cost(withReason('interrupted'), { cancelled: true })).toBe(0)
+    expect(cost(null, { exitCode: 143 })).toBeNull()
+    expect(cost('not json')).toBeNull()
+    expect(
+      cost(
+        JSON.stringify({
+          ...JSON.parse(withReason('interrupted')),
+          costUsd: 0.0015,
+        }),
+      ),
+    ).toBe(0.0015)
   })
 })

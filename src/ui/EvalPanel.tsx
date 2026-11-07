@@ -1,5 +1,5 @@
 import type { EvalsKit } from '../evals/types'
-import { costEstimate, countLabel } from '../evals/view'
+import { costEstimate, countLabel, stoppedText } from '../evals/view'
 import type { Skill } from '../skills/scan-skills'
 import { EvalRunDialog } from './EvalRunDialog'
 import { useEvalPanel } from './use-eval-panel'
@@ -68,6 +68,11 @@ export function EvalPanel({ evals, skill }: EvalPanelProps) {
       )}
       {state.status === 'ready' ? (
         <>
+          {state.stopped === null ? null : (
+            <p role="status" className="mt-1 text-ink-strong">
+              {stoppedText(state.stopped)}
+            </p>
+          )}
           {last === null ? (
             <p className="mt-1 text-ink-faint">No complete run yet</p>
           ) : (

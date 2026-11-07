@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EvalSummary } from '../evals/report'
 import type { EvalSettings } from '../evals/settings'
-import type { EvalPrepareResult, EvalsKit } from '../evals/types'
+import type { EvalPrepareResult, EvalsKit, StoppedRun } from '../evals/types'
 
 export type EvalPanelState =
   | { readonly status: 'loading' }
@@ -9,6 +9,9 @@ export type EvalPanelState =
       readonly status: 'ready'
       readonly claudeVersion: string
       readonly last: EvalSummary | null
+      readonly running: boolean
+      readonly cancelling: boolean
+      readonly stopped: StoppedRun | null
     }
   | { readonly status: 'no-cli' }
   | { readonly status: 'failed'; readonly reason: string }
@@ -21,6 +24,8 @@ export type EvalDialogState =
       readonly prepared: Extract<EvalPrepareResult, { kind: 'ready' }>
     }
 
+const POLL_MS = 1500
+
 const REASONS = {
   'no-cli': 'The Claude CLI was not found',
   'risks-changed': 'The Skill changed while you were confirming. Run again.',
@@ -30,8 +35,6 @@ const REASONS = {
 export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
   const [state, setState] = useState<EvalPanelState>({ status: 'loading' })
   const [dialog, setDialog] = useState<EvalDialogState>({ status: 'closed' })
-  const [running, setRunning] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const latest = useRef(0)
 
@@ -45,6 +48,9 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
             status: 'ready',
             claudeVersion: result.claudeVersion,
             last: result.last,
+            running: result.running,
+            cancelling: result.cancelling,
+            stopped: result.stopped,
           }
         : result.kind === 'no-cli'
           ? { status: 'no-cli' }
@@ -55,6 +61,23 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  const running = state.status === 'ready' && state.running
+  const cancelling = state.status === 'ready' && state.cancelling
+
+  useEffect(() => {
+    if (!running) return
+    const timer = setInterval(() => void refresh(), POLL_MS)
+    return () => clearInterval(timer)
+  }, [running, refresh])
+
+  const patchReady = useCallback(
+    (patch: Partial<Extract<EvalPanelState, { status: 'ready' }>>) =>
+      setState((previous) =>
+        previous.status === 'ready' ? { ...previous, ...patch } : previous,
+      ),
+    [],
+  )
 
   const ask = useCallback(async () => {
     setMessage(null)
@@ -74,39 +97,37 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
   const run = useCallback(
     async (settings: EvalSettings) => {
       setDialog({ status: 'closed' })
-      setRunning(true)
-      setCancelling(false)
+      patchReady({ running: true, cancelling: false, stopped: null })
       setMessage(null)
       const result = await evals.run({ skillPath, ...settings })
-      setRunning(false)
-      setCancelling(false)
+      const finished = { running: false, cancelling: false }
       if (result.kind === 'completed') {
-        setState((previous) =>
-          previous.status === 'ready'
-            ? { ...previous, last: result.summary }
-            : previous,
-        )
+        patchReady({ ...finished, last: result.summary, stopped: null })
         return
       }
+      if (result.kind === 'not-complete') {
+        patchReady({
+          ...finished,
+          stopped: { message: result.message, costUsd: result.costUsd },
+        })
+        return
+      }
+      patchReady(finished)
       setMessage(
-        result.kind === 'not-complete'
-          ? result.message
-          : result.kind === 'failed'
-            ? result.reason
-            : REASONS[result.kind],
+        result.kind === 'failed' ? result.reason : REASONS[result.kind],
       )
     },
-    [evals, skillPath],
+    [evals, skillPath, patchReady],
   )
 
   const cancel = useCallback(async () => {
-    setCancelling(true)
+    patchReady({ cancelling: true })
     const result = await evals.cancel()
     if (result.kind === 'failed') {
-      setCancelling(false)
+      patchReady({ cancelling: false })
       setMessage(result.reason)
     }
-  }, [evals])
+  }, [evals, patchReady])
 
   const openReport = useCallback(async () => {
     const result = await evals.openReport({ skillPath })

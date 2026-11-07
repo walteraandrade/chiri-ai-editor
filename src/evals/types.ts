@@ -8,11 +8,19 @@ export type EvalSkillRequest = {
 
 export type EvalRunRequest = EvalSkillRequest & EvalSettings
 
+export type StoppedRun = {
+  readonly message: string
+  readonly costUsd: number | null
+}
+
 export type EvalStatus =
   | {
       readonly kind: 'ready'
       readonly claudeVersion: string
       readonly last: EvalSummary | null
+      readonly running: boolean
+      readonly cancelling: boolean
+      readonly stopped: StoppedRun | null
     }
   | { readonly kind: 'no-cli' }
   | { readonly kind: 'failed'; readonly reason: string }
@@ -29,7 +37,7 @@ export type EvalPrepareResult =
 
 export type EvalRunResult =
   | { readonly kind: 'completed'; readonly summary: EvalSummary }
-  | { readonly kind: 'not-complete'; readonly message: string }
+  | ({ readonly kind: 'not-complete' } & StoppedRun)
   | { readonly kind: 'risks-changed' }
   | { readonly kind: 'busy' }
   | { readonly kind: 'no-cli' }

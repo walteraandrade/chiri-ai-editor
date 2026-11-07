@@ -14,3 +14,14 @@ const amount = (costUsd: number): string =>
 
 export const costEstimate = (costUsd: number): string =>
   `about US$${amount(costUsd)}`
+
+export const stoppedText = ({
+  message,
+  costUsd,
+}: {
+  readonly message: string
+  readonly costUsd: number | null
+}): string =>
+  costUsd === null
+    ? message
+    : `${message}. Cost ${costEstimate(costUsd)}, the CLI's figure.`

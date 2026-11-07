@@ -87,11 +87,22 @@ const parseJson = (text: string): unknown => {
   }
 }
 
-export const parseEvalReport = (text: string): ReportOutcome => {
+const costSchema = z.object({ costUsd: z.number() })
+
+export const reportCost = (text: string): number | null => {
+  const parsed = costSchema.safeParse(parseJson(text))
+  return parsed.success ? parsed.data.costUsd : null
+}
+
+export const parseEvalReport = (
+  text: string,
+  cliVersion?: string,
+): ReportOutcome => {
   const envelope = envelopeSchema.safeParse(parseJson(text))
   if (!envelope.success)
-    return refuse(undefined, 'The Eval report could not be read')
-  const { schemaVersion, claudeVersion } = envelope.data
+    return refuse(cliVersion, 'The Eval report could not be read')
+  const schemaVersion = envelope.data.schemaVersion
+  const claudeVersion = envelope.data.claudeVersion ?? cliVersion
   if (schemaVersion !== SUPPORTED_SCHEMA_VERSION)
     return refuse(
       claudeVersion,

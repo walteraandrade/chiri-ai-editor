@@ -8,6 +8,7 @@ import type {
   EvalPrepareResult,
   EvalRunResult,
   EvalStatus,
+  StoppedRun,
 } from '../../../src/evals/types'
 import { attempt } from './attempt'
 import {
@@ -47,9 +48,18 @@ const NOT_A_SKILL = {
   reason: 'Not a Skill in the Library',
 } as const
 
-const SHUTDOWN_WAIT_MS = 5000
+const SHUTDOWN_WAIT_MS = 6000
 
-const CANCELLED = { kind: 'not-complete', message: 'Cancelled' } as const
+const CANCELLED = {
+  kind: 'not-complete',
+  message: 'Cancelled',
+  costUsd: null,
+} as const
+
+type Prepared = {
+  readonly risks: readonly Risk[]
+  readonly claudeVersion: string
+}
 
 const sameRisks = (left: readonly Risk[], right: readonly Risk[]): boolean =>
   JSON.stringify(left) === JSON.stringify(right)
@@ -58,8 +68,11 @@ const stageRisks = (stage: Stage): readonly Risk[] =>
   findRisks({ skillText: stage.skillText, leftOut: stage.leftOut })
 
 export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
-  const prepared = new Map<string, readonly Risk[]>()
+  const prepared = new Map<string, Prepared>()
+  const stopped = new Map<string, StoppedRun>()
   let running = false
+  let runningKey: string | null = null
+  let committing = false
   let abort = new AbortController()
   let inflight: Promise<unknown> = Promise.resolve()
 
@@ -90,10 +103,15 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     const claudeVersion = await cliVersion(executable)
     if (claudeVersion === null)
       return { kind: 'failed', reason: 'Could not run claude' }
+    const key = skillKeyOf(real)
+    const here = running && runningKey === key
     return {
       kind: 'ready',
       claudeVersion,
-      last: await lastSummary(skillKeyOf(real)),
+      last: await lastSummary(key),
+      running: here,
+      cancelling: here && abort.signal.aborted,
+      stopped: stopped.get(key) ?? null,
     }
   }
 
@@ -112,7 +130,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
       return { kind: 'failed', reason: 'Could not stage the Skill' }
     try {
       const risks = stageRisks(stage)
-      prepared.set(skillKeyOf(real), risks)
+      prepared.set(skillKeyOf(real), { risks, claudeVersion })
       return {
         kind: 'ready',
         claudeVersion,
@@ -127,16 +145,20 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
   const finish = async (
     key: string,
     exit: { readonly exitCode: number | null; readonly signal: string | null },
-    maxCostUsd: number,
-    cancelled: boolean,
+    request: { readonly maxCostUsd: number },
+    claudeVersion: string,
+    signal: AbortSignal,
   ): Promise<EvalRunResult> => {
+    const reportText = await deps.results.readNext(key)
     const outcome = mapRunOutcome({
-      reportText: await deps.results.readNext(key),
+      reportText,
       ...exit,
-      cancelled,
-      maxCostUsd,
+      cancelled: signal.aborted,
+      maxCostUsd: request.maxCostUsd,
+      cliVersion: claudeVersion,
     })
     if (outcome.kind === 'not-complete') return outcome
+    committing = true
     await deps.results.promote(key)
     return { kind: 'completed', summary: outcome.summary }
   }
@@ -152,11 +174,14 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     prepared.delete(key)
     const stage = await attempt(() => deps.stage(real))
     if (stage === undefined)
-      return { kind: 'failed', reason: 'Could not stage the Skill' }
+      return signal.aborted
+        ? CANCELLED
+        : { kind: 'failed', reason: 'Could not stage the Skill' }
     try {
+      if (signal.aborted) return CANCELLED
       if (
         remembered === undefined ||
-        !sameRisks(remembered, stageRisks(stage))
+        !sameRisks(remembered.risks, stageRisks(stage))
       ) {
         return { kind: 'risks-changed' }
       }
@@ -168,9 +193,11 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
         args,
         cwd: stage.dir,
       })
-      return await finish(key, exit, request.maxCostUsd, signal.aborted)
+      return await finish(key, exit, request, remembered.claudeVersion, signal)
     } catch {
-      return { kind: 'failed', reason: 'Could not run claude' }
+      return signal.aborted
+        ? CANCELLED
+        : { kind: 'failed', reason: 'Could not run claude' }
     } finally {
       await attempt(stage.cleanup)
       await attempt(() => deps.results.discard(key))
@@ -182,26 +209,38 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     if (request === null) return INVALID
     if (running) return { kind: 'busy' }
     running = true
+    committing = false
+    runningKey = null
     abort = new AbortController()
-    let finish: () => void = () => undefined
+    const { signal } = abort
+    let release: () => void = () => undefined
     inflight = new Promise<void>((resolve) => {
-      finish = resolve
+      release = resolve
     })
+    let key: string | null = null
     try {
       const real = await libraryRealPath(request.skillPath)
+      if (signal.aborted) return CANCELLED
       if (real === null) return NOT_A_SKILL
+      key = skillKeyOf(real)
+      runningKey = key
+      stopped.delete(key)
       const executable = await deps.findClaude()
+      if (signal.aborted) return CANCELLED
       if (executable === null) return { kind: 'no-cli' }
-      if (abort.signal.aborted) return CANCELLED
-      return await execute(real, skillKeyOf(real), executable, request)
+      const result = await execute(real, key, executable, request)
+      if (result.kind === 'not-complete')
+        stopped.set(key, { message: result.message, costUsd: result.costUsd })
+      return result
     } finally {
       running = false
-      finish()
+      runningKey = null
+      release()
     }
   }
 
   const stopRun = (): boolean => {
-    if (!running) return false
+    if (!running || committing) return false
     abort.abort()
     deps.runner.kill()
     return true
