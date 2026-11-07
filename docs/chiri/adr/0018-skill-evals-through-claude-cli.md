@@ -1,6 +1,6 @@
 # 0018. Skill Evals run through the Claude CLI
 
-- Status: Proposed (2026-11-05); Electron build only ([0016](0016-web-and-electron-builds.md))
+- Status: Accepted (2026-11-07), proposed 2026-11-05; Electron build only ([0016](0016-web-and-electron-builds.md))
 - Source: maintainer request (an evals runtime for skills); the maintainer chose the CLI over an in-app runner on OpenRouter. Facts below come from a spike on `claude` 2.1.317 with throwaway skills, about US$0.012 by the CLI's own figures, and from a survey of how other tools show skill and prompt evals.
 
 ## Context
