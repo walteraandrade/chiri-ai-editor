@@ -166,6 +166,7 @@ type RowProps = {
   readonly first: boolean
   readonly last: boolean
   readonly confirming: boolean
+  readonly busy: boolean
   readonly onToggle: (on: boolean) => void
   readonly onMove: (delta: -1 | 1) => void
   readonly onEdit: () => void
@@ -179,6 +180,7 @@ function QuickActionRow({
   first,
   last,
   confirming,
+  busy,
   onToggle,
   onMove,
   onEdit,
@@ -190,7 +192,16 @@ function QuickActionRow({
   const mine = isUserQuickAction(action)
   if (confirming)
     return (
-      <li className="quick-action-row" data-quick-action={action.id}>
+      <li
+        className="quick-action-row"
+        data-quick-action={action.id}
+        onKeyDown={(event) => {
+          if (event.key !== 'Escape') return
+          event.preventDefault()
+          event.stopPropagation()
+          onKeep()
+        }}
+      >
         <span className="min-w-0 flex-1 truncate text-ink text-sm">
           Delete “{action.label}”?
         </span>
@@ -251,6 +262,7 @@ function QuickActionRow({
               className="cm-ai-button"
               data-focus="edit"
               aria-label={`Edit ${action.label}`}
+              disabled={busy}
               onClick={onEdit}
             >
               Edit
@@ -349,6 +361,7 @@ export function QuickActionsSettings({
                 confirming={
                   editing.kind === 'delete' && editing.id === slot.action.id
                 }
+                busy={editing.kind === 'edit' || editing.kind === 'new'}
                 onToggle={(on) =>
                   change((current) =>
                     toggleQuickAction(current, slot.action.id, on),
@@ -396,6 +409,7 @@ export function QuickActionsSettings({
             type="button"
             className="cm-ai-button mt-3 text-sm"
             data-focus="new"
+            disabled={editing.kind === 'edit'}
             onClick={() => setEditing({ kind: 'new' })}
           >
             New Quick action

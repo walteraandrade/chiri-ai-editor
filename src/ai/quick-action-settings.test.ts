@@ -176,8 +176,8 @@ describe('checkQuickActionDraft', () => {
         skillOnly: false,
       }),
     ).toEqual({
-      label: 'Keep it under 40 characters.',
-      instruction: 'Keep it under 2000 characters.',
+      label: 'Use at most 40 characters.',
+      instruction: 'Use at most 2000 characters.',
     })
   })
 })
@@ -222,13 +222,17 @@ describe('stored Quick action settings', () => {
     expect(parsed && onIds(parsed)).toEqual(['clearer'])
   })
 
-  it('drops a user action whose name repeats an earlier one', () => {
+  it('renames a user action whose name a built-in action now has, instead of losing it', () => {
     const text = JSON.stringify({
       version: 1,
-      actions: [{ id: 'user-1', on: true, label: 'Shorter', instruction: 'x' }],
+      actions: [
+        { id: 'user-1', on: true, label: 'Shorter', instruction: 'x' },
+        { id: 'user-2', on: true, label: 'shorter', instruction: 'y' },
+      ],
     })
     const parsed = parseQuickActionSettings(text)
-    expect(parsed && ids(parsed)).not.toContain('user-1')
+    const user = parsed?.filter((slot) => slot.action.id.startsWith('user-'))
+    expect(user?.map((slot) => slot.action.label)).toEqual(['Shorter (mine)'])
   })
 
   it('reads nothing from text that is not version 1 settings', () => {

@@ -23,6 +23,12 @@ No check called the model, so there are no AI call records and no cost.
 | After a reload the bubble lists Clearer, Fix grammar, Warmer ([83-4](img/83-4.png)) | Electron | Pass |
 | An unreadable `quick-actions.json` gives the defaults | Electron | Pass |
 
+| A stored user action named "Shorter" loads as "Shorter (mine)" | Web | Pass |
+| `Esc` on the Delete question keeps the action, Preferences stays open, focus on Delete | Web | Pass |
+| While a form is open, the other Edit buttons and New Quick action are disabled | Web | Pass |
+
 What the checks caught: two changes made before React re-rendered (add, then a toggle) wrote the second change over the first, so the new action was lost. Every change now applies to the latest settings.
+
+The code review (opus, then this fix pass) found: entries dropped on load (now renamed when the name collides), `Esc` on the Delete question closing Preferences, a draft lost by opening another form, and error text saying "under 40" for a limit of 40. All fixed.
 
 Not checked in the app: a skill-only user action hidden outside a skill (unit tests in `src/ai/quick-action-settings.test.ts` cover the filter); the packaged app on `app://`. Clicks on rows below the panel's scroll were sent through `element.click()` after `agent-browser`'s pointer click missed rows outside the view.

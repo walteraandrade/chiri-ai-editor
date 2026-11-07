@@ -15,14 +15,15 @@
 - **Ids.** Built-in ids keep their closed union, `BuiltInQuickActionId`, which the Bake-off uses. User ids are `user-<uuid>`. `QuickActionId` is the union of both.
 - **Built-in wording lives in the code.** Storage keeps only a built-in action's id and whether it is on, so a new wording or a new built-in action reaches every writer. A built-in action the storage misses is added at the end, turned off. Built-in actions cannot be edited or deleted.
 - **Storage, per build ([0016](0016-web-and-electron-builds.md)):** the same JSON (`{ "version": 1, "actions": [...] }`, in order). Web: `localStorage` under `chiri.quickActions`. Electron: `quick-actions.json` in `userData`, through two IPC channels (`quick-actions:load`, `quick-actions:save`). The main process checks the sender, caps the text at 256 KB, parses it with the same rules as the renderer and writes what it understood, atomically.
-- **Unreadable storage falls back to the defaults.** The file is left alone until the writer changes something, which overwrites it.
+- **Unreadable storage falls back to the defaults.** The file is left alone until the writer changes something, which overwrites it. Unknown or broken entries are dropped the same way. A user action whose name a built-in action now has is kept as "<name> (mine)".
 
 ## Consequences
 
 - An Instruction a writer typed goes to the model as it is, as free text already does.
 - A Suggestion keeps the label and text of its Instruction, so deleting or editing a Quick action does not change Suggestions already made from it.
 - Preferences is longer; the themes still come first.
-- No sync between the two builds, and no import or export.
+- No sync between the two builds, and no import or export. In the Web build, two tabs that both change Quick actions: the last save wins.
+- A newer settings version read by an older build falls back to the defaults, and the next change there downgrades the file.
 
 ## Alternatives considered
 

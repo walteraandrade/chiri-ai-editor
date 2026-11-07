@@ -25,7 +25,10 @@ export function useQuickActions(
   const latest = useRef(DEFAULT_QUICK_ACTION_SETTINGS)
   const writes = useRef<Promise<void>>(Promise.resolve())
   const failed = useRef(onSaveFailed)
-  failed.current = onSaveFailed
+
+  useEffect(() => {
+    failed.current = onSaveFailed
+  })
 
   useEffect(() => {
     let live = true

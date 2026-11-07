@@ -32,6 +32,7 @@ export const MAX_LABEL_LENGTH = 40
 export const MAX_INSTRUCTION_LENGTH = 2000
 
 const SETTINGS_VERSION = 1
+const TAKEN_LABEL = 'Another Quick action has this name.'
 const USER_ID = /^user-[A-Za-z0-9-]{1,64}$/
 
 const OFF_BUILT_INS = QUICK_ACTIONS.filter(
@@ -133,18 +134,18 @@ const labelError = (
   const trimmed = label.trim()
   if (trimmed === '') return 'Give it a name.'
   if (trimmed.length > MAX_LABEL_LENGTH)
-    return `Keep it under ${MAX_LABEL_LENGTH} characters.`
+    return `Use at most ${MAX_LABEL_LENGTH} characters.`
   const taken = settings.some(
     (slot) => slot.action.id !== editing && sameLabel(slot.action.label, label),
   )
-  return taken ? 'Another Quick action has this name.' : undefined
+  return taken ? TAKEN_LABEL : undefined
 }
 
 const instructionError = (instruction: string): string | undefined => {
   const trimmed = instruction.trim()
   if (trimmed === '') return 'Say what to do.'
   return trimmed.length > MAX_INSTRUCTION_LENGTH
-    ? `Keep it under ${MAX_INSTRUCTION_LENGTH} characters.`
+    ? `Use at most ${MAX_INSTRUCTION_LENGTH} characters.`
     : undefined
 }
 
@@ -174,7 +175,7 @@ type StoredSlot =
       readonly skillOnly: boolean
     }
 
-const storedSlot = ({ action, on }: QuickActionSlot): StoredSlot =>
+const storedSlot = ({ action, on }: QuickActionSlot): StoredSlot | null =>
   isUserQuickActionId(action.id)
     ? {
         id: action.id,
@@ -183,13 +184,18 @@ const storedSlot = ({ action, on }: QuickActionSlot): StoredSlot =>
         instruction: action.instruction,
         skillOnly: action.skillOnly === true,
       }
-    : { id: action.id as BuiltInQuickActionId, on }
+    : isBuiltInQuickActionId(action.id)
+      ? { id: action.id, on }
+      : null
 
 export const serializeQuickActionSettings = (
   settings: QuickActionSettings,
 ): string =>
   `${JSON.stringify(
-    { version: SETTINGS_VERSION, actions: settings.map(storedSlot) },
+    {
+      version: SETTINGS_VERSION,
+      actions: settings.map(storedSlot).filter((slot) => slot !== null),
+    },
     null,
     2,
   )}\n`
@@ -216,8 +222,12 @@ const readSlot = (
     ...QUICK_ACTIONS.map((action) => ({ action, on: false })),
     ...kept,
   ]
-  return draftIsValid(checkQuickActionDraft(reserved, draft))
-    ? { action: userAction(id, draft), on }
+  const errors = checkQuickActionDraft(reserved, draft)
+  if (draftIsValid(errors)) return { action: userAction(id, draft), on }
+  if (errors.label !== TAKEN_LABEL) return null
+  const renamed = { ...draft, label: `${draft.label.trim()} (mine)` }
+  return draftIsValid(checkQuickActionDraft(reserved, renamed))
+    ? { action: userAction(id, renamed), on }
     : null
 }
 
