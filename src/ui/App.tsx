@@ -75,6 +75,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     history,
     problems,
     library,
+    evals,
     external,
     launches,
     preferencesRequests,
@@ -450,6 +451,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         activeRef={openRef}
         onOpen={(ref) => void file.openRef(ref)}
         onNewSkill={() => setNewSkillOpen(true)}
+        evals={evals ?? null}
       />
       {newSkillOpen && libraryControls.state.status === 'ready' ? (
         <NewSkillDialog

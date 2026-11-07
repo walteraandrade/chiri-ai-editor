@@ -3,6 +3,7 @@ import { FILE_NOT_FOUND_REASON } from '../../electron/api'
 import type { HistoryApi } from '../../electron/history-api'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import type { Unsaved } from '../document/unsaved'
+import type { EvalsKit } from '../evals/types'
 import { createLocalHistoryStore } from '../history/local-store'
 import type { HistoryStore } from '../history/store'
 import { createElectronKit, SCRATCH_KEY } from './electron-kit'
@@ -101,6 +102,13 @@ const fakeExternal: ExternalKit<string> = {
   readDisk: async () => ({ kind: 'gone' }),
 }
 
+const fakeEvals: EvalsKit = {
+  status: async () => ({ kind: 'no-cli' }),
+  prepare: async () => ({ kind: 'no-cli' }),
+  run: async () => ({ kind: 'no-cli' }),
+  openReport: async () => ({ kind: 'failed', reason: 'none' }),
+}
+
 const setup = (
   options: {
     readonly stored?: Record<string, string>
@@ -138,6 +146,7 @@ const setup = (
     storage,
     files,
     library: fakeLibrary,
+    evals: fakeEvals,
     external: fakeExternal,
     launches,
     preferencesRequests,
@@ -591,6 +600,11 @@ describe('createElectronKit changes', () => {
   it('carries the Library it was given', async () => {
     const ready = await setup().kit
     expect(ready.library).toBe(fakeLibrary)
+  })
+
+  it('carries the Evals it was given', async () => {
+    const ready = await setup().kit
+    expect(ready.evals).toBe(fakeEvals)
   })
 
   it('carries the change watcher it was given', async () => {
