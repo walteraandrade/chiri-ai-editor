@@ -5,7 +5,10 @@ const LOAD_FAILED_MESSAGE =
 
 type SuggestionClient = Pick<
   ModelClient,
-  'requestSuggestion' | 'refineSuggestion' | 'reviewDocument'
+  | 'requestSuggestion'
+  | 'refineSuggestion'
+  | 'requestDescription'
+  | 'reviewDocument'
 >
 
 export type LazyModelClient = SuggestionClient & {
@@ -45,6 +48,10 @@ export const createLazyModelClient = (
     refineSuggestion: async (request) => {
       const client = await get().catch(() => undefined)
       return client ? client.refineSuggestion(request) : loadFailure
+    },
+    requestDescription: async (request) => {
+      const client = await get().catch(() => undefined)
+      return client ? client.requestDescription(request) : loadFailure
     },
     reviewDocument: async function* (request) {
       const client = await get().catch(() => undefined)

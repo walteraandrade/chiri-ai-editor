@@ -156,6 +156,34 @@
   animation: rise-in var(--motion-enter) var(--ease-out-expo) backwards;
 }
 
+.unfold-in {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: unfold-in var(--motion-enter) var(--ease-out-expo);
+}
+
+.unfold-out {
+  display: grid;
+  grid-template-rows: 0fr;
+  animation: unfold-out var(--motion-state) var(--ease-out-quart);
+}
+
+.unfold-in > *,
+.unfold-out > * {
+  min-height: 0;
+  overflow: clip;
+  overflow-clip-margin: 4px;
+}
+
+.unfold-in > * > * {
+  animation: surface-in var(--motion-enter) var(--ease-out-expo);
+}
+
+.unfold-out > * > * {
+  opacity: 0;
+  animation: surface-out var(--motion-state) var(--ease-out-quart);
+}
+
 .toast-in {
   --enter-rise: 10px;
   animation: surface-in 320ms var(--ease-out-expo);
@@ -167,6 +195,29 @@
     transform: translate(var(--enter-slide, 0px), var(--enter-rise, 6px))
       scale(0.98);
     filter: blur(3px);
+  }
+}
+
+@keyframes unfold-in {
+  from {
+    grid-template-rows: 0fr;
+  }
+}
+
+@keyframes unfold-out {
+  from {
+    grid-template-rows: 1fr;
+  }
+}
+
+@keyframes surface-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
   }
 }
 

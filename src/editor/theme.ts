@@ -35,13 +35,7 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.strong, fontWeight: '700', color: 'var(--color-ink-strong)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  {
-    tag: tags.monospace,
-    fontFamily: 'var(--font-mono)',
-    fontSize: '0.9em',
-    backgroundColor: 'var(--color-code-bg)',
-    padding: '0.1em 0.3em',
-  },
+  { tag: tags.monospace, class: 'cm-inline-code' },
   { tag: tags.link, color: 'var(--color-accent)' },
   { tag: tags.url, color: 'var(--color-ink-faint)' },
   { tag: tags.quote, color: 'var(--color-ink-muted)', fontStyle: 'italic' },
@@ -50,6 +44,17 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.contentSeparator, color: 'var(--color-ink-faint)' },
   { tag: tags.comment, color: 'var(--color-ink-faint)' },
 ])
+
+const SHADED_LINES = ['cm-frontmatter-line', 'cm-codeblock-line']
+
+const selectionOnShade = [
+  ...SHADED_LINES.flatMap((line) => [
+    `.cm-line.${line} .cm-selected-text`,
+    `.cm-line.${line} .cm-selected-text *`,
+  ]),
+  '.cm-inline-code .cm-selected-text',
+  '.cm-selected-text .cm-inline-code',
+].join(', ')
 
 export const editorTheme = EditorView.theme({
   '&': {
@@ -106,5 +111,17 @@ export const editorTheme = EditorView.theme({
   },
   '.cm-frontmatter-line .cm-frontmatter-key': {
     color: 'var(--color-accent-soft)',
+  },
+  '.cm-inline-code': {
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.9em',
+    backgroundColor: 'var(--color-code-bg)',
+    padding: '0.1em 0.3em',
+  },
+  '.cm-selected-text': { backgroundColor: 'var(--color-selection)' },
+  '.cm-selected-text *': { backgroundColor: 'transparent' },
+  [selectionOnShade]: {
+    backgroundColor: 'var(--color-ink-strong)',
+    color: 'var(--color-canvas)',
   },
 })

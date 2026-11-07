@@ -1,5 +1,13 @@
-import { type KeyboardEvent, type RefObject, useId } from 'react'
-import { descriptionSource } from '../skills/description-ai'
+import {
+  type AnimationEvent,
+  type KeyboardEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useState,
+} from 'react'
+import { descriptionSource, skillBody } from '../skills/description-ai'
 import {
   announceProblems,
   type FrontmatterReport,
@@ -7,7 +15,10 @@ import {
   type PanelProblem,
   problemsOfField,
 } from '../skills/frontmatter-panel'
-import type { SkillField } from '../skills/skill-frontmatter'
+import {
+  DESCRIPTION_MAX_LENGTH,
+  type SkillField,
+} from '../skills/skill-frontmatter'
 import { type HistoryCommand, historyCommandOf } from './history-keys'
 import { detectApplePlatform } from './platform'
 import type { DescriptionAi } from './use-description-ai'
@@ -19,6 +30,7 @@ type FrontmatterPanelProps = {
   readonly onEdit: (field: SkillField, value: string) => void
   readonly onHistory: (command: HistoryCommand) => void
   readonly descriptionAi?: DescriptionAi
+  readonly readSkillText?: () => string
 }
 
 type ProblemListProps = {
@@ -104,57 +116,127 @@ function SkillFieldInput({
   )
 }
 
+const LEAVE_FALLBACK_MS = 400
+
+type Proposal = { readonly description: string; readonly rationale: string }
+
+function ProposalCard({
+  proposal,
+  leaving,
+  onLeft,
+  onAccept,
+  onRetry,
+  onReject,
+}: {
+  readonly proposal: Proposal
+  readonly leaving: boolean
+  readonly onLeft: () => void
+  readonly onAccept: () => void
+  readonly onRetry: () => void
+  readonly onReject: () => void
+}) {
+  useEffect(() => {
+    if (!leaving) return
+    const timer = setTimeout(onLeft, LEAVE_FALLBACK_MS)
+    return () => clearTimeout(timer)
+  }, [leaving, onLeft])
+  const settle = (event: AnimationEvent<HTMLDivElement>) => {
+    if (leaving && event.target === event.currentTarget) onLeft()
+  }
+  return (
+    <div
+      className={leaving ? 'unfold-out' : 'unfold-in'}
+      inert={leaving}
+      onAnimationEnd={settle}
+    >
+      <div>
+        <div className="border border-hairline bg-accent-tint px-3 py-2">
+          <p className="text-ink-strong">{proposal.description}</p>
+          <p className="mt-1 text-ink-muted">{proposal.rationale}</p>
+          <p className="mt-1 text-ink-faint">
+            {proposal.description.length} / {DESCRIPTION_MAX_LENGTH} characters
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" className="cm-ai-button" onClick={onAccept}>
+              Accept
+            </button>
+            <button type="button" className="cm-ai-button" onClick={onRetry}>
+              Try again
+            </button>
+            <button type="button" className="cm-ai-button" onClick={onReject}>
+              Reject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DescriptionAssist({
   ai,
   disabled,
   name,
   description,
+  readSkillText,
   onAccept,
 }: {
   readonly ai: DescriptionAi
   readonly disabled: boolean
   readonly name: string
   readonly description: string
+  readonly readSkillText: () => string
   readonly onAccept: (value: string) => void
 }) {
+  const [leaving, setLeaving] = useState<Proposal | null>(null)
+  const clearLeaving = useCallback(() => setLeaving(null), [])
+  const ask = () =>
+    ai.ask({ name, description, body: skillBody(readSkillText()) })
   const state =
     ai.state.kind === 'idle' ||
     ai.state.source === descriptionSource(name, description)
       ? ai.state
       : ({ kind: 'idle' } as const)
+  const leave = (proposal: Proposal, then: () => void) => {
+    setLeaving(proposal)
+    then()
+  }
   return (
     <div className="text-xs">
-      {state.kind === 'ready' ? (
-        <div className="border border-hairline bg-accent-tint px-3 py-2">
-          <p className="text-ink-strong">{state.description}</p>
-          <p className="mt-1 text-ink-muted">{state.rationale}</p>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              className="cm-ai-button"
-              onClick={() => {
-                onAccept(state.description)
-                ai.dismiss()
-              }}
-            >
-              Accept
-            </button>
-            <button type="button" className="cm-ai-button" onClick={ai.dismiss}>
-              Reject
-            </button>
-          </div>
-        </div>
+      {leaving !== null ? (
+        <ProposalCard
+          proposal={leaving}
+          leaving
+          onLeft={clearLeaving}
+          onAccept={() => undefined}
+          onRetry={() => undefined}
+          onReject={() => undefined}
+        />
+      ) : state.kind === 'ready' ? (
+        <ProposalCard
+          proposal={state}
+          leaving={false}
+          onLeft={() => undefined}
+          onAccept={() =>
+            leave(state, () => {
+              onAccept(state.description)
+              ai.dismiss()
+            })
+          }
+          onRetry={() => leave(state, ask)}
+          onReject={() => leave(state, ai.dismiss)}
+        />
       ) : (
         <button
           type="button"
           className="cm-ai-button"
           disabled={disabled || state.kind === 'working'}
-          onClick={() => ai.ask(name, description)}
+          onClick={ask}
         >
           {state.kind === 'working' ? 'Improving…' : 'Improve description'}
         </button>
       )}
-      {state.kind === 'failed' ? (
+      {state.kind === 'failed' && leaving === null ? (
         <p role="alert" className="mt-1 text-danger">
           {state.message}
         </p>
@@ -178,6 +260,7 @@ export function FrontmatterPanel({
   onEdit,
   onHistory,
   descriptionAi,
+  readSkillText = () => '',
 }: FrontmatterPanelProps) {
   const othersId = useId()
   if (report.kind === 'none') return null
@@ -243,6 +326,7 @@ export function FrontmatterPanel({
                 onAccept={(value) => onEdit('description', value)}
                 name={report.name}
                 description={report.description}
+                readSkillText={readSkillText}
               />
             )}
             <ProblemList id={othersId} problems={otherProblems(report)} />

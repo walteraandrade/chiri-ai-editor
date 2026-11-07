@@ -1,10 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { appClient } from '../ai/app-client'
-import {
-  descriptionRequest,
-  descriptionSource,
-  normalizeDescription,
-} from '../skills/description-ai'
+import type { DescriptionPromptInput } from '../ai/prompts'
+import { descriptionOutcome, descriptionSource } from '../skills/description-ai'
 import { describeError } from '../suggestions/error-message'
 
 export type DescriptionAiState =
@@ -24,7 +21,7 @@ export type DescriptionAiState =
 
 export type DescriptionAi = {
   readonly state: DescriptionAiState
-  readonly ask: (name: string, description: string) => void
+  readonly ask: (input: DescriptionPromptInput) => void
   readonly dismiss: () => void
 }
 
@@ -40,41 +37,43 @@ export const useDescriptionAi = (): DescriptionAi => {
     setState(idle)
   }, [])
 
-  const ask = useCallback((name: string, description: string) => {
-    controller.current?.abort()
-    const own = new AbortController()
-    controller.current = own
-    const source = descriptionSource(name, description)
-    setState({ kind: 'working', source })
-    void appClient
-      .requestSuggestion({
-        ...descriptionRequest(name, description),
-        task: 'improve skill description',
-        signal: own.signal,
-      })
-      .then((result) => {
-        if (own.signal.aborted) return
-        const next = result.ok
-          ? normalizeDescription(result.value.replacement)
-          : ''
-        setState(
-          !result.ok
-            ? { kind: 'failed', source, message: describeError(result.error) }
-            : next === '' || next === description.trim()
-              ? {
-                  kind: 'failed',
-                  source,
-                  message: 'No better description came back.',
-                }
+  const ask = useCallback(
+    ({ name, description, body }: DescriptionPromptInput) => {
+      controller.current?.abort()
+      const own = new AbortController()
+      controller.current = own
+      const source = descriptionSource(name, description)
+      setState({ kind: 'working', source })
+      void appClient
+        .requestDescription({ name, description, body, signal: own.signal })
+        .then((result) => {
+          if (own.signal.aborted) return
+          if (!result.ok) {
+            setState({
+              kind: 'failed',
+              source,
+              message: describeError(result.error),
+            })
+            return
+          }
+          const outcome = descriptionOutcome(
+            result.value.replacement,
+            description,
+          )
+          setState(
+            outcome.kind === 'failed'
+              ? { kind: 'failed', source, message: outcome.message }
               : {
                   kind: 'ready',
                   source,
-                  description: next,
+                  description: outcome.description,
                   rationale: result.value.rationale,
                 },
-        )
-      })
-  }, [])
+          )
+        })
+    },
+    [],
+  )
 
   return { state, ask, dismiss }
 }
