@@ -177,7 +177,7 @@ export function EvalRunDialog({
           </button>
           <button
             type="submit"
-            className="cm-ai-button bg-accent-tint! text-accent-soft! disabled:bg-transparent! disabled:text-ink-faint!"
+            className="cm-ai-button cm-ai-button-primary"
             disabled={!ready}
           >
             Run
