@@ -243,3 +243,21 @@
   }
 }
 /* biome-ignore-end lint/complexity/noImportantStyles: reduced motion has to beat every component animation */
+
+.quick-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.quick-action-row .cm-ai-button {
+  padding: 0.15rem 0.45rem;
+}
+
+.quick-action-form {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+}

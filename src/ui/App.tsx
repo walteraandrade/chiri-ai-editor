@@ -57,6 +57,7 @@ import { useKeyState } from './use-key-state'
 import { useLeavePrompt } from './use-leave-prompt'
 import { useLibrary } from './use-library'
 import { useMarkdownFile } from './use-markdown-file'
+import { useQuickActions } from './use-quick-actions'
 import { useTheme } from './use-theme'
 import { useVersionTexts } from './use-version-texts'
 import { VersionBar } from './VersionBar'
@@ -246,6 +247,9 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     },
     [createLibrarySkill, library, showToast, openCreated],
   )
+  const quickActions = useQuickActions(kit.quickActions, () =>
+    showToast('Quick actions could not be saved.'),
+  )
 
   const shown =
     mode.kind === 'version'
@@ -378,6 +382,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             onDocumentControls={setDocumentControls}
             onHistoryEvent={onHistoryEvent}
             getTopInset={getTopInset}
+            quickActions={quickActions.enabled}
           />
         </div>
       </main>
@@ -405,6 +410,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       {preferencesOpen ? (
         <PreferencesDialog
           theme={theme}
+          quickActions={quickActions}
           onClose={() => setPreferencesOpen(false)}
         />
       ) : null}

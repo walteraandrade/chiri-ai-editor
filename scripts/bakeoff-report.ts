@@ -1,12 +1,12 @@
 import type { ClientError } from '../src/ai/errors'
-import type { QuickActionId } from '../src/ai/quick-actions'
+import type { BuiltInQuickActionId } from '../src/ai/quick-actions'
 import { type AiCallRecord, formatRecordsTable } from '../src/ai/records'
 import type { Block } from '../src/blocks/extract-blocks'
 
 export const DRAFT_REOPEN_THRESHOLD_MS = 3000
 
 export type QuickSpec = {
-  readonly id: QuickActionId
+  readonly id: BuiltInQuickActionId
   readonly label: string
   readonly kind: 'quick'
   readonly blockId: string

@@ -79,7 +79,8 @@ src/
 electron/
 ├── api.ts         # the preload API's types and channel names, shared by main and preload
 ├── main/          # main process: window, IPC handlers, dev switches, trust checks; installed app: app:// handler, OpenRouter forwarder, key store, security headers (installed-app.ts wires them)
-│   └── files/     # Markdown read, atomic save, native dialogs, request validation
+│   ├── files/     # Markdown read, atomic save, native dialogs, request validation
+│   └── quick-actions/ # quick-actions.json in userData, load and save IPC
 └── preload/       # contextBridge API, one function per action
 config/            # Vite proxy, shared renderer config, port parsing, Omarchy theme plugin
 build/             # packaging resources (icon)

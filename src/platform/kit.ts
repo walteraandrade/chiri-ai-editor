@@ -10,6 +10,7 @@ import type {
   RemoveRootResult,
 } from '../skills/library'
 import type { Problems } from './problems'
+import type { QuickActionStore } from './quick-action-store'
 
 export type FileContents<Ref> = {
   readonly name: string
@@ -134,6 +135,7 @@ export type PlatformKit<Ref = unknown> = {
   readonly keyStatus: KeyStatus
   readonly keySettings?: KeySettings
   readonly problems: Problems
+  readonly quickActions: QuickActionStore
   readonly library?: LibraryKit<Ref>
   readonly external?: ExternalKit<Ref>
   readonly launches?: LaunchKit<Ref>

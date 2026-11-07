@@ -1,10 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { omarchyOption, type ThemeOption, themesOfMode } from '../theme/catalog'
 import { OMARCHY_CHOICE, selectedOption } from '../theme/preference'
+import { QuickActionsSettings } from './QuickActionsSettings'
+import type { QuickActionsState } from './use-quick-actions'
 import type { ThemeState } from './use-theme'
 
 type PreferencesDialogProps = {
   readonly theme: ThemeState
+  readonly quickActions: QuickActionsState
   readonly onClose: () => void
 }
 
@@ -72,7 +75,11 @@ function ThemeGroup({ label, options, selected, onChoose }: ThemeGroupProps) {
   )
 }
 
-export function PreferencesDialog({ theme, onClose }: PreferencesDialogProps) {
+export function PreferencesDialog({
+  theme,
+  quickActions,
+  onClose,
+}: PreferencesDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null)
   const selected = selectedOption(theme.choice, theme.omarchy)
 
@@ -136,6 +143,7 @@ export function PreferencesDialog({ theme, onClose }: PreferencesDialogProps) {
           the book's combinations, so the pairing is ours, not Wada's. Names are
           Duke Ellington compositions.
         </p>
+        <QuickActionsSettings quickActions={quickActions} />
       </div>
     </dialog>
   )

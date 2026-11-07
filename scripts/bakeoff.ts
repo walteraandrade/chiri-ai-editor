@@ -9,7 +9,10 @@ import {
   enrichAiCall,
 } from '../src/ai/dev-log'
 import type { ClientError } from '../src/ai/errors'
-import { getQuickAction, type QuickActionId } from '../src/ai/quick-actions'
+import {
+  type BuiltInQuickActionId,
+  getQuickAction,
+} from '../src/ai/quick-actions'
 import type { AiCallRecord } from '../src/ai/records'
 import { extractBlocks } from '../src/blocks/extract-blocks'
 import { getNeighbors, resolveTarget } from '../src/blocks/target'
@@ -44,7 +47,7 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1'
 const DEFAULT_OUT = 'docs/chiri/bakeoff.md'
 
 type QuickPlan = {
-  readonly action: QuickActionId
+  readonly action: BuiltInQuickActionId
   readonly blockId: string
   readonly marker: string
 }

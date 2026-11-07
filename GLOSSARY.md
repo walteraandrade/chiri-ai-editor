@@ -15,7 +15,8 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Target** | The range an AI request is about: the selection, or the Block under the cursor when nothing is selected. |
 | **Neighbors** | The 2 Blocks before and the 2 after the Target, plus the document title (first `#`) and the current section heading. Sent as context. |
 | **Instruction** | What the user asks for: a Quick action or free text. |
-| **Quick action** | A preset Instruction, picked by typing its name in the bubble's input. On by default: Shorter, Clearer, Fix grammar. Built in but off: More formal, and for skills Make this an instruction and Cut what the agent already knows. |
+| **Quick action** | A preset Instruction, picked by typing its name in the bubble's input. On by default: Shorter, Clearer, Fix grammar. Built in but off: More formal, and for skills Make this an instruction and Cut what the agent already knows. The writer turns them on and off, orders them, and adds their own in Preferences. |
+| **User Quick action** | A Quick action the writer made: a name and an Instruction, optionally only in skills. Editable and deletable, unlike the built-in ones. |
 | **Suggestion** | A proposed replacement for a range of the Document. It lives outside the Document (an overlay) until accepted. Holds: range, original text, Replacement, Rationale, refine history. |
 | **Replacement** | The new text the AI proposes for a Suggestion's range. |
 | **Rationale** | One short sentence from the AI explaining the change, in the Document's language. Shown on hover, or when the cursor is inside the Suggestion; always shown on the Active Suggestion's margin card. |
@@ -44,5 +45,5 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **AI call record** | Per-call log entry for verification: task, model, provider, tokens, cost, timings, finish reason, generation id. |
 | **Theme** | The colors the app paints with: 12 solid roles and a fixed mode, light or dark. Picked in Preferences. |
 | **Palette** | A Theme from the book: 2 Vol. 1 combinations of *A Dictionary of Color Combinations* that share a color, at least 6 colors, named after a Duke Ellington composition ([ADR 0017](docs/chiri/adr/0017-book-themes-and-solid-colors.md)). |
-| **Preferences** | The screen for app settings, themes only for now. Opens with `Ctrl+,`, a button in the Web build, and `File > Preferences…` in the Electron build. |
+| **Preferences** | The screen for app settings: themes and Quick actions. Opens with `Ctrl+,`, a button in the Web build, and `File > Preferences…` in the Electron build. |
 | **Gate** | A point where the orchestrator stops for the maintainer's decision. |

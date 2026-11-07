@@ -1,8 +1,15 @@
-import { getQuickAction, type QuickActionId } from '../ai/quick-actions'
+import {
+  type BuiltInQuickActionId,
+  getQuickAction,
+  type QuickAction,
+} from '../ai/quick-actions'
 import type { Instruction, TargetSource } from './types'
 
-export const quickActionInstruction = (id: QuickActionId): Instruction => {
-  const action = getQuickAction(id)
+export const quickActionInstruction = (
+  actionOrId: QuickAction | BuiltInQuickActionId,
+): Instruction => {
+  const action =
+    typeof actionOrId === 'string' ? getQuickAction(actionOrId) : actionOrId
   return {
     type: 'quick-action',
     id: action.id,

@@ -14,6 +14,7 @@ import type {
   LibraryKit,
   OpenResult,
 } from './kit'
+import { createQuickActionStore } from './quick-action-store'
 
 const PATH = '/skills/a/SKILL.md'
 const OTHER = '/skills/b/SKILL.md'
@@ -127,7 +128,12 @@ const setup = (
     subscribe: () => () => undefined,
   }
   const preferencesRequests = (): (() => void) => () => undefined
+  const quickActions = createQuickActionStore({
+    read: async () => null,
+    write: async () => undefined,
+  })
   const kit = createElectronKit({
+    quickActions,
     api,
     storage,
     files,
