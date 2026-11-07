@@ -187,3 +187,7 @@ Runs of `claude plugin eval` through the Chiri app ([ADR 0018](adr/0018-skill-ev
 | 2026-11-07 | #88 review | Run from the app, 3 Evals, 5 runs, cancelled mid-run; panel showed "Cancelled. Cost about US$0.0061" | `haiku` | 2.1.319 | 0.0061 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
 | 2026-11-07 | #89 | Eval run from the app: 3 Evals (Skill fires, passes in both, fails in both), 2 runs, with and without | `haiku` | 2.1.319 | 0.0163 | [89-eval-signals.md](verification/89-eval-signals.md) |
 | 2026-11-07 | #89 | Same Skill, 3 runs, with unsaved text in `SKILL.md` | `haiku` | 2.1.319 | 0.0250 | [89-eval-signals.md](verification/89-eval-signals.md) |
+| 2026-11-07 | #90 | Shell probe of `--ablation none` on the throwaway skill, 2 Evals, 1 run, single Arm | `haiku` | 2.1.319 | 0.0027 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
+| 2026-11-07 | #90 | Eval run from the app against an older Version, 2 Evals, 2 runs, two Stages | `haiku` | 2.1.319 | 0.0109 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
+| 2026-11-07 | #90 | Version run, 5 runs, cancelled in the second run (first run's cost counted) | `haiku` | 2.1.319 | 0.0195 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
+| 2026-11-07 | #90 | Version run, 5 runs, cancelled in the first run | `haiku` | 2.1.319 | 0.0024 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
