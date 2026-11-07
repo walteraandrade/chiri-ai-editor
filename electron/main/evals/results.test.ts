@@ -6,6 +6,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
+import { rename } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -88,6 +89,22 @@ describe('createResultsStore', () => {
     await results.discard(KEY)
     expect(await results.readLast(KEY)).toBe('kept')
     expect(existsSync(join(dir, 'eval-runs', KEY, 'next'))).toBe(false)
+  })
+
+  it('puts the last run back when promoting fails', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'chiri-results-test-'))
+    made.push(dir)
+    const failing = createResultsStore(dir, async (from, to) => {
+      if (String(from).endsWith('next')) throw new Error('rename failed')
+      return rename(from, to)
+    })
+    const first = await createResultsStore(dir).begin(KEY)
+    writeFileSync(first.jsonFile, 'kept')
+    await createResultsStore(dir).promote(KEY)
+    const second = await failing.begin(KEY)
+    writeFileSync(second.jsonFile, 'new')
+    await expect(failing.promote(KEY)).rejects.toThrow('rename failed')
+    expect(await failing.readLast(KEY)).toBe('kept')
   })
 
   it('starts each run from an empty next', async () => {

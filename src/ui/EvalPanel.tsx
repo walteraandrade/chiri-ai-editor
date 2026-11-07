@@ -59,6 +59,11 @@ export function EvalPanel({ evals, skill }: EvalPanelProps) {
           </button>
         </p>
       ) : null}
+      {message === null ? null : (
+        <p role="alert" className="mt-1 text-danger">
+          {message}
+        </p>
+      )}
       {state.status === 'ready' ? (
         <>
           {last === null ? (
@@ -138,11 +143,6 @@ export function EvalPanel({ evals, skill }: EvalPanelProps) {
           Running Evals. This can take a few minutes.
         </p>
       ) : null}
-      {message === null ? null : (
-        <p role="alert" className="mt-1 text-danger">
-          {message}
-        </p>
-      )}
       {dialog.status === 'confirm' ? (
         <EvalRunDialog
           skillName={skill.name}

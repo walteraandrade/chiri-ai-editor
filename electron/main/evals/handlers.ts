@@ -7,6 +7,7 @@ import type {
   EvalRunResult,
   EvalStatus,
 } from '../../../src/evals/types'
+import { attempt } from './attempt'
 import { parseRunRequest, parseSkillRequest } from './request'
 import type { ResultsStore } from './results'
 import { skillKeyOf } from './results'
@@ -28,6 +29,8 @@ export type EvalHandlers = {
   readonly prepare: (input: unknown) => Promise<EvalPrepareResult>
   readonly run: (input: unknown) => Promise<EvalRunResult>
   readonly openReport: (input: unknown) => Promise<EvalOpenReportResult>
+  readonly isRunning: () => boolean
+  readonly shutdown: () => Promise<void>
 }
 
 const INVALID = { kind: 'failed', reason: 'Invalid request' } as const
@@ -37,15 +40,9 @@ const NOT_A_SKILL = {
   reason: 'Not a Skill in the Library',
 } as const
 
-const COMPLETE_EXIT_CODES: readonly (number | null)[] = [0, 1]
+const SHUTDOWN_WAIT_MS = 5000
 
-const attempt = async <T>(run: () => Promise<T>): Promise<T | undefined> => {
-  try {
-    return await run()
-  } catch {
-    return undefined
-  }
-}
+const COMPLETE_EXIT_CODES: readonly (number | null)[] = [0, 1]
 
 const sameRisks = (left: readonly Risk[], right: readonly Risk[]): boolean =>
   JSON.stringify(left) === JSON.stringify(right)
@@ -61,6 +58,7 @@ const exitMessage = (exitCode: number | null, signal: string | null): string =>
 export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
   const prepared = new Map<string, readonly Risk[]>()
   let running = false
+  let inflight: Promise<unknown> = Promise.resolve()
 
   const libraryRealPath = async (path: string): Promise<string | null> => {
     const real = await attempt(() => deps.realPath(path))
@@ -134,6 +132,8 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     const outcome = parseEvalReport(text)
     if (outcome.kind === 'refused')
       return { kind: 'not-complete', message: outcome.message }
+    if (outcome.kind === 'complete' && outcome.summary.cases.length === 0)
+      return { kind: 'not-complete', message: 'No Evals in this skill' }
     if (outcome.kind === 'partial' || !COMPLETE_EXIT_CODES.includes(exitCode))
       return { kind: 'not-complete', message: exitMessage(exitCode, signal) }
     await deps.results.promote(key)
@@ -147,6 +147,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     request: NonNullable<ReturnType<typeof parseRunRequest>>,
   ): Promise<EvalRunResult> => {
     const remembered = prepared.get(key)
+    prepared.delete(key)
     const stage = await attempt(() => deps.stage(real))
     if (stage === undefined)
       return { kind: 'failed', reason: 'Could not stage the Skill' }
@@ -155,7 +156,6 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
         remembered === undefined ||
         !sameRisks(remembered, stageRisks(stage))
       ) {
-        prepared.delete(key)
         return { kind: 'risks-changed' }
       }
       const next = await deps.results.begin(key)
@@ -179,6 +179,10 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     if (request === null) return INVALID
     if (running) return { kind: 'busy' }
     running = true
+    let finish: () => void = () => undefined
+    inflight = new Promise<void>((resolve) => {
+      finish = resolve
+    })
     try {
       const real = await libraryRealPath(request.skillPath)
       if (real === null) return NOT_A_SKILL
@@ -187,7 +191,17 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
       return await execute(real, skillKeyOf(real), executable, request)
     } finally {
       running = false
+      finish()
     }
+  }
+
+  const shutdown = async (): Promise<void> => {
+    if (!running) return
+    deps.runner.kill()
+    await Promise.race([
+      inflight,
+      new Promise((r) => setTimeout(r, SHUTDOWN_WAIT_MS)),
+    ])
   }
 
   const openReport = async (input: unknown): Promise<EvalOpenReportResult> => {
@@ -204,5 +218,12 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
       : { kind: 'failed', reason: 'Could not open the report' }
   }
 
-  return { status, prepare, run, openReport }
+  return {
+    status,
+    prepare,
+    run,
+    openReport,
+    isRunning: () => running,
+    shutdown,
+  }
 }

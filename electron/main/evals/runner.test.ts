@@ -73,6 +73,19 @@ describe('createSpawnRunner', () => {
     ).rejects.toThrow()
   })
 
+  it('kills the running child with SIGTERM', async () => {
+    const runner = createSpawnRunner({ home: tmpdir(), path: process.env.PATH })
+    const running = runner.run({
+      executable: process.execPath,
+      args: ['-e', 'setTimeout(() => {}, 60000)'],
+      cwd: tmpdir(),
+    })
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    expect(runner.kill()).toBe(true)
+    expect(await running).toEqual({ exitCode: null, signal: 'SIGTERM' })
+    expect(runner.kill()).toBe(false)
+  })
+
   it('reads the version from --version output', async () => {
     const dir = scratch()
     const script = join(dir, 'claude')

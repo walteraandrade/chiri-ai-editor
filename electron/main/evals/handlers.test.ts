@@ -64,6 +64,7 @@ const setup = ({
   const results = createResultsStore(userData)
   const runner: EvalRunner = {
     version: async () => version,
+    kill: () => false,
     run: async (job): Promise<EvalExit> => {
       jobs.push(job)
       const jsonFile = job.args[job.args.indexOf('--json') + 1] ?? ''
@@ -228,6 +229,78 @@ describe('run', () => {
     expect(existsSync(join(userData, 'eval-runs', key, 'next'))).toBe(false)
   })
 
+  it('keeps the last run when cases is empty', async () => {
+    const empty = JSON.parse(fixture('with-without.json'))
+    empty.cases = []
+    const { deps, userData } = setup({
+      report: JSON.stringify(empty),
+      exitCode: 1,
+    })
+    const handlers = createEvalHandlers(deps)
+    const key = skillKeyOf(SKILL)
+    const last = join(userData, 'eval-runs', key, 'last')
+    mkdirSync(last, { recursive: true })
+    writeFileSync(join(last, 'result.json'), 'previous')
+    await handlers.prepare({ skillPath: SKILL })
+    expect(await handlers.run(REQUEST)).toEqual({
+      kind: 'not-complete',
+      message: 'No Evals in this skill',
+    })
+    expect(readFileSync(join(last, 'result.json'), 'utf8')).toBe('previous')
+    expect(existsSync(join(userData, 'eval-runs', key, 'next'))).toBe(false)
+  })
+
+  it('needs a fresh prepare for every run', async () => {
+    const { deps, jobs } = setup()
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare({ skillPath: SKILL })
+    expect((await handlers.run(REQUEST)).kind).toBe('completed')
+    expect(await handlers.run(REQUEST)).toEqual({ kind: 'risks-changed' })
+    expect(jobs).toHaveLength(1)
+  })
+
+  it('kills the child on shutdown and cleans up once it exits', async () => {
+    const { deps, cleanup, userData } = setup()
+    let release: (exit: EvalExit) => void = () => undefined
+    let started = false
+    const kill = vi.fn(() => {
+      release({ exitCode: null, signal: 'SIGTERM' })
+      return true
+    })
+    const handlers = createEvalHandlers({
+      ...deps,
+      runner: {
+        version: async () => '2.1.319',
+        kill,
+        run: () =>
+          new Promise<EvalExit>((resolve) => {
+            started = true
+            release = resolve
+          }),
+      },
+    })
+    await handlers.prepare({ skillPath: SKILL })
+    cleanup.mockClear()
+    const running = handlers.run(REQUEST)
+    await vi.waitFor(() => expect(started).toBe(true))
+    expect(handlers.isRunning()).toBe(true)
+    await handlers.shutdown()
+    expect(kill).toHaveBeenCalledTimes(1)
+    expect((await running).kind).toBe('not-complete')
+    expect(cleanup).toHaveBeenCalledTimes(1)
+    expect(
+      existsSync(join(userData, 'eval-runs', skillKeyOf(SKILL), 'next')),
+    ).toBe(false)
+    expect(handlers.isRunning()).toBe(false)
+  })
+
+  it('does not kill anything on shutdown when idle', async () => {
+    const { deps } = setup()
+    const kill = vi.spyOn(deps.runner, 'kill')
+    await createEvalHandlers(deps).shutdown()
+    expect(kill).not.toHaveBeenCalled()
+  })
+
   it('names the CLI version when the schema is not supported', async () => {
     const { deps } = setup({
       report: JSON.stringify({ schemaVersion: 9, claudeVersion: '9.9.9' }),
@@ -251,6 +324,7 @@ describe('run', () => {
       ...deps,
       runner: {
         version: async () => '2.1.319',
+        kill: () => false,
         run: async () => {
           throw new Error('spawn failed')
         },
@@ -270,6 +344,7 @@ describe('run', () => {
       ...deps,
       runner: {
         version: async () => '2.1.319',
+        kill: () => false,
         run: () =>
           started
             ? Promise.resolve({ exitCode: 1, signal: null })

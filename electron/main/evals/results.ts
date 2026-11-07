@@ -31,7 +31,10 @@ const readOrNull = async (file: string): Promise<string | null> => {
   }
 }
 
-export const createResultsStore = (userDataDir: string): ResultsStore => {
+export const createResultsStore = (
+  userDataDir: string,
+  renamePath: typeof rename = rename,
+): ResultsStore => {
   const skillDir = (skillKey: string): string =>
     join(userDataDir, 'eval-runs', skillKey)
   const nextDir = (skillKey: string): string => join(skillDir(skillKey), 'next')
@@ -55,8 +58,16 @@ export const createResultsStore = (userDataDir: string): ResultsStore => {
     promote: async (skillKey) => {
       const retired = retiredDir(skillKey)
       await rm(retired, { recursive: true, force: true })
-      await rename(lastDir(skillKey), retired).catch(() => undefined)
-      await rename(nextDir(skillKey), lastDir(skillKey))
+      const hadLast = await renamePath(lastDir(skillKey), retired).then(
+        () => true,
+        () => false,
+      )
+      try {
+        await renamePath(nextDir(skillKey), lastDir(skillKey))
+      } catch (error) {
+        if (hadLast) await renamePath(retired, lastDir(skillKey))
+        throw error
+      }
       await rm(retired, { recursive: true, force: true })
     },
     discard,

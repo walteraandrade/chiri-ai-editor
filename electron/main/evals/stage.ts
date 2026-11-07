@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os'
 import { basename, join, sep } from 'node:path'
 import { SKILL_FILE_NAME } from '../../../src/skills/scan-skills'
+import { attempt } from './attempt'
 
 export const STAGE_EXCLUDED: readonly string[] = [
   'hooks',
@@ -32,19 +33,10 @@ export type Stage = {
 
 type CopyState = {
   readonly realRoot: string
-  readonly leftOut: string[]
 }
 
 const isInside = (root: string, path: string): boolean =>
   path === root || path.startsWith(`${root}${sep}`)
-
-const attempt = async <T>(run: () => Promise<T>): Promise<T | undefined> => {
-  try {
-    return await run()
-  } catch {
-    return undefined
-  }
-}
 
 const copyEntry = async (
   state: CopyState,
@@ -52,34 +44,26 @@ const copyEntry = async (
   target: string,
   label: string,
   visited: ReadonlySet<string>,
-): Promise<void> => {
+): Promise<readonly string[]> => {
   const info = await attempt(() => lstat(source))
-  if (info === undefined) return
+  if (info === undefined) return []
   if (info.isSymbolicLink()) {
     const real = await attempt(() => realpath(source))
-    if (real === undefined || !isInside(state.realRoot, real)) {
-      state.leftOut.push(label)
-      return
-    }
-    return copyEntry(state, real, target, label, visited)
+    return real === undefined || !isInside(state.realRoot, real)
+      ? [label]
+      : copyEntry(state, real, target, label, visited)
   }
   if (info.isFile()) {
     await copyFile(source, target)
-    return
+    return []
   }
-  if (!info.isDirectory()) {
-    state.leftOut.push(label)
-    return
-  }
+  if (!info.isDirectory()) return [label]
   const real = await realpath(source)
-  if (visited.has(real)) {
-    state.leftOut.push(label)
-    return
-  }
+  if (visited.has(real)) return [label]
   await mkdir(target)
   const next = new Set([...visited, real])
   const names = await readdir(source)
-  await Promise.all(
+  const nested = await Promise.all(
     names.map((name) =>
       copyEntry(
         state,
@@ -90,6 +74,7 @@ const copyEntry = async (
       ),
     ),
   )
+  return nested.flat()
 }
 
 const countCases = async (stageDir: string): Promise<number> => {
@@ -115,10 +100,10 @@ export const stageSkill = async (
   try {
     const dir = join(container, basename(realRoot))
     await mkdir(dir)
-    const state: CopyState = { realRoot, leftOut: [] }
+    const state: CopyState = { realRoot }
     const names = await readdir(realRoot)
     const present = names.filter((name) => STAGE_EXCLUDED.includes(name))
-    await Promise.all(
+    const skipped = await Promise.all(
       names
         .filter((name) => !STAGE_EXCLUDED.includes(name))
         .map((name) =>
@@ -132,7 +117,7 @@ export const stageSkill = async (
         ),
     )
     const skillText = await readFile(join(dir, SKILL_FILE_NAME), 'utf8')
-    const leftOut = [...present, ...state.leftOut].toSorted()
+    const leftOut = [...present, ...skipped.flat()].toSorted()
     return {
       dir,
       skillText,

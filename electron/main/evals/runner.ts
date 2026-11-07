@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { type ChildProcess, spawn } from 'node:child_process'
 
 export type EvalJob = {
   readonly executable: string
@@ -14,6 +14,7 @@ export type EvalExit = {
 export type EvalRunner = {
   readonly version: (executable: string) => Promise<string | null>
   readonly run: (job: EvalJob) => Promise<EvalExit>
+  readonly kill: () => boolean
 }
 
 export type RunnerEnv = {
@@ -32,32 +33,40 @@ export const childEnv = ({
   ...(path === undefined ? {} : { PATH: path }),
 })
 
-export const createSpawnRunner = (env: RunnerEnv): EvalRunner => ({
-  version: (executable) =>
-    new Promise((resolve) => {
-      let output = ''
-      const child = spawn(executable, ['--version'], {
-        env: childEnv(env),
-        stdio: ['ignore', 'pipe', 'ignore'],
-        timeout: VERSION_TIMEOUT_MS,
-      })
-      child.stdout.on('data', (chunk: Buffer) => {
-        output += chunk.toString('utf8')
-      })
-      child.on('error', () => resolve(null))
-      child.on('close', (code) => {
-        const version = VERSION_PATTERN.exec(output.trim())?.[0]
-        resolve(code === 0 && version !== undefined ? version : null)
-      })
-    }),
-  run: ({ executable, args, cwd }) =>
-    new Promise((resolve, reject) => {
-      const child = spawn(executable, [...args], {
-        cwd,
-        env: childEnv(env),
-        stdio: 'ignore',
-      })
-      child.on('error', reject)
-      child.on('close', (exitCode, signal) => resolve({ exitCode, signal }))
-    }),
-})
+export const createSpawnRunner = (env: RunnerEnv): EvalRunner => {
+  let current: ChildProcess | null = null
+  return {
+    version: (executable) =>
+      new Promise((resolve) => {
+        let output = ''
+        const child = spawn(executable, ['--version'], {
+          env: childEnv(env),
+          stdio: ['ignore', 'pipe', 'ignore'],
+          timeout: VERSION_TIMEOUT_MS,
+        })
+        child.stdout.on('data', (chunk: Buffer) => {
+          output += chunk.toString('utf8')
+        })
+        child.on('error', () => resolve(null))
+        child.on('close', (code) => {
+          const version = VERSION_PATTERN.exec(output.trim())?.[0]
+          resolve(code === 0 && version !== undefined ? version : null)
+        })
+      }),
+    run: ({ executable, args, cwd }) =>
+      new Promise((resolve, reject) => {
+        const child = spawn(executable, [...args], {
+          cwd,
+          env: childEnv(env),
+          stdio: 'ignore',
+        })
+        current = child
+        child.on('error', reject)
+        child.on('close', (exitCode, signal) => {
+          if (current === child) current = null
+          resolve({ exitCode, signal })
+        })
+      }),
+    kill: () => current?.kill('SIGTERM') ?? false,
+  }
+}

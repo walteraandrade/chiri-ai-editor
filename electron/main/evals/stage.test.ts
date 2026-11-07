@@ -102,6 +102,25 @@ describe('stageSkill', () => {
     await stage.cleanup()
   })
 
+  it('follows no link out at depth or through an internal link', async () => {
+    const { base, skill } = skillIn()
+    put(base, 'outside/secret.txt', 'secret')
+    symlinkSync(join(base, 'outside'), join(skill, 'evals', 'one', 'out'))
+    put(skill, 'shared/keep.md', 'keep')
+    symlinkSync(join(base, 'outside'), join(skill, 'shared', 'escape'))
+    symlinkSync(join(skill, 'shared'), join(skill, 'via'))
+    const stage = await stageSkill(skill, scratch())
+    expect(existsSync(join(stage.dir, 'evals', 'one', 'out'))).toBe(false)
+    expect(readFileSync(join(stage.dir, 'via', 'keep.md'), 'utf8')).toBe('keep')
+    expect(existsSync(join(stage.dir, 'via', 'escape'))).toBe(false)
+    expect(stage.leftOut).toEqual([
+      'evals/one/out',
+      'shared/escape',
+      'via/escape',
+    ])
+    await stage.cleanup()
+  })
+
   it('copies a link that stays inside and survives a loop', async () => {
     const { skill } = skillIn()
     symlinkSync(join(skill, 'notes.md'), join(skill, 'alias.md'))

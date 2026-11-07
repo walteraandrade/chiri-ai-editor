@@ -45,6 +45,14 @@ export const registerEvalHandlers = (
     })
   }
 
+  let closing = false
+  app.on('before-quit', (event) => {
+    if (closing || !handlers.isRunning()) return
+    closing = true
+    event.preventDefault()
+    void handlers.shutdown().finally(() => app.quit())
+  })
+
   handle(EVALS_STATUS_CHANNEL, handlers.status)
   handle(EVALS_PREPARE_CHANNEL, handlers.prepare)
   handle(EVALS_RUN_CHANNEL, handlers.run)
