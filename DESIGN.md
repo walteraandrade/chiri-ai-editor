@@ -136,6 +136,7 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 
 ### Preferences
 - A panel docked to the right, with no backdrop, so the page shows the theme as it changes. One row per theme: a square radio mark (the accent, solid when chosen), name, origin, and every color of the palette. Keyboard: arrows move and apply; `Esc` closes.
+- Quick actions below the themes: one row per action, split by hairlines, with the same square mark as a check box, the name, a faint "Skill" tag where it applies, then small `↑` `↓` buttons and, for the writer's own actions, Edit and Delete. Delete asks in the row (Keep, Delete). Adding or editing opens a form inline, on the canvas color with a hairline; `Esc` cancels the form without closing Preferences. Focus stays on the control that moved, or moves to the next one that can take it.
 
 ### Scrollbars
 - Native scrollbars, themed: a 4px square thumb (`--color-scrollbar`; ink on hover) on a clear track, no arrow buttons. Firefox gets `scrollbar-width: thin` with the same colors.

@@ -12,6 +12,7 @@ import {
 } from './prompts'
 import {
   DEFAULT_QUICK_ACTION_IDS,
+  getQuickAction,
   QUICK_ACTIONS,
   quickActionsFor,
 } from './quick-actions'
@@ -90,11 +91,14 @@ describe('QUICK_ACTIONS', () => {
 
   it('offers the chosen actions in their order, skill actions only for a skill', () => {
     const ids = ['cut-known', 'more-formal', 'shorter'] as const
-    expect(quickActionsFor(false, ids).map((action) => action.id)).toEqual([
+    const actions = ids.map(getQuickAction)
+    expect(quickActionsFor(false, actions).map((action) => action.id)).toEqual([
       'more-formal',
       'shorter',
     ])
-    expect(quickActionsFor(true, ids).map((action) => action.id)).toEqual(ids)
+    expect(quickActionsFor(true, actions).map((action) => action.id)).toEqual(
+      ids,
+    )
   })
 
   it('has unique ids', () => {

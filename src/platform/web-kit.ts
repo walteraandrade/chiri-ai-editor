@@ -19,6 +19,7 @@ import { createDocumentHistory } from '../history/session'
 import type { DocumentFiles, PlatformKit, PlatformKitFactory } from './kit'
 import { flushWhenPageHides } from './page-hide'
 import { createProblems } from './problems'
+import { localQuickActionStore } from './quick-action-store'
 
 const AUTOSAVE_DELAY_MS = 400
 const HISTORY_IDLE_MS = 30_000
@@ -85,6 +86,7 @@ export const createWebKit = async ({
     history,
     keyStatus: { present: hasApiKey },
     problems,
+    quickActions: localQuickActionStore(storage),
   }
 }
 

@@ -1,6 +1,10 @@
+import { Compartment } from '@codemirror/state'
+import type { EditorView } from '@codemirror/view'
 import { useEffect, useEffectEvent, useRef } from 'react'
 import { appClient } from '../ai/app-client'
 import { appendReviewDrop } from '../ai/dev-log'
+import type { QuickAction } from '../ai/quick-actions'
+import { quickActionsFacet } from '../editor/ask-bubble'
 import { createEditorView } from '../editor/create-editor-view'
 import {
   bindDocumentControls,
@@ -32,6 +36,7 @@ type EditorPaneProps = {
   readonly onDocumentControls: (controls: DocumentControls | null) => void
   readonly onHistoryEvent: (event: HistoryEvent) => void
   readonly getTopInset: () => number
+  readonly quickActions: readonly QuickAction[]
 }
 
 export function EditorPane({
@@ -46,8 +51,12 @@ export function EditorPane({
   onDocumentControls,
   onHistoryEvent,
   getTopInset,
+  quickActions,
 }: EditorPaneProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const viewRef = useRef<EditorView | null>(null)
+  const quickActionsRef = useRef(quickActions)
+  const quickActionsSlot = useRef(new Compartment())
   const initialDocRef = useRef(initialDoc)
   const emitChange = useEffectEvent(onChange)
   const emitNotice = useEffectEvent(onNotice)
@@ -69,6 +78,9 @@ export function EditorPane({
       doc: initialDocRef.current,
       onChange: (doc) => emitChange(doc),
       extensions: [
+        quickActionsSlot.current.of(
+          quickActionsFacet.of(quickActionsRef.current),
+        ),
         spaceBelowHeader(() => topInset()),
         historyEvents((event) => emitHistoryEvent(event)),
         ...suggestionExtensions({
@@ -86,6 +98,7 @@ export function EditorPane({
         }),
       ],
     })
+    viewRef.current = view
     emitReviewControls(bindReviewControls(view))
     emitDocumentControls(bindDocumentControls(view))
     const cancelPreload = whenIdle(client.preload)
@@ -93,9 +106,20 @@ export function EditorPane({
       cancelPreload()
       emitReviewControls(null)
       emitDocumentControls(null)
+      viewRef.current = null
       view.destroy()
     }
   }, [])
+
+  useEffect(() => {
+    if (quickActionsRef.current === quickActions) return
+    quickActionsRef.current = quickActions
+    viewRef.current?.dispatch({
+      effects: quickActionsSlot.current.reconfigure(
+        quickActionsFacet.of(quickActions),
+      ),
+    })
+  }, [quickActions])
 
   return <div ref={parentRef} />
 }

@@ -18,6 +18,8 @@ import {
   LIBRARY_LIST_CHANNEL,
   LIBRARY_REMOVE_ROOT_CHANNEL,
   PREFERENCES_REQUEST_CHANNEL,
+  QUICK_ACTIONS_LOAD_CHANNEL,
+  QUICK_ACTIONS_SAVE_CHANNEL,
   SHELL_INFO_CHANNEL,
   WATCH_FILE_CHANNEL,
 } from '../api'
@@ -62,6 +64,9 @@ const api: ChiriApi = {
       ipcRenderer.off(PREFERENCES_REQUEST_CHANNEL, relay)
     }
   },
+  loadQuickActions: () => ipcRenderer.invoke(QUICK_ACTIONS_LOAD_CHANNEL),
+  saveQuickActions: (text) =>
+    ipcRenderer.invoke(QUICK_ACTIONS_SAVE_CHANNEL, text),
   onLaunchFile: (listener) => {
     const relay = (): void => listener()
     ipcRenderer.on(LAUNCH_FILE_CHANNEL, relay)

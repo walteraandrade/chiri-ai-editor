@@ -13,8 +13,8 @@ import {
   type TooltipView,
 } from '@codemirror/view'
 import {
-  DEFAULT_QUICK_ACTION_IDS,
-  type QuickActionId,
+  DEFAULT_QUICK_ACTIONS,
+  type QuickAction,
   quickActionsFor,
 } from '../ai/quick-actions'
 import {
@@ -49,11 +49,11 @@ type BubbleState = {
   readonly dismissed: Range | null
 }
 
-export const quickActionIdsFacet = Facet.define<
-  readonly QuickActionId[],
-  readonly QuickActionId[]
+export const quickActionsFacet = Facet.define<
+  readonly QuickAction[],
+  readonly QuickAction[]
 >({
-  combine: (values) => values.at(-1) ?? DEFAULT_QUICK_ACTION_IDS,
+  combine: (values) => values.at(-1) ?? DEFAULT_QUICK_ACTIONS,
 })
 
 export const openAskEffect = StateEffect.define<null>()
@@ -154,7 +154,7 @@ const buildBubble = (view: EditorView) => {
   const actions = () => view.state.facet(suggestionActionsFacet)
   const quickActions = quickActionsFor(
     frontmatterOfDoc(view.state.doc) !== undefined,
-    view.state.facet(quickActionIdsFacet),
+    view.state.facet(quickActionsFacet),
   )
   bubbleCount += 1
   const listId = `cm-ai-ask-list-${bubbleCount}`
@@ -170,7 +170,7 @@ const buildBubble = (view: EditorView) => {
       view,
       row.kind === 'free'
         ? freeTextInstruction(row.text)
-        : quickActionInstruction(row.action.id),
+        : quickActionInstruction(row.action),
     )
     view.focus()
   }

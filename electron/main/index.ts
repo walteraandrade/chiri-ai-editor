@@ -19,6 +19,7 @@ import { prepareInstalledApp, startInstalledApp } from './installed-app'
 import { registerLaunches } from './launch/register'
 import { registerLibraryHandlers } from './library/register'
 import { menuTemplate } from './menu-template'
+import { registerQuickActionsIpc } from './quick-actions/quick-actions-ipc'
 import { isAppNavigation, isTrustedFrame } from './trust'
 import { registerExternalChanges } from './watch/register'
 
@@ -53,6 +54,11 @@ const registerIpc = (): void => {
     isTrustedFrame(event.senderFrame, appUrl())
   registerFileHandlers(isTrusted)
   registerExternalChanges(isTrusted, registerLibraryHandlers(isTrusted))
+  registerQuickActionsIpc({
+    ipc: ipcMain,
+    userDataDir: app.getPath('userData'),
+    isTrusted,
+  })
 }
 
 const lockNavigation = (): void => {

@@ -30,6 +30,10 @@ import type {
 } from './kit'
 import { flushWhenPageHides } from './page-hide'
 import { createProblems } from './problems'
+import {
+  createQuickActionStore,
+  type QuickActionStore,
+} from './quick-action-store'
 
 const UNSAVED_DELAY_MS = 400
 const HISTORY_IDLE_MS = 30_000
@@ -52,6 +56,7 @@ type ElectronKitDeps = {
   readonly external: ExternalKit<string>
   readonly launches: LaunchKit<string>
   readonly preferencesRequests: (listener: () => void) => () => void
+  readonly quickActions: QuickActionStore
   readonly now: () => number
   readonly hasApiKey: boolean
   readonly onHide: (flush: () => void) => void
@@ -137,6 +142,7 @@ export const createElectronKit = async ({
   external,
   launches,
   preferencesRequests,
+  quickActions,
   now,
   hasApiKey,
   onHide,
@@ -232,6 +238,7 @@ export const createElectronKit = async ({
     external,
     launches,
     preferencesRequests,
+    quickActions,
   }
 }
 
@@ -257,6 +264,10 @@ export const browserElectronKit: PlatformKitFactory<string> =
       external: createElectronExternal(api),
       launches: createElectronLaunches(api),
       preferencesRequests: api.onPreferencesRequest,
+      quickActions: createQuickActionStore({
+        read: api.loadQuickActions,
+        write: api.saveQuickActions,
+      }),
       now: Date.now,
       hasApiKey: __HAS_OPENROUTER_KEY__,
       onHide: flushWhenPageHides,

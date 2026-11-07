@@ -1,10 +1,14 @@
-export type QuickActionId =
+export type BuiltInQuickActionId =
   | 'shorter'
   | 'clearer'
   | 'more-formal'
   | 'fix-grammar'
   | 'make-instruction'
   | 'cut-known'
+
+export type UserQuickActionId = `user-${string}`
+
+export type QuickActionId = BuiltInQuickActionId | UserQuickActionId
 
 export type QuickAction = {
   readonly id: QuickActionId
@@ -13,7 +17,11 @@ export type QuickAction = {
   readonly skillOnly?: boolean
 }
 
-export const QUICK_ACTIONS: readonly QuickAction[] = [
+export type BuiltInQuickAction = QuickAction & {
+  readonly id: BuiltInQuickActionId
+}
+
+export const QUICK_ACTIONS: readonly BuiltInQuickAction[] = [
   {
     id: 'shorter',
     label: 'Shorter',
@@ -54,22 +62,30 @@ export const QUICK_ACTIONS: readonly QuickAction[] = [
   },
 ]
 
-export const DEFAULT_QUICK_ACTION_IDS: readonly QuickActionId[] = [
+export const DEFAULT_QUICK_ACTION_IDS: readonly BuiltInQuickActionId[] = [
   'shorter',
   'clearer',
   'fix-grammar',
 ]
 
-export const getQuickAction = (id: QuickActionId): QuickAction => {
+export const isBuiltInQuickActionId = (
+  id: string,
+): id is BuiltInQuickActionId =>
+  QUICK_ACTIONS.some((candidate) => candidate.id === id)
+
+export const getQuickAction = (
+  id: BuiltInQuickActionId,
+): BuiltInQuickAction => {
   const action = QUICK_ACTIONS.find((candidate) => candidate.id === id)
   if (!action) throw new Error(`Unknown Quick action: ${id}`)
   return action
 }
 
+export const DEFAULT_QUICK_ACTIONS: readonly QuickAction[] =
+  DEFAULT_QUICK_ACTION_IDS.map(getQuickAction)
+
 export const quickActionsFor = (
   isSkill: boolean,
-  ids: readonly QuickActionId[] = DEFAULT_QUICK_ACTION_IDS,
+  actions: readonly QuickAction[] = DEFAULT_QUICK_ACTIONS,
 ): readonly QuickAction[] =>
-  ids
-    .map(getQuickAction)
-    .filter((action) => isSkill || action.skillOnly !== true)
+  actions.filter((action) => isSkill || action.skillOnly !== true)
