@@ -37,8 +37,12 @@ Traps in the JSON (`schemaVersion: 1`):
 - **Two steps, prepare then run.** `evals:prepare` stages the skill and returns the CLI's version, the number of cases and the risks. `evals:run` stages again and refuses if the risks changed since prepare, so the dialog never shows a stale list.
 - **The CLI's report is translated at one seam (Adapter).** `parseEvalReport` turns the JSON into the app's own type with `zod`, ignores fields it does not know, counts the arms and never shows a pass for a partial run. Any other `schemaVersion` is refused with a message that names the CLI's version.
 - **A stage, not the real folder.** The run works on a temporary copy of the skill, without `hooks/`, `.claude-plugin/`, `.mcp.json`, `.lsp.json`, `settings.json`, `agents/` and `commands/`, following no link out of the folder. The real folder cannot get results, and the hook above cannot fire.
-- **The command line is fixed, built by a pure function:** `plugin eval . --trust-plugin --no-publish --threshold 0 --max-cost-usd <n> --runs <n> --model <m> --json <file> --output-dir <dir>`, with `cwd` on the stage. Never `--allow-tools`, `--scaffold`, `--allow-real-servers` or `--mocks off`.
-- **The request is `{ skillPath, runs, model, maxCostUsd }`, strict.** The main process checks that the real path is a skill in the Library, as New skill does with its root. The renderer sends no flags or paths to write.
+- **The command line is fixed, built by a pure function:** `plugin eval . --trust-plugin --no-publish --threshold 0 --max-cost-usd <n> --runs <n> --model=<m> --json <file> --output-dir <dir>`, with `cwd` on the stage. Never `--allow-tools`, `--scaffold`, `--allow-real-servers` or `--mocks off`.
+- **Results never live in the stage.** The main process picks `<file>` and `<dir>` under `<userData>/eval-runs/<skill key>/next/`, where the skill key is a hash of the skill's real path (two roots can hold the same folder name). The stage is deleted when the run ends, cancelled or not.
+- **The request is `{ skillPath, runs, model, maxCostUsd }`, strict.** The main process checks that the real path is a skill in the Library, as New skill does with its root. The renderer sends no flags or paths to write. The other fields are checked too, because each lands in argv:
+  - `model`: starts with a letter, then only letters, digits, `.` and `-`. A value like `--allow-tools` is refused, and `--model=<m>` keeps it one argument anyway.
+  - `runs`: an integer from 1 to 5.
+  - `maxCostUsd`: a number above 0, at most 5.
 - **Only `HOME` and `PATH` reach the CLI.** `ANTHROPIC_API_KEY` must not, or the run stops using the maintainer's Claude login. `OPENROUTER_API_KEY` must not either.
 - **Finding the CLI:** `PATH`, then `~/.local/bin/claude`. A window opened from the desktop may have a short `PATH`. Not found is a state of the panel, not an error.
 - **Each run asks first.** A dialog names the skill, what a run can reach, the cost limit and the risks `risks.ts` finds on the stage: a `hooks` frontmatter field, `` !`command` `` lines, and anything the stage left out. This is the trust the CLI's own prompt would ask for, so `--trust-plugin` is passed only after it. The dialog does not call the run isolated.
@@ -47,9 +51,14 @@ Traps in the JSON (`schemaVersion: 1`):
 - **Suspicious cases are flagged, not scored away.** A case that passes in both arms does not tell the arms apart. One that fails in both is likely broken. One whose runs disagree is noisy. The panel names each kind; it does not drop them from the score.
 - **The CLI's `report.html` opens from the panel** in the first slice. The panel shows the summary; the report keeps the traces.
 - **The run reads what is saved.** Agents see the disk, so the Eval measures the disk. With unsaved text, the panel says so before the run.
-- **Results:** the last run per skill, in `<userData>/eval-runs/`.
+- **Results:** the last complete run per skill, in `<userData>/eval-runs/<skill key>/last/`. Only a run that exits 0 or 1 with a JSON that parses and `partial: false` replaces `last/` with `next/`. Every other outcome leaves `last/` as it was, deletes `next/`, and the panel shows why above the last complete run:
+  - cancelled (`partial: true`, `interrupted`, exit 130 or 143): "Cancelled".
+  - cost limit (`cost_ceiling`, exit 2): "Stopped at the cost limit", with the limit.
+  - login (`auth_failed`, exit 2): "Claude is not logged in".
+  - another `schemaVersion`, or a JSON that does not parse: the Adapter's message, with the CLI's version.
+  - no cases (exit 1, `cases: []`): "No Evals in this skill".
 - **Version against Version, in a second slice (Strategy).** The baseline is a choice: no skill (the CLI's `with-without`), or an older Version of `SKILL.md` from History ([0015](0015-history-in-sqlite.md)). For a Version, two stages run with `--ablation none` and the app compares them. History keeps only `SKILL.md`, so the older stage uses today's other files, and the panel says so.
-- **Records:** the run's cost goes to [ai-costs.md](../ai-costs.md) from the JSON, on its own row, because `window.__aiCalls` does not see the CLI.
+- **Records:** the run's cost goes to [ai-costs.md](../ai-costs.md) from the JSON, because `window.__aiCalls` does not see the CLI. It goes in its own table, Eval runs, and stays out of the US$5 running total: that total is the OpenRouter key's cap, and the CLI bills the maintainer's Claude login, like the Claude Code use the file already leaves out.
 
 ## Consequences
 
