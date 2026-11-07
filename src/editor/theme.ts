@@ -45,15 +45,25 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.comment, color: 'var(--color-ink-faint)' },
 ])
 
-const SHADED_LINES = ['cm-frontmatter-line', 'cm-codeblock-line']
+const SHADED_AREAS = [
+  '.cm-line.cm-frontmatter-line',
+  '.cm-line.cm-codeblock-line',
+  '.cm-ai-suggestion',
+]
+
+const SHADED_MARKS = ['.cm-inline-code']
 
 const selectionOnShade = [
-  ...SHADED_LINES.flatMap((line) => [
-    `.cm-line.${line} .cm-selected-text`,
-    `.cm-line.${line} .cm-selected-text *`,
+  ...SHADED_AREAS.flatMap((area) => [
+    `${area} .cm-selected-text`,
+    `${area} .cm-selected-text *`,
   ]),
-  '.cm-inline-code .cm-selected-text',
-  '.cm-selected-text .cm-inline-code',
+  ...SHADED_MARKS.flatMap((mark) => [
+    `${mark} .cm-selected-text`,
+    `.cm-selected-text ${mark}`,
+  ]),
+  '.cm-selected-text .cm-ai-suggestion',
+  '.cm-selected-text .cm-ai-suggestion *',
 ].join(', ')
 
 export const editorTheme = EditorView.theme({

@@ -13,6 +13,7 @@ The selection layer of CodeMirror sits behind the lines, so a line background hi
 | `Mood Indigo` (selection, raised and code background all `#1e0e3f`): select from `name:` to the code block | Selected frontmatter and code text read `#ffdd00` background, `#051230` text ([72-1](img/72-1.png)) |
 | Omarchy theme: select the frontmatter | Visible, inverted |
 | `Mood Indigo`: select from a list item with inline code to inside a code block with an empty line | Inline code and the code lines read `#ffdd00` background; the empty code line shows an inverted block ([72-3](img/72-3.png)) |
+| `Mood Indigo`: select from plain text across a Suggestion (struck-out and kept words), injected through the view with no model call | Selected text inside the Suggestion reads `#ffdd00` background, `#051230` text, also inside the struck-out `del` ([72-4](img/72-4.png)) |
 
 ![Selection across the frontmatter in Mood Indigo](img/72-1.png)
 
