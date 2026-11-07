@@ -53,6 +53,7 @@ export const createSpawnRunner = (
 ): EvalRunner => {
   let current: ChildProcess | null = null
   let killed = false
+  let killTimer: NodeJS.Timeout | undefined
   return {
     version: (executable) =>
       new Promise((resolve) => {
@@ -84,6 +85,7 @@ export const createSpawnRunner = (
         child.on('error', reject)
         child.on('close', (exitCode, signal) => {
           if (current === child) current = null
+          clearTimeout(killTimer)
           if (killed && child.pid !== undefined)
             signalGroup(child.pid, 'SIGKILL')
           resolve({ exitCode, signal })
@@ -94,7 +96,9 @@ export const createSpawnRunner = (
       if (pid === undefined) return false
       killed = true
       const sent = signalGroup(pid, 'SIGTERM')
-      setTimeout(() => signalGroup(pid, 'SIGKILL'), killAfterMs).unref()
+      clearTimeout(killTimer)
+      killTimer = setTimeout(() => signalGroup(pid, 'SIGKILL'), killAfterMs)
+      killTimer.unref()
       return sent
     },
   }

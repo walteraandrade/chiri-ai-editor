@@ -97,9 +97,11 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
   const run = useCallback(
     async (settings: EvalSettings) => {
       setDialog({ status: 'closed' })
+      latest.current += 1
       patchReady({ running: true, cancelling: false, stopped: null })
       setMessage(null)
       const result = await evals.run({ skillPath, ...settings })
+      latest.current += 1
       const finished = { running: false, cancelling: false }
       if (result.kind === 'completed') {
         patchReady({ ...finished, last: result.summary, stopped: null })
@@ -121,8 +123,10 @@ export const useEvalPanel = (evals: EvalsKit, skillPath: string) => {
   )
 
   const cancel = useCallback(async () => {
+    latest.current += 1
     patchReady({ cancelling: true })
     const result = await evals.cancel()
+    latest.current += 1
     if (result.kind === 'failed') {
       patchReady({ cancelling: false })
       setMessage(result.reason)

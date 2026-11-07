@@ -252,7 +252,8 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
   }
 
   const shutdown = async (): Promise<void> => {
-    if (!stopRun()) return
+    if (!running) return
+    stopRun()
     await Promise.race([
       inflight,
       new Promise((r) => setTimeout(r, SHUTDOWN_WAIT_MS)),

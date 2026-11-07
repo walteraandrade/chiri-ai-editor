@@ -786,6 +786,40 @@ describe('after a run', () => {
     expect(existsSync(last)).toBe(false)
   })
 
+  it('shutdown while committing waits for promote to finish', async () => {
+    const { deps, userData } = setup()
+    const promoting = deferred<void>()
+    const hold = deferred<void>()
+    const kill = vi.spyOn(deps.runner, 'kill')
+    const results = {
+      ...deps.results,
+      promote: async (key: string) => {
+        promoting.resolve()
+        await hold.promise
+        return deps.results.promote(key)
+      },
+    }
+    const handlers = createEvalHandlers({ ...deps, results })
+    await handlers.prepare({ skillPath: SKILL })
+    const running = handlers.run(REQUEST)
+    await promoting.promise
+    let shutDown = false
+    const shutting = handlers.shutdown().then(() => {
+      shutDown = true
+    })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(shutDown).toBe(false)
+    expect(kill).not.toHaveBeenCalled()
+    hold.resolve()
+    await shutting
+    expect((await running).kind).toBe('completed')
+    expect(
+      existsSync(
+        join(userData, 'eval-runs', skillKeyOf(SKILL), 'last', 'result.json'),
+      ),
+    ).toBe(true)
+  })
+
   it('answers idle for a cancel once the run is being promoted', async () => {
     const { deps } = setup()
     const promoting = deferred<void>()
