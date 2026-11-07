@@ -22,7 +22,18 @@ import {
   quickActionInstruction,
 } from '../suggestions/instruction'
 import { aiFlag } from './ai-flag'
-import { type AskRow, askHint, askRows } from './ask-menu'
+import {
+  type AskMenu,
+  type AskRow,
+  askHint,
+  chosenRow,
+  EMPTY_ASK_MENU,
+  hintVisible,
+  hoverAskMenu,
+  menuRows,
+  moveAskMenu,
+  typeAskMenu,
+} from './ask-menu'
 import { currentTarget, frontmatterOfDoc } from './current-target'
 import { el } from './dom'
 import { cycleTab } from './focus-cycle'
@@ -147,16 +158,14 @@ const buildBubble = (view: EditorView) => {
   )
   bubbleCount += 1
   const listId = `cm-ai-ask-list-${bubbleCount}`
+  const hintId = `${listId}-hint`
   const optionId = (index: number) => `${listId}-${index}`
 
-  let browsing = false
-  let active = 0
-  let rows: readonly AskRow[] = []
+  let menu = EMPTY_ASK_MENU
 
   const run = (row: AskRow): void => {
     input.value = ''
-    browsing = false
-    render()
+    show(EMPTY_ASK_MENU)
     actions()?.ask(
       view,
       row.kind === 'free'
@@ -168,23 +177,23 @@ const buildBubble = (view: EditorView) => {
 
   const paintActive = (): void => {
     for (const [index, item] of [...list.children].entries()) {
-      item.setAttribute('aria-selected', String(index === active))
+      item.setAttribute('aria-selected', String(index === menu.active))
     }
-    if (rows.length > 0) {
-      input.setAttribute('aria-activedescendant', optionId(active))
-      list.children[active]?.scrollIntoView({ block: 'nearest' })
+    const item = list.children[menu.active]
+    if (item) {
+      input.setAttribute('aria-activedescendant', item.id)
+      item.scrollIntoView({ block: 'nearest' })
     } else input.removeAttribute('aria-activedescendant')
   }
 
-  const setActive = (index: number): void => {
-    if (index === active) return
-    active = index
+  const highlight = (next: AskMenu): void => {
+    menu = next
     paintActive()
   }
 
-  const render = (): void => {
-    rows = askRows(quickActions, input.value, browsing)
-    active = Math.min(active, Math.max(rows.length - 1, 0))
+  const show = (next: AskMenu): void => {
+    menu = next
+    const rows = menuRows(quickActions, menu)
     list.replaceChildren(
       ...rows.map((row, index) =>
         el(
@@ -196,7 +205,7 @@ const buildBubble = (view: EditorView) => {
                 : 'cm-ai-ask-item',
             attrs: { role: 'option', id: optionId(index) },
             on: {
-              mousemove: () => setActive(index),
+              mousemove: () => highlight(hoverAskMenu(menu, index)),
               click: () => run(row),
             },
           },
@@ -206,18 +215,8 @@ const buildBubble = (view: EditorView) => {
     )
     list.hidden = rows.length === 0
     input.setAttribute('aria-expanded', String(rows.length > 0))
-    if (hint) hint.hidden = rows.length > 0 || input.value !== ''
+    if (hint) hint.hidden = !hintVisible(menu)
     paintActive()
-  }
-
-  const move = (step: 1 | -1): void => {
-    if (rows.length === 0 && input.value.trim() === '') {
-      browsing = true
-      active = 0
-      render()
-      return
-    }
-    if (rows.length > 0) setActive((active + step + rows.length) % rows.length)
   }
 
   const input = el('input', {
@@ -230,15 +229,12 @@ const buildBubble = (view: EditorView) => {
       'aria-autocomplete': 'list',
       'aria-controls': listId,
       'aria-expanded': 'false',
+      'aria-describedby': hintId,
       autocomplete: 'off',
       spellcheck: 'false',
     },
     on: {
-      input: () => {
-        browsing = false
-        active = 0
-        render()
-      },
+      input: () => show(typeAskMenu(input.value)),
       keydown: (event) => {
         if (event.key === 'Escape') {
           event.preventDefault()
@@ -250,7 +246,13 @@ const buildBubble = (view: EditorView) => {
           event.preventDefault()
         } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
           event.preventDefault()
-          move(event.key === 'ArrowDown' ? 1 : -1)
+          const next = moveAskMenu(
+            quickActions,
+            menu,
+            event.key === 'ArrowDown' ? 1 : -1,
+          )
+          if (next.browsing !== menu.browsing) show(next)
+          else highlight(next)
         }
       },
     },
@@ -265,7 +267,9 @@ const buildBubble = (view: EditorView) => {
   const hint =
     hintText === undefined
       ? undefined
-      : el('div', { class: 'cm-ai-ask-hint' }, [hintText])
+      : el('div', { class: 'cm-ai-ask-hint', attrs: { id: hintId } }, [
+          hintText,
+        ])
 
   const form = el(
     'form',
@@ -274,7 +278,7 @@ const buildBubble = (view: EditorView) => {
       on: {
         submit: (event) => {
           event.preventDefault()
-          const row = rows[active]
+          const row = chosenRow(quickActions, menu)
           if (row) run(row)
         },
       },
@@ -302,7 +306,7 @@ const buildBubble = (view: EditorView) => {
     [form, ...(hint ? [hint] : []), list],
   )
 
-  render()
+  show(EMPTY_ASK_MENU)
 
   const focusIfAsking = (state: EditorState): void => {
     if (isAsking(state)) input.focus()
