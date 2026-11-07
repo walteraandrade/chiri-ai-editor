@@ -174,3 +174,37 @@ describe('helpedOverall', () => {
     expect(helpedOverall([item([run(true)], null)])).toBeNull()
   })
 })
+
+describe('fired on the second side', () => {
+  it('counts the second side only when its runs carry the indicator', () => {
+    const signals = caseSignals(
+      item([run(true, true)], [run(true, true), run(true, false)]),
+    )
+    expect(signals.firedSecond).toEqual({ passed: 1, total: 2 })
+    expect(
+      caseSignals(item([run(true, true)], [run(true)])).firedSecond,
+    ).toBeNull()
+    expect(caseSignals(item([run(true, true)], null)).firedSecond).toBeNull()
+  })
+
+  it('sums either side over the cases', () => {
+    const cases = [
+      item([run(true, true)], [run(true, false)], 'a'),
+      item([run(true, true)], [run(true, true)], 'b'),
+    ]
+    expect(firedOverall(cases)).toEqual({ passed: 2, total: 2 })
+    expect(firedOverall(cases, 'second')).toEqual({ passed: 1, total: 2 })
+  })
+})
+
+describe('helped with an Eval missing on a side', () => {
+  it('leaves out an Eval that has no run for today', () => {
+    const empty = item([], [run(true)], 'only-older')
+    const paired = item([run(true)], [run(false)], 'both')
+    expect(helpedOverall([paired, empty])).toEqual({
+      with: { passed: 1, total: 1 },
+      without: { passed: 0, total: 1 },
+      leftOut: 1,
+    })
+  })
+})

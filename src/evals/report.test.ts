@@ -49,6 +49,7 @@ describe('parseEvalReport', () => {
         ],
         with: { passed: 1, total: 1 },
         without: { passed: 0, total: 1 },
+        baseline: { kind: 'none' },
       },
     })
   })

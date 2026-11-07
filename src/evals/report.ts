@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { NO_BASELINE, type SummaryBaseline } from './baseline'
 import { armTally, type RunRecord, sumTallies, type Tally } from './tally'
 
 export type { RunRecord, Tally }
@@ -20,6 +21,7 @@ export type EvalSummary = {
   readonly cases: readonly CaseTally[]
   readonly with: Tally
   readonly without: Tally | null
+  readonly baseline: SummaryBaseline
 }
 
 export type ReportOutcome =
@@ -194,6 +196,7 @@ export const parseEvalReport = (
       cases,
       with: sumTallies(cases.map((item) => item.with)),
       without: withoutTallies.length === 0 ? null : sumTallies(withoutTallies),
+      baseline: NO_BASELINE,
     },
   }
 }

@@ -9,6 +9,7 @@ export type SuspiciousKind =
 export type CaseSignals = {
   readonly name: string
   readonly fired: Tally | null
+  readonly firedSecond: Tally | null
   readonly errored: number
   readonly suspicious: readonly SuspiciousKind[]
 }
@@ -19,7 +20,8 @@ export type HelpedOverall = {
   readonly leftOut: number
 }
 
-const firedOf = (runs: readonly RunRecord[]): Tally | null => {
+const firedOf = (runs: readonly RunRecord[] | null): Tally | null => {
+  if (runs === null) return null
   const checked = runs.filter(
     ({ fired, errored }) => fired !== null && !errored,
   )
@@ -63,6 +65,7 @@ export const signalsOf = (
 ): CaseSignals => ({
   name,
   fired: firedOf(first),
+  firedSecond: firedOf(second),
   errored: erroredIn(first) + erroredIn(second),
   suspicious: suspiciousOf(
     armTally(first),
@@ -73,9 +76,13 @@ export const signalsOf = (
 export const caseSignals = ({ name, runs }: CaseTally): CaseSignals =>
   signalsOf(name, runs.with, runs.without)
 
-export const firedOverall = (cases: readonly CaseTally[]): Tally | null => {
+export const firedOverall = (
+  cases: readonly CaseTally[],
+  side: 'first' | 'second' = 'first',
+): Tally | null => {
   const tallies = cases.flatMap((item) => {
-    const fired = caseSignals(item).fired
+    const signals = caseSignals(item)
+    const fired = side === 'first' ? signals.fired : signals.firedSecond
     return fired === null ? [] : [fired]
   })
   return tallies.length === 0 ? null : sumTallies(tallies)
@@ -85,7 +92,7 @@ export const helpedOverall = (
   cases: readonly CaseTally[],
 ): HelpedOverall | null => {
   const paired = cases.flatMap(({ with: withTally, without }) =>
-    without === null ? [] : [{ withTally, without }],
+    without === null || withTally.total === 0 ? [] : [{ withTally, without }],
   )
   return paired.length === 0
     ? null
