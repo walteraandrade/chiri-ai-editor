@@ -24,6 +24,11 @@ describe('summaryView with no baseline', () => {
     expect(view.helpedText(null)).toBe('No run without the Skill to compare.')
     expect(view.leftOut(1)).toContain('no run without the Skill')
   })
+
+  it('offers one report and no second fired side', () => {
+    expect(view.reports).toEqual([{ part: 'today', label: 'Open report' }])
+    expect(view.firedSides).toBe(1)
+  })
 })
 
 describe('summaryView against a Version', () => {
@@ -56,6 +61,14 @@ describe('summaryView against a Version', () => {
     ).toBe("4/4 passes with today's SKILL.md, 2/4 with the Version from t9")
     expect(view.helpedText(null)).toBe('No Eval ran in both Stages to compare.')
     expect(view.leftOut(2)).toContain('only one Stage')
+  })
+
+  it('offers a report per side and fired on both sides', () => {
+    expect(view.reports).toEqual([
+      { part: 'today', label: "Open today's report" },
+      { part: 'version', label: "Open the Version's report" },
+    ])
+    expect(view.firedSides).toBe(2)
   })
 })
 

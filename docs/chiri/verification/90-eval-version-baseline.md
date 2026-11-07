@@ -24,7 +24,7 @@ Rechecked on the same userData after the review fixes, no new model call (the `l
 | Check | Result |
 |---|---|
 | Panel after restart: two buttons, "Open today's report" and "Open the Version's report"; both opened without an error ([90-4](img/90-4.png)) | Pass |
-| Dialog: the older Version is listed with "(same as saved)" for the Version whose text equals the file on disk ([90-2](img/90-2.png)) | Pass |
+| Dialog: the older Version is listed with "(same as saved)" for the Version whose text equals the file on disk (read from the select's options in the DOM; a closed select does not show it in a screenshot) | Pass |
 | Dialog right after a pick (read from the DOM 30 ms later, too short for a screenshot): "Compare against" disabled, "Checking this Version…" shown in place of the risk lists, Run disabled; settled state shows both Stages' risk lists ([90-3](img/90-3.png)) | Pass |
 | Run looks grey even when enabled: `text-accent-soft` is a grey in the Omarchy dev theme; `disabled` was false. This explains the grey Run in the first screenshots; it is not a state bug | Explained |
 

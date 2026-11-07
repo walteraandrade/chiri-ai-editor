@@ -1,6 +1,7 @@
 import { type SummaryBaseline, TODAY_LABEL, versionLabel } from './baseline'
 import type { Tally } from './report'
 import type { HelpedOverall } from './signals'
+import type { ReportPart } from './types'
 import {
   type ArmLabels,
   countLabel,
@@ -47,6 +48,13 @@ export type SummaryView = {
   readonly firedText: (first: Tally | null, second: Tally | null) => string
   readonly helpedText: (helped: HelpedOverall | null) => string
   readonly leftOut: (count: number) => string
+  readonly reports: readonly ReportButton[]
+  readonly firedSides: 1 | 2
+}
+
+export type ReportButton = {
+  readonly part: ReportPart
+  readonly label: string
 }
 
 const NOT_CHECKED = 'Not checked. No Eval has a tool_used Skill grader.'
@@ -69,6 +77,8 @@ export const summaryView = (
           ? 'No run without the Skill to compare.'
           : `${countLabel(helped.with)} passes with, ${countLabel(helped.without)} without`,
       leftOut: leftOutText,
+      reports: [{ part: 'today', label: 'Open report' }],
+      firedSides: 1,
     }
   const labels = {
     first: TODAY_LABEL,
@@ -87,5 +97,10 @@ export const summaryView = (
         ? 'No Eval ran in both Stages to compare.'
         : `${countLabel(helped.with)} passes with ${labels.first}, ${countLabel(helped.without)} with ${labels.second}`,
     leftOut: unpairedText,
+    reports: [
+      { part: 'today', label: "Open today's report" },
+      { part: 'version', label: "Open the Version's report" },
+    ],
+    firedSides: 2,
   }
 }

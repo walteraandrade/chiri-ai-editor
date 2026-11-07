@@ -52,9 +52,10 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
   const view = summaryView(last?.baseline ?? { kind: 'none' }, (at) =>
     formatClock(at, Date.now()),
   )
-  const versionRun = last?.baseline.kind === 'version'
   const firedSecond =
-    last === null || !versionRun ? null : firedOverall(last.cases, 'second')
+    last === null || view.firedSides === 1
+      ? null
+      : firedOverall(last.cases, 'second')
 
   return (
     <section
@@ -222,22 +223,16 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                 Cost {costEstimate(last.costUsd)}, the CLI's figure.
               </p>
               <div className="mt-1 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="cm-ai-button px-2 py-0.5 text-xs"
-                  onClick={() => void openReport('today')}
-                >
-                  {versionRun ? "Open today's report" : 'Open report'}
-                </button>
-                {versionRun ? (
+                {view.reports.map(({ part, label }) => (
                   <button
+                    key={part}
                     type="button"
                     className="cm-ai-button px-2 py-0.5 text-xs"
-                    onClick={() => void openReport('version')}
+                    onClick={() => void openReport(part)}
                   >
-                    Open the Version's report
+                    {label}
                   </button>
-                ) : null}
+                ))}
               </div>
             </div>
           )}
