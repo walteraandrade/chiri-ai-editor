@@ -3,9 +3,11 @@ import type { FileSession } from '../document/file-session'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import { restoreUnsaved } from '../document/unsaved'
 import { createUnsavedKeeper } from '../document/unsaved-keeper'
+import type { EvalsKit } from '../evals/types'
 import { createElectronHistoryStore } from '../history/electron-store'
 import { createSwitchableHistory } from '../history/hub'
 import { createDocumentHistory } from '../history/session'
+import { createElectronEvals } from './electron-evals'
 import { createElectronExternal } from './electron-external'
 import { createElectronFiles } from './electron-files'
 import { createElectronLaunches } from './electron-launches'
@@ -53,6 +55,7 @@ type ElectronKitDeps = {
   readonly storage: RemovableStorage | null
   readonly files: DocumentFiles<string>
   readonly library: LibraryKit<string>
+  readonly evals: EvalsKit
   readonly external: ExternalKit<string>
   readonly launches: LaunchKit<string>
   readonly preferencesRequests: (listener: () => void) => () => void
@@ -139,6 +142,7 @@ export const createElectronKit = async ({
   storage,
   files,
   library,
+  evals,
   external,
   launches,
   preferencesRequests,
@@ -235,6 +239,7 @@ export const createElectronKit = async ({
     keyStatus: { present: hasApiKey },
     problems,
     library,
+    evals,
     external,
     launches,
     preferencesRequests,
@@ -261,6 +266,7 @@ export const browserElectronKit: PlatformKitFactory<string> =
       storage: getRemovableStorage(),
       files: createElectronFiles(api),
       library: createElectronLibrary(api),
+      evals: createElectronEvals(api),
       external: createElectronExternal(api),
       launches: createElectronLaunches(api),
       preferencesRequests: api.onPreferencesRequest,

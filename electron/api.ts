@@ -1,4 +1,12 @@
 import type {
+  EvalOpenReportResult,
+  EvalPrepareResult,
+  EvalRunRequest,
+  EvalRunResult,
+  EvalSkillRequest,
+  EvalStatus,
+} from '../src/evals/types'
+import type {
   AddRootResult,
   CreateSkillRequest,
   CreateSkillResult,
@@ -23,6 +31,11 @@ export const LAUNCH_FILE_CHANNEL = 'launch:file'
 export const PREFERENCES_REQUEST_CHANNEL = 'menu:preferences'
 export const QUICK_ACTIONS_LOAD_CHANNEL = 'quick-actions:load'
 export const QUICK_ACTIONS_SAVE_CHANNEL = 'quick-actions:save'
+
+export const EVALS_STATUS_CHANNEL = 'evals:status'
+export const EVALS_PREPARE_CHANNEL = 'evals:prepare'
+export const EVALS_RUN_CHANNEL = 'evals:run'
+export const EVALS_OPEN_REPORT_CHANNEL = 'evals:open-report'
 
 export const KEY_STATE_CHANNEL = 'key:state'
 export const KEY_SAVE_CHANNEL = 'key:save'
@@ -107,6 +120,14 @@ export type ChiriApi = {
   readonly onPreferencesRequest: (listener: () => void) => () => void
   readonly loadQuickActions: () => Promise<string | null>
   readonly saveQuickActions: (text: string) => Promise<void>
+  readonly evalStatus: (request: EvalSkillRequest) => Promise<EvalStatus>
+  readonly evalPrepare: (
+    request: EvalSkillRequest,
+  ) => Promise<EvalPrepareResult>
+  readonly evalRun: (request: EvalRunRequest) => Promise<EvalRunResult>
+  readonly evalOpenReport: (
+    request: EvalSkillRequest,
+  ) => Promise<EvalOpenReportResult>
   readonly keyState: () => Promise<KeyState>
   readonly saveKey: (key: string) => Promise<KeyState>
   readonly keepKeyAsPlainText: () => Promise<KeyState>

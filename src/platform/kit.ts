@@ -1,6 +1,7 @@
 import type { KeyState } from '../../electron/api'
 import type { FileSession } from '../document/file-session'
 import type { Unsaved } from '../document/unsaved'
+import type { EvalsKit } from '../evals/types'
 import type { SwitchableHistory } from '../history/hub'
 import type {
   AddRootResult,
@@ -137,6 +138,7 @@ export type PlatformKit<Ref = unknown> = {
   readonly problems: Problems
   readonly quickActions: QuickActionStore
   readonly library?: LibraryKit<Ref>
+  readonly evals?: EvalsKit | null
   readonly external?: ExternalKit<Ref>
   readonly launches?: LaunchKit<Ref>
   readonly preferencesRequests?: (listener: () => void) => () => void

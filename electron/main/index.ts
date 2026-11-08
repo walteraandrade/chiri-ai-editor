@@ -13,6 +13,7 @@ import {
 } from '../api'
 import { resolveAppUrl } from './app-url'
 import { resolveDevOptions } from './dev-options'
+import { registerEvalHandlers } from './evals/register'
 import { registerFileHandlers } from './files/register'
 import { registerHistory } from './history-main'
 import { prepareInstalledApp, startInstalledApp } from './installed-app'
@@ -53,7 +54,9 @@ const registerIpc = (): void => {
   const isTrusted = (event: IpcMainInvokeEvent): boolean =>
     isTrustedFrame(event.senderFrame, appUrl())
   registerFileHandlers(isTrusted)
-  registerExternalChanges(isTrusted, registerLibraryHandlers(isTrusted))
+  const library = registerLibraryHandlers(isTrusted)
+  registerExternalChanges(isTrusted, library)
+  registerEvalHandlers(isTrusted, library.deps)
   registerQuickActionsIpc({
     ipc: ipcMain,
     userDataDir: app.getPath('userData'),
