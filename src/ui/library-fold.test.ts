@@ -4,6 +4,7 @@ import {
   isEchoOfKey,
   isLibraryShortcut,
   isModalOpen,
+  isSearchShortcut,
   libraryKeyAnswer,
   railAnswer,
 } from './library-fold'
@@ -99,5 +100,40 @@ describe('isModalOpen', () => {
   it('sees an open dialog', () => {
     expect(isModalOpen({ querySelector: () => ({}) as Element })).toBe(true)
     expect(isModalOpen({ querySelector: () => null })).toBe(false)
+  })
+})
+
+describe('isSearchShortcut', () => {
+  it('accepts Ctrl+P off Apple platforms and Cmd+P on them', () => {
+    expect(isSearchShortcut(press({ key: 'p', ctrlKey: true }), false)).toBe(
+      true,
+    )
+    expect(isSearchShortcut(press({ key: 'P', metaKey: true }), true)).toBe(
+      true,
+    )
+  })
+
+  it('leaves Ctrl+P to the text on Apple platforms and Cmd+P elsewhere', () => {
+    expect(isSearchShortcut(press({ key: 'p', ctrlKey: true }), true)).toBe(
+      false,
+    )
+    expect(isSearchShortcut(press({ key: 'p', metaKey: true }), false)).toBe(
+      false,
+    )
+  })
+
+  it('ignores Alt, Shift and other letters', () => {
+    expect(
+      isSearchShortcut(press({ key: 'p', ctrlKey: true, altKey: true }), false),
+    ).toBe(false)
+    expect(
+      isSearchShortcut(
+        press({ key: 'p', ctrlKey: true, shiftKey: true }),
+        false,
+      ),
+    ).toBe(false)
+    expect(isSearchShortcut(press({ key: 'b', ctrlKey: true }), false)).toBe(
+      false,
+    )
   })
 })

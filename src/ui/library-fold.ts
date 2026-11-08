@@ -22,11 +22,22 @@ export const isEchoOfKey = (lastKeyAt: number | null, now: number): boolean =>
 export const isModalOpen = (doc: Pick<Document, 'querySelector'>): boolean =>
   doc.querySelector('dialog[open]') !== null
 
-export const isLibraryShortcut = (
+const isModShortcut = (
   event: KeyboardEvent,
   apple: boolean,
+  key: string,
 ): boolean =>
-  event.key.toLowerCase() === 'b' &&
+  event.key.toLowerCase() === key &&
   (apple ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey) &&
   !event.altKey &&
   !event.shiftKey
+
+export const isLibraryShortcut = (
+  event: KeyboardEvent,
+  apple: boolean,
+): boolean => isModShortcut(event, apple, 'b')
+
+export const isSearchShortcut = (
+  event: KeyboardEvent,
+  apple: boolean,
+): boolean => isModShortcut(event, apple, 'p')
