@@ -1,6 +1,6 @@
 # 0020. The Evals page and a foldable Library
 
-- Status: Proposed (2026-11-08); Electron build only ([0016](0016-web-and-electron-builds.md))
+- Status: Accepted (2026-11-08); Electron build only ([0016](0016-web-and-electron-builds.md))
 - Source: maintainer request after the Eval slices (#92–#95). Evals made the Library hard to use, and the Library already lacked search, folding and keyboard use. The maintainer chose a page over a drawer for Evals.
 - Amends: [0018](0018-skill-evals-through-claude-cli.md) (where the Eval panel lives)
 
@@ -70,7 +70,7 @@ The Library holds three jobs: finding files, showing results and running Evals. 
 - A writer who lives in the Library presses `Ctrl+B` once per session.
 - Two new shortcuts, `Ctrl+B` and `Ctrl+P`. Neither is bound today: not by the app, the Electron menu's roles, or CodeMirror, whose `Ctrl-b` and `Ctrl-p` are Emacs keys on macOS only, where the app uses `Cmd`. In the Web build both do nothing.
 - `EvalPanel` becomes the page's content. In 0018, "the panel" now means the Evals page.
-- On acceptance, DESIGN.md gets the rail, the tree rows, the search list and the Evals page, and GLOSSARY.md gets the Evals page and the Library's search and folding.
+- On acceptance, DESIGN.md gets the rail, the tree rows, the search list and the Evals page, and GLOSSARY.md gets the Evals page and the Library's search and folding. The Evals page entries landed with [#99](https://github.com/walteraandrade/chiri-ai-editor/issues/99); the rest land with #100–#102.
 
 ## Alternatives considered
 
