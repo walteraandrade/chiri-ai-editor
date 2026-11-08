@@ -15,6 +15,7 @@ import {
 import { idleReviewStatus, type ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
 import type { FailureNotice } from '../editor/suggestions'
+import { storedIsUnsaved } from '../evals/unsaved'
 import { applyHistoryEvent, type HistoryEvent } from '../history/events'
 import { formatClock } from '../history/time'
 import type { VersionSummary } from '../history/types'
@@ -58,6 +59,7 @@ import { useLeavePrompt } from './use-leave-prompt'
 import { useLibrary } from './use-library'
 import { useMarkdownFile } from './use-markdown-file'
 import { useQuickActions } from './use-quick-actions'
+import type { SkillUnsaved } from './use-skill-unsaved'
 import { useTheme } from './use-theme'
 import { useVersionTexts } from './use-version-texts'
 import { VersionBar } from './VersionBar'
@@ -75,6 +77,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     history,
     problems,
     library,
+    evals,
     external,
     launches,
     preferencesRequests,
@@ -185,6 +188,26 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             (path) => library.toRef(path) === openRef,
           ),
         }
+  const openDirty = file.session?.dirty ?? false
+  const skillUnsaved = useMemo<SkillUnsaved>(
+    () => ({
+      isOpen: (path) =>
+        library !== undefined && library.toRef(path) === openRef,
+      openDirty,
+      hasStored: async (path) => {
+        if (library === undefined) return false
+        const ref = library.toRef(path)
+        const stored = await unsavedText.offered(ref)
+        if (stored === null) return false
+        const disk = await files.read(ref).catch(() => null)
+        return storedIsUnsaved(
+          disk?.kind === 'opened' ? disk.file.text : null,
+          stored,
+        )
+      },
+    }),
+    [library, openRef, openDirty, unsavedText, files],
+  )
   const fileLabel = librarySkillFile?.label
   const frontmatterFileName =
     librarySkillFile?.file?.fileName ?? file.session?.name ?? null
@@ -450,6 +473,8 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         activeRef={openRef}
         onOpen={(ref) => void file.openRef(ref)}
         onNewSkill={() => setNewSkillOpen(true)}
+        evals={evals ?? null}
+        unsaved={skillUnsaved}
       />
       {newSkillOpen && libraryControls.state.status === 'ready' ? (
         <NewSkillDialog

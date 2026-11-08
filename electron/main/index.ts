@@ -13,8 +13,9 @@ import {
 } from '../api'
 import { resolveAppUrl } from './app-url'
 import { resolveDevOptions } from './dev-options'
+import { registerEvalHandlers } from './evals/register'
 import { registerFileHandlers } from './files/register'
-import { registerHistory } from './history-main'
+import { type HistoryAccess, registerHistory } from './history-main'
 import { prepareInstalledApp, startInstalledApp } from './installed-app'
 import { registerLaunches } from './launch/register'
 import { registerLibraryHandlers } from './library/register'
@@ -40,7 +41,7 @@ const applyDevOptions = (): void => {
     app.commandLine.appendSwitch('remote-debugging-port', String(debugPort))
 }
 
-const registerIpc = (): void => {
+const registerIpc = (history: HistoryAccess): void => {
   ipcMain.handle(SHELL_INFO_CHANNEL, (event): ShellInfo => {
     if (!isTrustedFrame(event.senderFrame, appUrl()))
       throw new Error('Untrusted sender')
@@ -53,7 +54,9 @@ const registerIpc = (): void => {
   const isTrusted = (event: IpcMainInvokeEvent): boolean =>
     isTrustedFrame(event.senderFrame, appUrl())
   registerFileHandlers(isTrusted)
-  registerExternalChanges(isTrusted, registerLibraryHandlers(isTrusted))
+  const library = registerLibraryHandlers(isTrusted)
+  registerExternalChanges(isTrusted, library)
+  registerEvalHandlers(isTrusted, library.deps, history)
   registerQuickActionsIpc({
     ipc: ipcMain,
     userDataDir: app.getPath('userData'),
@@ -101,13 +104,13 @@ const start = (): void => {
       appUrl: appUrl(),
       isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
     })
-    registerIpc()
-    registerHistory({
+    const history = registerHistory({
       ipcMain,
       file: () => join(app.getPath('userData'), 'history.sqlite'),
       isTrusted: (event) => isTrustedFrame(event.senderFrame, appUrl()),
       onQuit: (close) => app.on('will-quit', close),
     })
+    registerIpc(history)
     const window = createWindow()
     Menu.setApplicationMenu(
       Menu.buildFromTemplate(

@@ -167,3 +167,27 @@ Notes on issue #79 (Theme system):
 
 Notes on issue #72 (Improve description prompt):
 - Three recorded calls and two unread ones, each estimated at the recorded calls' cost. One Improve description click may have reached the model before my window stopped answering; the maintainer's own Accept check ran in a window that was closed before its record was read. The selection fix needed no model call.
+
+## Eval runs
+
+Runs of `claude plugin eval` through the Chiri app ([ADR 0018](adr/0018-skill-evals-through-claude-cli.md)). The CLI bills the maintainer's Claude login, not the OpenRouter key, so these rows stay out of the US$5 running total above. Costs are the CLI's own `costUsd`.
+
+| Date | Slice / PR | Task | Model | CLI | Cost (US$) | Record |
+|---|---|---|---|---|---|---|
+| 2026-11-07 | ADR 0018 spike | Throwaway skill, hook and sentinel-read cases, first run | `haiku` | 2.1.319 | 0.0017 | not kept |
+| 2026-11-07 | ADR 0018 spike | Stage without `hooks/`, 2 cases, 1 run, single Arm | `haiku` | 2.1.319 | 0.0035 | not kept |
+| 2026-11-07 | ADR 0018 spike | Control on the real folder with `hooks/`: the hook fired | `haiku` | 2.1.319 | 0.0020 | not kept |
+| 2026-11-07 | #87 | Fixture run, 1 case, with and without the Skill, from a shell | `haiku` | 2.1.319 | 0.0027 | [87-eval-run.md](verification/87-eval-run.md) |
+| 2026-11-07 | #87 | Eval run from the app: 2 Evals, 1 run, with and without (the hook and sentinel checks) | `haiku` | 2.1.319 | 0.0061 | [87-eval-run.md](verification/87-eval-run.md) |
+| 2026-11-07 | #87 review | Stage with `.claude/settings.json` hooks and a `CLAUDE.md` at its root, from a shell: neither loaded | `haiku` | 2.1.319 | 0.0018 | [87-eval-run.md](verification/87-eval-run.md) |
+| 2026-11-07 | #88 | Complete run from the app: 1 Eval, 1 run, with and without (the earlier run to keep) | `haiku` | 2.1.319 | 0.0027 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
+| 2026-11-07 | #88 | Run from the app, 3 Evals, 5 runs, cancelled mid-run (first attempt, before the app kept the cost; JSON deleted with `next/`) | `haiku` | 2.1.319 | not read | [88-eval-cancel.md](verification/88-eval-cancel.md) |
+| 2026-11-07 | #88 | Same command from a shell, 3 Evals, 5 runs, SIGTERM after 6 s: exit 143, `interrupted` | `haiku` | 2.1.319 | 0.0015 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
+| 2026-11-07 | #88 | Skill whose only case is invalid for the CLI (`cases: []`), from the app and once from a shell | `haiku` | 2.1.319 | 0 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
+| 2026-11-07 | #88 review | Run from the app, 3 Evals, 5 runs, cancelled mid-run; panel showed "Cancelled. Cost about US$0.0061" | `haiku` | 2.1.319 | 0.0061 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
+| 2026-11-07 | #89 | Eval run from the app: 3 Evals (Skill fires, passes in both, fails in both), 2 runs, with and without | `haiku` | 2.1.319 | 0.0163 | [89-eval-signals.md](verification/89-eval-signals.md) |
+| 2026-11-07 | #89 | Same Skill, 3 runs, with unsaved text in `SKILL.md` | `haiku` | 2.1.319 | 0.0250 | [89-eval-signals.md](verification/89-eval-signals.md) |
+| 2026-11-07 | #90 | Shell probe of `--ablation none` on the throwaway skill, 2 Evals, 1 run, single Arm | `haiku` | 2.1.319 | 0.0027 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
+| 2026-11-07 | #90 | Eval run from the app against an older Version, 2 Evals, 2 runs, two Stages | `haiku` | 2.1.319 | 0.0109 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
+| 2026-11-07 | #90 | Version run, 5 runs, cancelled in the second run (first run's cost counted) | `haiku` | 2.1.319 | 0.0195 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
+| 2026-11-07 | #90 | Version run, 5 runs, cancelled in the first run | `haiku` | 2.1.319 | 0.0024 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |

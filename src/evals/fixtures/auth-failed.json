@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.319",
+  "startedAt": "2026-11-07T20:03:24.309Z",
+  "durationSeconds": 6,
+  "costUsd": 0,
+  "partial": true,
+  "suite": {
+    "root": "/stage/fx-skill",
+    "ablation": "with-without",
+    "modelOverride": "haiku",
+    "threshold": 0,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "fx-skill",
+        "path": "/stage/fx-skill"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "greet",
+      "dir": "evals/greet",
+      "source": "prose",
+      "promptMarkdown": "Say hello to me in one short sentence.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 2,
+      "graders": [
+        {
+          "name": "pineapple",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "PINEAPPLE",
+            "flags": "",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 3,
+            "costUsd": 0,
+            "judgeCostUsd": 0,
+            "durationSeconds": 4,
+            "startedAt": "2026-11-07T20:03:24.345Z",
+            "error": "exit 1: Not logged in",
+            "tracePath": "/tmp/claude-eval-2vme7f/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "pineapple",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched PINEAPPLE",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0,
+            "judgeCostUsd": 0,
+            "durationSeconds": 2,
+            "startedAt": "2026-11-07T20:03:28.093Z",
+            "error": "exit 1: Not logged in",
+            "tracePath": "/tmp/claude-eval-x4CEOO/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "pineapple",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in last_message",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 0,
+        "passRateWithout": 0,
+        "delta": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1,
+    "meanDelta": 1
+  },
+  "partialReason": "auth_failed"
+}

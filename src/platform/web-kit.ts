@@ -87,6 +87,7 @@ export const createWebKit = async ({
     keyStatus: { present: hasApiKey },
     problems,
     quickActions: localQuickActionStore(storage),
+    evals: null,
   }
 }
 

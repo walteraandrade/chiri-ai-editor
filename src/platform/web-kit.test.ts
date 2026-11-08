@@ -52,6 +52,11 @@ describe('createWebKit', () => {
     vi.useRealTimers()
   })
 
+  it('has no Evals', async () => {
+    const { kit } = await build(null)
+    expect(kit.evals).toBeNull()
+  })
+
   it('starts from the sample Document when nothing is stored', async () => {
     const { kit } = await build(createFakeStorage())
     expect(kit.unsavedText.initial).toBe(SAMPLE_DOCUMENT)

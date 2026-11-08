@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { EvalsKit } from '../evals/types'
 import type { LibraryKit } from '../platform/kit'
 import type { LibraryRoot } from '../skills/library'
 import {
@@ -8,7 +9,9 @@ import {
   skillHoldingFile,
 } from '../skills/library-view'
 import type { Skill } from '../skills/scan-skills'
+import { EvalPanel } from './EvalPanel'
 import type { LibraryControls } from './use-library'
+import type { SkillUnsaved } from './use-skill-unsaved'
 
 type LibraryProps<Ref> = {
   readonly library: LibraryKit<Ref>
@@ -16,6 +19,8 @@ type LibraryProps<Ref> = {
   readonly activeRef: Ref | null
   readonly onOpen: (ref: Ref) => void
   readonly onNewSkill: () => void
+  readonly evals: EvalsKit | null
+  readonly unsaved: SkillUnsaved
 }
 
 type SkillItemProps = {
@@ -25,6 +30,8 @@ type SkillItemProps = {
   readonly isActiveFile: (path: string) => boolean
   readonly onToggle: () => void
   readonly onOpenFile: (path: string) => void
+  readonly evals: EvalsKit | null
+  readonly unsaved: SkillUnsaved
 }
 
 function SkillItem({
@@ -34,6 +41,8 @@ function SkillItem({
   isActiveFile,
   onToggle,
   onOpenFile,
+  evals,
+  unsaved,
 }: SkillItemProps) {
   return (
     <li>
@@ -100,6 +109,9 @@ function SkillItem({
           ))}
         </ul>
       ) : null}
+      {open && evals !== null ? (
+        <EvalPanel evals={evals} unsaved={unsaved} skill={skill} />
+      ) : null}
     </li>
   )
 }
@@ -112,6 +124,8 @@ type RootSectionProps = {
   readonly onToggle: (realPath: string, open: boolean) => void
   readonly onOpenFile: (path: string) => void
   readonly onRemove: () => void
+  readonly evals: EvalsKit | null
+  readonly unsaved: SkillUnsaved
 }
 
 function RootSection({
@@ -122,6 +136,8 @@ function RootSection({
   onToggle,
   onOpenFile,
   onRemove,
+  evals,
+  unsaved,
 }: RootSectionProps) {
   return (
     <section aria-label={root.label} className="pb-3">
@@ -166,6 +182,8 @@ function RootSection({
                 isActiveFile={isActiveFile}
                 onToggle={() => onToggle(skill.realPath, !open)}
                 onOpenFile={onOpenFile}
+                evals={evals}
+                unsaved={unsaved}
               />
             )
           })}
@@ -181,6 +199,8 @@ export function Library<Ref>({
   activeRef,
   onOpen,
   onNewSkill,
+  evals,
+  unsaved,
 }: LibraryProps<Ref>) {
   const [choices, setChoices] = useState<SkillChoices>({})
   const isActiveFile = (path: string): boolean =>
@@ -267,6 +287,8 @@ export function Library<Ref>({
             }
             onOpenFile={(path) => onOpen(library.toRef(path))}
             onRemove={() => void removeRoot(root.root, root.label)}
+            evals={evals}
+            unsaved={unsaved}
           />
         ))}
       </div>

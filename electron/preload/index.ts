@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   type ChiriApi,
+  EVALS_CANCEL_CHANNEL,
+  EVALS_OPEN_REPORT_CHANNEL,
+  EVALS_PREPARE_CHANNEL,
+  EVALS_RUN_CHANNEL,
+  EVALS_STATUS_CHANNEL,
   EXTERNAL_CHANGES_CHANNEL,
   type ExternalChanges,
   FILE_OPEN_CHANNEL,
@@ -74,6 +79,12 @@ const api: ChiriApi = {
       ipcRenderer.removeListener(LAUNCH_FILE_CHANNEL, relay)
     }
   },
+  evalStatus: (request) => ipcRenderer.invoke(EVALS_STATUS_CHANNEL, request),
+  evalPrepare: (request) => ipcRenderer.invoke(EVALS_PREPARE_CHANNEL, request),
+  evalRun: (request) => ipcRenderer.invoke(EVALS_RUN_CHANNEL, request),
+  evalOpenReport: (request) =>
+    ipcRenderer.invoke(EVALS_OPEN_REPORT_CHANNEL, request),
+  evalCancel: () => ipcRenderer.invoke(EVALS_CANCEL_CHANNEL),
   keyState: () => ipcRenderer.invoke(KEY_STATE_CHANNEL),
   saveKey: (key) => ipcRenderer.invoke(KEY_SAVE_CHANNEL, key),
   keepKeyAsPlainText: () => ipcRenderer.invoke(KEY_KEEP_AS_PLAIN_TEXT_CHANNEL),

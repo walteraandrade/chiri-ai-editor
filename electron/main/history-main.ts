@@ -6,6 +6,10 @@ import {
   registerHistoryIpc,
 } from './history-ipc'
 
+export type HistoryAccess = {
+  readonly db: () => HistoryDb
+}
+
 type RegisterHistoryOptions = {
   readonly ipcMain: IpcRegistry
   readonly isTrusted: (event: HandleEvent) => boolean
@@ -18,18 +22,21 @@ export const registerHistory = ({
   isTrusted,
   file,
   onQuit,
-}: RegisterHistoryOptions): void => {
+}: RegisterHistoryOptions): HistoryAccess => {
   let db: HistoryDb | null = null
   let handlers: HistoryHandlers | null = null
 
+  const getDb = (): HistoryDb => {
+    if (db === null) db = openHistoryDb(file())
+    return db
+  }
+
   const getHandlers = (): HistoryHandlers => {
-    if (handlers === null) {
-      db = openHistoryDb(file())
-      handlers = createHistoryHandlers(db, Date.now)
-    }
+    if (handlers === null) handlers = createHistoryHandlers(getDb(), Date.now)
     return handlers
   }
 
   registerHistoryIpc({ ipcMain, getHandlers, isTrusted })
   onQuit(() => db?.close())
+  return { db: getDb }
 }
