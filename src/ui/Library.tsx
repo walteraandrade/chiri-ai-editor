@@ -1,177 +1,139 @@
-import { useState } from 'react'
-import type { LibraryKit } from '../platform/kit'
-import type { LibraryRoot } from '../skills/library'
 import {
-  isSkillOpen,
-  type SkillChoices,
-  skillCount,
-  skillHoldingFile,
-} from '../skills/library-view'
-import type { Skill } from '../skills/scan-skills'
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import type { LibraryKit } from '../platform/kit'
+import {
+  ancestorIds,
+  buildLibraryTree,
+  openFileId,
+  type TreeItem,
+  type TreeNode,
+  visibleItems,
+} from '../skills/library-tree'
+import { skillCount } from '../skills/library-view'
+import { type TreeAction, treeKey } from '../skills/tree-keys'
 import type { LibraryControls } from './use-library'
 
 type LibraryProps<Ref> = {
   readonly library: LibraryKit<Ref>
   readonly controls: LibraryControls
   readonly activeRef: Ref | null
-  readonly onOpen: (ref: Ref) => void
+  readonly onOpen: (ref: Ref, focusText: boolean) => Promise<void>
   readonly onNewSkill: () => void
+  readonly onEscape: () => void
 }
 
-type SkillItemProps = {
-  readonly skill: Skill
-  readonly open: boolean
-  readonly hasOpenFile: boolean
-  readonly isActiveFile: (path: string) => boolean
-  readonly onToggle: () => void
-  readonly onOpenFile: (path: string) => void
+type Choices = Readonly<Record<string, boolean>>
+
+const TYPE_AHEAD_MS = 700
+const INDENT_PX = 12
+
+const labelId = (id: string): string =>
+  `library-label-${encodeURIComponent(id)}`
+
+const detailId = (id: string): string =>
+  `library-detail-${encodeURIComponent(id)}`
+
+const noteId = (id: string): string => `library-note-${encodeURIComponent(id)}`
+
+const caret = (item: TreeItem): string =>
+  !item.expandable ? '' : item.expanded ? '▾' : '▸'
+
+type RowProps = {
+  readonly item: TreeItem
+  readonly isActive: boolean
+  readonly focused: boolean
+  readonly holdsOpenFile: boolean
+  readonly onRemove: (node: TreeNode) => void
 }
 
-function SkillItem({
-  skill,
-  open,
-  hasOpenFile,
-  isActiveFile,
-  onToggle,
-  onOpenFile,
-}: SkillItemProps) {
+function Row({ item, isActive, focused, holdsOpenFile, onRemove }: RowProps) {
+  const { node, level } = item
+  const faint = node.kind === 'file' && node.openable !== true
   return (
-    <li>
-      <button
-        type="button"
-        aria-expanded={open}
-        title={skill.realPath}
-        className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-canvas ${hasOpenFile && !open ? 'bg-canvas' : ''}`}
-        onClick={onToggle}
-      >
-        <span className="flex items-baseline gap-2">
-          <span
-            aria-hidden="true"
-            className={`w-2 shrink-0 text-xs ${hasOpenFile ? 'text-accent' : 'text-ink-faint'}`}
-          >
-            {open ? '▾' : '▸'}
-          </span>
-          <span className="min-w-0 truncate text-ink-strong text-sm">
-            {skill.name}
-          </span>
-        </span>
-        {skill.description === undefined ? null : (
-          <span className="line-clamp-2 pl-4 text-ink-muted text-xs">
-            {skill.description}
-          </span>
-        )}
-        {skill.problem === undefined ? null : (
-          <span className="pl-4 text-danger text-xs">
-            Frontmatter: {skill.problem.message}
-          </span>
-        )}
-      </button>
-      {open ? (
-        <ul className="pb-1 pl-7">
-          {skill.files.map((file) => (
-            <li key={file.path}>
-              {file.isMarkdown ? (
-                <button
-                  type="button"
-                  aria-current={isActiveFile(file.path) ? 'true' : undefined}
-                  className={`flex w-full items-center gap-2 px-2 py-1 text-left text-xs ${
-                    isActiveFile(file.path)
-                      ? 'bg-canvas font-medium text-ink-strong'
-                      : 'text-ink hover:bg-canvas'
-                  }`}
-                  title={file.path}
-                  onClick={() => onOpenFile(file.path)}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`size-1.5 shrink-0 ${isActiveFile(file.path) ? 'bg-accent' : ''}`}
-                  />
-                  <span className="min-w-0 truncate">{file.name}</span>
-                </button>
-              ) : (
-                <span
-                  className="block truncate px-2 py-1 text-ink-faint text-xs"
-                  title="Only Markdown files open in Chiri"
-                >
-                  {file.name}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </li>
-  )
-}
-
-type RootSectionProps = {
-  readonly root: LibraryRoot
-  readonly choices: SkillChoices
-  readonly holdingOpenFile: string | undefined
-  readonly isActiveFile: (path: string) => boolean
-  readonly onToggle: (realPath: string, open: boolean) => void
-  readonly onOpenFile: (path: string) => void
-  readonly onRemove: () => void
-}
-
-function RootSection({
-  root,
-  choices,
-  holdingOpenFile,
-  isActiveFile,
-  onToggle,
-  onOpenFile,
-  onRemove,
-}: RootSectionProps) {
-  return (
-    <section aria-label={root.label} className="pb-3">
-      <div className="flex items-center justify-between gap-2 px-3 py-1">
-        <h3
-          className="min-w-0 truncate font-medium text-ink-muted text-xs"
-          title={root.root}
+    <div
+      className={`group/row flex flex-col gap-0.5 py-1 pr-3 text-left ${
+        focused
+          ? 'bg-canvas outline outline-1 outline-accent -outline-offset-1'
+          : isActive
+            ? 'bg-canvas'
+            : 'hover:bg-canvas'
+      }`}
+      style={{ paddingLeft: `${(level - 1) * INDENT_PX + 12}px` }}
+      title={node.kind === 'file' ? node.path : undefined}
+    >
+      <span className="flex items-baseline gap-2">
+        <span
+          aria-hidden="true"
+          className={`w-2 shrink-0 text-xs ${holdsOpenFile ? 'text-accent' : 'text-ink-faint'}`}
         >
-          {root.label}
-          {root.readable ? (
-            <span className="text-ink-faint"> · {root.skills.length}</span>
-          ) : null}
-        </h3>
-        {root.removable ? (
+          {node.kind === 'file' ? (
+            <span className={`block size-1.5 ${isActive ? 'bg-accent' : ''}`} />
+          ) : (
+            caret(item)
+          )}
+        </span>
+        <span
+          id={labelId(node.id)}
+          className={`min-w-0 truncate ${
+            node.kind === 'root'
+              ? 'font-medium text-ink-muted text-xs'
+              : node.kind === 'skill'
+                ? `${node.problem === undefined ? 'text-ink-strong' : 'text-danger'} text-sm`
+                : faint
+                  ? 'text-ink-faint text-xs'
+                  : `text-xs ${isActive ? 'font-medium text-ink-strong' : 'text-ink'}`
+          }`}
+        >
+          {node.name}
+        </span>
+        {node.detail === undefined ? null : (
+          <span
+            id={detailId(node.id)}
+            className="shrink-0 text-ink-faint text-xs"
+          >
+            · {node.detail}
+          </span>
+        )}
+        {node.kind === 'root' && node.removable === true ? (
           <button
             type="button"
-            className="cm-ai-button px-2 py-0 text-xs"
-            aria-label={`Remove ${root.label} from the Library`}
+            tabIndex={-1}
+            className="cm-ai-button ml-auto px-2 py-0 text-xs"
+            aria-label={`Remove ${node.name} from the Library`}
             title="Remove from the Library. The folder stays on disk."
-            onClick={onRemove}
+            onClick={(event) => {
+              event.stopPropagation()
+              onRemove(node)
+            }}
           >
             ×
           </button>
         ) : null}
-      </div>
-      {!root.readable ? (
-        <p className="px-3 py-1 text-ink-faint text-xs">
-          Folder not found or not readable
-        </p>
-      ) : root.skills.length === 0 ? (
-        <p className="px-3 py-1 text-ink-faint text-xs">No skills here</p>
-      ) : (
-        <ul>
-          {root.skills.map((skill) => {
-            const open = isSkillOpen(choices, skill.realPath, holdingOpenFile)
-            return (
-              <SkillItem
-                key={skill.realPath}
-                skill={skill}
-                open={open}
-                hasOpenFile={skill.realPath === holdingOpenFile}
-                isActiveFile={isActiveFile}
-                onToggle={() => onToggle(skill.realPath, !open)}
-                onOpenFile={onOpenFile}
-              />
-            )
-          })}
-        </ul>
-      )}
-    </section>
+      </span>
+      {node.kind === 'skill' ? (
+        <span
+          id={noteId(node.id)}
+          className={`pl-4 ${focused ? 'block' : 'hidden group-hover/row:block'}`}
+        >
+          {node.description === undefined ? null : (
+            <span className="line-clamp-2 block text-ink-muted text-xs">
+              {node.description}
+            </span>
+          )}
+          {node.problem === undefined ? null : (
+            <span className="block text-danger text-xs">
+              Frontmatter: {node.problem.message}
+            </span>
+          )}
+        </span>
+      ) : null}
+    </div>
   )
 }
 
@@ -181,17 +143,186 @@ export function Library<Ref>({
   activeRef,
   onOpen,
   onNewSkill,
+  onEscape,
 }: LibraryProps<Ref>) {
-  const [choices, setChoices] = useState<SkillChoices>({})
+  const [choices, setChoices] = useState<Choices>({})
+  const [focusedId, setFocusedId] = useState<string | null>(null)
+  const [hotId, setHotId] = useState<string | null>(null)
+  const lastItems = useRef<readonly TreeItem[]>([])
+  const inTree = useRef(false)
+  const typed = useRef('')
+  const typedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
+  const treeRef = useRef<HTMLDivElement>(null)
+
   const isActiveFile = (path: string): boolean =>
     activeRef !== null && library.toRef(path) === activeRef
   const roots = state.status === 'ready' ? state.roots : []
-  const holdingOpenFile = skillHoldingFile(roots, isActiveFile)
+  const tree = useMemo(() => buildLibraryTree(roots), [roots])
+  const holding = new Set(ancestorIds(tree, isActiveFile))
+  const isExpanded = (node: TreeNode): boolean =>
+    choices[node.id] ?? (node.kind === 'root' || holding.has(node.id))
+  const items = visibleItems(tree, isExpanded)
+  const itemsById = new Map(items.map((item) => [item.node.id, item]))
+  const activeId = openFileId(tree, isActiveFile)
+  const hasItem = (id: string | null | undefined): id is string =>
+    id != null && items.some(({ node }) => node.id === id)
+  const tabbableId = hasItem(focusedId)
+    ? focusedId
+    : hasItem(activeId)
+      ? activeId
+      : (items[0]?.node.id ?? null)
+
+  useEffect(() => {
+    if (activeId !== undefined) setFocusedId(null)
+  }, [activeId])
+
+  useEffect(() => {
+    const previous = lastItems.current
+    lastItems.current = items
+    if (focusedId === null || itemsById.has(focusedId)) return
+    const parents = new Map(
+      previous.map(({ node, parentId }) => [node.id, parentId]),
+    )
+    const survivor = (id: string | null | undefined): string | undefined =>
+      id == null
+        ? undefined
+        : itemsById.has(id)
+          ? id
+          : survivor(parents.get(id))
+    const next = survivor(focusedId) ?? items[0]?.node.id
+    if (next === undefined) return setFocusedId(null)
+    if (inTree.current || document.activeElement === document.body)
+      focusItem(next)
+    else setFocusedId(next)
+  })
+
+  const focusItem = (id: string): void => {
+    setFocusedId(id)
+    treeRef.current
+      ?.querySelector<HTMLElement>(`[data-tree-id="${CSS.escape(id)}"]`)
+      ?.focus()
+  }
+
+  const setExpanded = (id: string, expand: boolean): void =>
+    setChoices((previous) => ({ ...previous, [id]: expand }))
+
+  const openFile = (node: TreeNode, focusText: boolean): void => {
+    if (node.path === undefined || node.openable !== true) return
+    const opening = onOpen(library.toRef(node.path), focusText)
+    void opening.then(() => {
+      if (!focusText || document.activeElement === document.body)
+        focusItem(node.id)
+    })
+  }
+
+  const removeNode = (node: TreeNode): void => {
+    if (node.path === undefined) return
+    const at = tree.findIndex(({ id }) => id === node.id)
+    const neighbor = (tree[at - 1] ?? tree[at + 1])?.id
+    void removeRoot(node.path, node.name).then((removed) => {
+      if (removed && neighbor !== undefined) focusItem(neighbor)
+    })
+  }
+
+  const run = (action: TreeAction): void => {
+    const node =
+      action.kind === 'open' || action.kind === 'remove'
+        ? itemsById.get(action.id)?.node
+        : undefined
+    if (action.kind === 'focus') focusItem(action.id)
+    else if (action.kind === 'toggle') setExpanded(action.id, action.expand)
+    else if (action.kind === 'open' && node !== undefined)
+      openFile(node, action.focusText)
+    else if (action.kind === 'remove' && node !== undefined) removeNode(node)
+  }
+
+  const onItemKeyDown = (
+    event: KeyboardEvent<HTMLDivElement>,
+    id: string,
+  ): void => {
+    if (event.target !== event.currentTarget) return
+    const result = treeKey(items, id, event, typed.current)
+    typed.current = result.typed
+    clearTimeout(typedTimer.current)
+    typedTimer.current = setTimeout(() => {
+      typed.current = ''
+    }, TYPE_AHEAD_MS)
+    if (result.handled) event.preventDefault()
+    run(result.action)
+  }
+
+  const renderNodes = (nodes: readonly TreeNode[]): ReactNode =>
+    nodes.map((node) => {
+      const item = itemsById.get(node.id)
+      if (item === undefined) return null
+      const isActive = node.kind === 'file' && node.id === activeId
+      return (
+        <div
+          key={node.id}
+          role="treeitem"
+          data-tree-id={node.id}
+          tabIndex={node.id === tabbableId ? 0 : -1}
+          aria-level={item.level}
+          aria-expanded={item.expandable ? item.expanded : undefined}
+          aria-current={isActive ? 'true' : undefined}
+          aria-labelledby={
+            node.detail === undefined
+              ? labelId(node.id)
+              : `${labelId(node.id)} ${detailId(node.id)}`
+          }
+          aria-describedby={
+            node.kind === 'skill' &&
+            (node.description !== undefined || node.problem !== undefined)
+              ? noteId(node.id)
+              : undefined
+          }
+          className="group/item cursor-default focus:outline-none"
+          onKeyDown={(event) => onItemKeyDown(event, node.id)}
+          onFocus={(event) => {
+            if (event.target !== event.currentTarget) return
+            inTree.current = true
+            setFocusedId(node.id)
+            setHotId(node.id)
+          }}
+          onBlur={(event) => {
+            if (event.target !== event.currentTarget) return
+            setHotId(null)
+            if (!treeRef.current?.contains(event.relatedTarget))
+              inTree.current = false
+          }}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (node.kind === 'file') openFile(node, true)
+            else if (item.expandable) setExpanded(node.id, !item.expanded)
+          }}
+        >
+          <Row
+            item={item}
+            isActive={isActive}
+            focused={hotId === node.id}
+            holdsOpenFile={holding.has(node.id) && node.kind === 'skill'}
+            onRemove={removeNode}
+          />
+          {node.note !== undefined ? (
+            <p className="px-3 py-1 text-ink-faint text-xs">{node.note}</p>
+          ) : null}
+          {item.expanded ? (
+            // biome-ignore lint/a11y/useSemanticElements: a tree group is not a form fieldset
+            <div role="group">{renderNodes(node.children)}</div>
+          ) : null}
+        </div>
+      )
+    })
 
   return (
     <aside
       aria-label="Library"
       className="sticky top-0 flex h-screen w-72 shrink-0 flex-col bg-surface"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') onEscape()
+      }}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 pt-6 pb-3">
         <h2 className="whitespace-nowrap font-display font-semibold text-ink-strong text-lg tracking-wide">
@@ -255,20 +386,11 @@ export function Library<Ref>({
             are off until it is fixed or deleted in the app's user data folder.
           </p>
         ) : null}
-        {roots.map((root) => (
-          <RootSection
-            key={root.root}
-            root={root}
-            choices={choices}
-            holdingOpenFile={holdingOpenFile}
-            isActiveFile={isActiveFile}
-            onToggle={(realPath, open) =>
-              setChoices((previous) => ({ ...previous, [realPath]: open }))
-            }
-            onOpenFile={(path) => onOpen(library.toRef(path))}
-            onRemove={() => void removeRoot(root.root, root.label)}
-          />
-        ))}
+        {tree.length === 0 ? null : (
+          <div ref={treeRef} role="tree" aria-label="Skills">
+            {renderNodes(tree)}
+          </div>
+        )}
       </div>
     </aside>
   )

@@ -60,8 +60,8 @@ export const useLibrary = <Ref>(
   }, [library, notify, refresh])
 
   const removeRoot = useCallback(
-    async (path: string, label: string) => {
-      if (library === undefined) return
+    async (path: string, label: string): Promise<boolean> => {
+      if (library === undefined) return false
       const result = await library.removeRoot(path)
       notify(
         result.kind === 'removed'
@@ -69,6 +69,7 @@ export const useLibrary = <Ref>(
           : `Could not remove ${label}: ${result.reason}`,
       )
       await refresh()
+      return result.kind === 'removed'
     },
     [library, notify, refresh],
   )

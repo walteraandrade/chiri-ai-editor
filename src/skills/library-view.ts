@@ -1,8 +1,6 @@
 import type { LibraryListing, LibrarySnapshot } from './library'
 import type { Skill } from './scan-skills'
 
-export type SkillChoices = Readonly<Record<string, boolean>>
-
 export const skillCount = (roots: LibraryListing): number =>
   roots.reduce((total, { skills }) => total + skills.length, 0)
 
@@ -13,17 +11,6 @@ export const skillOfFile = (
   roots
     .flatMap(({ skills }) => skills)
     .find(({ files }) => files.some((file) => isOpenFile(file.path)))
-
-export const skillHoldingFile = (
-  roots: LibraryListing,
-  isOpenFile: (path: string) => boolean,
-): string | undefined => skillOfFile(roots, isOpenFile)?.realPath
-
-export const isSkillOpen = (
-  choices: SkillChoices,
-  realPath: string,
-  holdingOpenFile: string | undefined,
-): boolean => choices[realPath] ?? realPath === holdingOpenFile
 
 export const skillFileLabel = (
   roots: LibraryListing,
