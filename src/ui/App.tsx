@@ -15,6 +15,8 @@ import {
 import { idleReviewStatus, type ReviewStatus } from '../editor/review-field'
 import type { ReviewNotice } from '../editor/review-runtime'
 import type { FailureNotice } from '../editor/suggestions'
+import { endedText } from '../evals/ended'
+import type { EvalRunResult } from '../evals/types'
 import { storedIsUnsaved } from '../evals/unsaved'
 import { applyHistoryEvent, type HistoryEvent } from '../history/events'
 import { formatClock } from '../history/time'
@@ -26,13 +28,18 @@ import {
   reportProblems,
 } from '../skills/frontmatter-panel'
 import type { CreateSkillRequest, CreateSkillResult } from '../skills/library'
-import { openSkillFile, skillFileLabel } from '../skills/library-view'
+import {
+  openSkillFile,
+  skillFileLabel,
+  skillOfFile,
+} from '../skills/library-view'
 import type { NewSkillOutcome } from '../skills/new-skill'
 import { SKILL_FILE_NAME } from '../skills/scan-skills'
 import type { SkillField } from '../skills/skill-frontmatter'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import { EditorPane } from './EditorPane'
+import { EvalsPage } from './EvalsPage'
 import { ExternalChangeNotice } from './ExternalChangeNotice'
 import { FileControls } from './FileControls'
 import { FileName } from './FileName'
@@ -52,6 +59,7 @@ import { ReviewToolbar } from './ReviewToolbar'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useDescriptionAi } from './use-description-ai'
+import { type EvalSkill, useEvalPanel } from './use-eval-panel'
 import { useFrontmatterReport } from './use-frontmatter-report'
 import { useHistoryView } from './use-history-view'
 import { useKeyState } from './use-key-state'
@@ -142,8 +150,8 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     () => documentControls?.focus(),
     [documentControls],
   )
-  const historyView = useHistoryView(history, focusEditor)
-  const { mode, versions, close: closeHistory } = historyView
+  const closeHistoryRef = useRef<() => void>(() => undefined)
+  const closeHistoryLater = useCallback(() => closeHistoryRef.current(), [])
   const leavePrompt = useLeavePrompt()
   const file = useMarkdownFile({
     files,
@@ -153,7 +161,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     controls: documentControls,
     history,
     notify: showToast,
-    onReplaced: closeHistory,
+    onReplaced: closeHistoryLater,
     askLeave: leavePrompt.ask,
   })
   const openLaunched = useEffectEvent((ref: Ref) => void file.openRef(ref))
@@ -173,6 +181,21 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   }, [])
   const libraryControls = useLibrary(library, showToast)
   const openRef = file.session?.ref ?? null
+  const openSkill =
+    library === undefined ||
+    openRef === null ||
+    libraryControls.state.status !== 'ready'
+      ? undefined
+      : skillOfFile(
+          libraryControls.state.roots,
+          (path) => library.toRef(path) === openRef,
+        )
+  const evalsAvailable = evals != null && openSkill !== undefined
+  const historyView = useHistoryView(history, focusEditor, evalsAvailable)
+  const { mode, versions, close: closeHistory } = historyView
+  useEffect(() => {
+    closeHistoryRef.current = closeHistory
+  }, [closeHistory])
   const librarySkillFile =
     library === undefined ||
     openRef === null ||
@@ -189,6 +212,35 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           ),
         }
   const openDirty = file.session?.dirty ?? false
+  const openSkillId = openSkill && {
+    path: openSkill.realPath,
+    name: openSkill.name,
+  }
+  const openSkillPath = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    openSkillPath.current = openSkill?.realPath
+  })
+  const onEvalsEnded = (ended: EvalSkill, result: EvalRunResult): void => {
+    const here = openSkill?.realPath === ended.path
+    if (here && mode.kind === 'evals') return
+    const show = (): void => {
+      if (openSkillPath.current === ended.path) historyView.openEvals()
+    }
+    showToast(
+      endedText(ended.name, result),
+      here ? [{ label: 'Show', run: show }] : [],
+    )
+  }
+  const evalPanel = useEvalPanel(evals ?? null, openSkillId ?? null, {
+    onEnded: onEvalsEnded,
+  })
+  const busyName =
+    evalPanel.busyWith === null || libraryControls.state.status !== 'ready'
+      ? null
+      : (libraryControls.state.roots
+          .flatMap(({ skills }) => skills)
+          .find(({ realPath }) => realPath === evalPanel.busyWith)?.name ??
+        null)
   const skillUnsaved = useMemo<SkillUnsaved>(
     () => ({
       isOpen: (path) =>
@@ -324,6 +376,20 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
               onSave={file.save}
               onShowProblems={showFrontmatterProblems}
             />
+            {evalsAvailable ? (
+              <div className="text-sm">
+                <button
+                  type="button"
+                  className="cm-ai-button"
+                  title="How this Skill performs"
+                  aria-pressed={mode.kind === 'evals'}
+                  aria-busy={evalPanel.going !== null || undefined}
+                  onClick={historyView.toggleEvals}
+                >
+                  Evals
+                </button>
+              </div>
+            ) : null}
             {key.settings ? (
               <div className="text-sm">
                 <button
@@ -381,6 +447,14 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
             loadText={history.text}
             onHover={historyView.setHovered}
             onView={historyView.view}
+          />
+        ) : null}
+        {mode.kind === 'evals' && openSkill ? (
+          <EvalsPage
+            skill={openSkill}
+            busyName={busyName}
+            panel={evalPanel}
+            unsaved={skillUnsaved}
           />
         ) : null}
         <div hidden={mode.kind !== 'editing'}>
@@ -473,8 +547,6 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         activeRef={openRef}
         onOpen={(ref) => void file.openRef(ref)}
         onNewSkill={() => setNewSkillOpen(true)}
-        evals={evals ?? null}
-        unsaved={skillUnsaved}
       />
       {newSkillOpen && libraryControls.state.status === 'ready' ? (
         <NewSkillDialog

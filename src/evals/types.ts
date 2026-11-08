@@ -32,6 +32,7 @@ export type EvalStatus =
       readonly last: EvalSummary | null
       readonly running: boolean
       readonly cancelling: boolean
+      readonly runningSkill: string | null
       readonly stopped: StoppedRun | null
     }
   | { readonly kind: 'no-cli' }

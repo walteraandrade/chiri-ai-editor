@@ -1,6 +1,5 @@
 import { summaryView } from '../evals/baseline-view'
 import { caseSignals, firedOverall, helpedOverall } from '../evals/signals'
-import type { EvalsKit } from '../evals/types'
 import { unsavedNotice } from '../evals/unsaved'
 import {
   costEstimate,
@@ -12,21 +11,23 @@ import {
 import { formatClock } from '../history/time'
 import type { Skill } from '../skills/scan-skills'
 import { EvalRunDialog } from './EvalRunDialog'
-import { useEvalPanel } from './use-eval-panel'
+import type { useEvalPanel } from './use-eval-panel'
 import { type SkillUnsaved, useSkillUnsaved } from './use-skill-unsaved'
 
-type EvalPanelProps = {
-  readonly evals: EvalsKit
+type EvalsPageProps = {
   readonly skill: Skill
+  readonly busyName: string | null
+  readonly panel: ReturnType<typeof useEvalPanel>
   readonly unsaved: SkillUnsaved
 }
 
-export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
+export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
   const {
     state,
     dialog,
     running,
     cancelling,
+    busyWith,
     message,
     refresh,
     ask,
@@ -35,7 +36,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
     run,
     cancel,
     openReport,
-  } = useEvalPanel(evals, skill.realPath)
+  } = panel
   const unsavedFiles = useSkillUnsaved(skill, unsaved)
   const notice = unsavedNotice(unsavedFiles.names)
   const askAfterCheck = async () => {
@@ -58,18 +59,23 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
       : firedOverall(last.cases, 'second')
 
   return (
-    <section
-      aria-label={`Evals for ${skill.name}`}
-      className="mt-1 border-hairline border-t px-3 py-2 pl-7 text-xs"
-    >
-      <h4 className="font-medium text-ink-muted">Evals</h4>
+    <article aria-labelledby="evals-page-title" className="pt-4 text-sm">
+      <header>
+        <h2
+          id="evals-page-title"
+          className="font-display font-semibold text-3xl text-ink-strong tracking-wide"
+        >
+          How this Skill performs
+        </h2>
+        <p className="mt-4 text-ink-muted">{skill.name}</p>
+      </header>
       {state.status === 'loading' ? (
-        <p role="status" className="mt-1 text-ink-faint">
+        <p role="status" className="mt-3 text-ink-faint">
           Looking for the Claude CLI…
         </p>
       ) : null}
       {state.status === 'no-cli' ? (
-        <p className="mt-1">
+        <p className="mt-3">
           The Claude CLI was not found on PATH or in ~/.local/bin. Install it
           and log in to run Evals.{' '}
           <button
@@ -82,7 +88,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
         </p>
       ) : null}
       {state.status === 'failed' ? (
-        <p role="alert" className="mt-1 text-danger">
+        <p role="alert" className="mt-3 text-danger">
           {state.reason}.{' '}
           <button
             type="button"
@@ -94,28 +100,28 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
         </p>
       ) : null}
       {message === null ? null : (
-        <p role="alert" className="mt-1 text-danger">
+        <p role="alert" className="mt-3 text-danger">
           {message}
         </p>
       )}
       {state.status === 'ready' ? (
         <>
           {state.stopped === null ? null : (
-            <p role="status" className="mt-1 text-ink-strong">
+            <p role="status" className="mt-3 text-ink-strong">
               {stoppedText(state.stopped)}
             </p>
           )}
           {last === null ? (
-            <p className="mt-1 text-ink-faint">No complete run yet</p>
+            <p className="mt-3 text-ink-faint">No complete run yet</p>
           ) : (
-            <div className="mt-1">
+            <div className="mt-3">
               <p className="text-ink-faint">
                 Last complete run, {new Date(last.startedAt).toLocaleString()}
               </p>
               {view.comparedNote === null ? null : (
                 <p className="text-ink-faint">{view.comparedNote}</p>
               )}
-              <dl className="mt-1 space-y-1">
+              <dl className="mt-3 space-y-1">
                 <div>
                   <dt className="text-ink-muted">Did the Skill fire?</dt>
                   <dd className="text-ink-strong">
@@ -132,16 +138,16 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                   )}
                 </div>
               </dl>
-              <table className="mt-2 w-full">
+              <table className="mt-4 w-full">
                 <thead>
                   <tr className="text-left text-ink-muted">
-                    <th scope="col" className="py-0.5 pr-2 font-normal">
+                    <th scope="col" className="py-0.5 pr-4 font-normal">
                       Eval
                     </th>
-                    <th scope="col" className="py-0.5 pr-2 font-normal">
+                    <th scope="col" className="py-0.5 pr-4 font-normal">
                       Fired
                     </th>
-                    <th scope="col" className="py-0.5 pr-2 font-normal">
+                    <th scope="col" className="py-0.5 pr-4 font-normal">
                       {view.columns.first}
                     </th>
                     <th scope="col" className="py-0.5 font-normal">
@@ -152,15 +158,13 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                 <tbody>
                   {last.cases.map((item, index) => (
                     <tr key={item.name}>
-                      <td className="max-w-0 truncate py-0.5 pr-2">
-                        {item.name}
-                      </td>
-                      <td className="py-0.5 pr-2">
+                      <td className="py-0.5 pr-4 break-words">{item.name}</td>
+                      <td className="py-0.5 pr-4">
                         {signals[index]?.fired == null
                           ? '–'
                           : countLabel(signals[index].fired)}
                       </td>
-                      <td className="py-0.5 pr-2">
+                      <td className="py-0.5 pr-4">
                         {item.with.total === 0 ? '–' : countLabel(item.with)}
                       </td>
                       <td className="py-0.5">
@@ -171,14 +175,14 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                   <tr className="border-hairline border-t font-medium text-ink-strong">
                     <th
                       scope="row"
-                      className="py-0.5 pr-2 text-left font-medium"
+                      className="py-0.5 pr-4 text-left font-medium"
                     >
                       All
                     </th>
-                    <td className="py-0.5 pr-2">
+                    <td className="py-0.5 pr-4">
                       {fired === null ? '–' : countLabel(fired)}
                     </td>
-                    <td className="py-0.5 pr-2">
+                    <td className="py-0.5 pr-4">
                       {helped === null ? '–' : countLabel(helped.with)}
                     </td>
                     <td className="py-0.5">
@@ -188,7 +192,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                 </tbody>
               </table>
               {errored.length === 0 ? null : (
-                <ul className="mt-2 space-y-0.5 text-ink-faint">
+                <ul className="mt-4 space-y-0.5 text-ink-faint">
                   {errored.map((item) => (
                     <li key={item.name}>
                       <span className="font-medium text-ink-strong">
@@ -200,8 +204,8 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                 </ul>
               )}
               {suspicious.length === 0 ? null : (
-                <div className="mt-2">
-                  <h5 className="text-ink-muted">Suspicious cases</h5>
+                <div className="mt-4">
+                  <h3 className="text-ink-muted">Suspicious cases</h3>
                   <ul className="mt-0.5 list-disc space-y-0.5 pl-4">
                     {suspicious.flatMap((item) =>
                       item.suspicious.map((kind) => (
@@ -219,15 +223,15 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                   </p>
                 </div>
               )}
-              <p className="mt-1 text-ink-faint">
+              <p className="mt-3 text-ink-faint">
                 Cost {costEstimate(last.costUsd)}, the CLI's figure.
               </p>
-              <div className="mt-1 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {view.reports.map(({ part, label }) => (
                   <button
                     key={part}
                     type="button"
-                    className="cm-ai-button px-2 py-0.5 text-xs"
+                    className="cm-ai-button px-2 py-0.5"
                     onClick={() => void openReport(part)}
                   >
                     {label}
@@ -237,15 +241,20 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
             </div>
           )}
           {notice === null ? null : (
-            <p role="status" className="mt-2 text-ink-strong">
+            <p role="status" className="mt-4 text-ink-strong">
               {notice}
             </p>
           )}
-          <div className="mt-2">
+          <div className="mt-4">
             <button
               type="button"
-              className="cm-ai-button px-2 py-0.5 text-xs"
-              disabled={running || checking || dialog.status === 'preparing'}
+              className="cm-ai-button px-2 py-0.5"
+              disabled={
+                running ||
+                busyWith !== null ||
+                checking ||
+                dialog.status === 'preparing'
+              }
               aria-busy={running || undefined}
               onClick={() => void askAfterCheck()}
             >
@@ -254,7 +263,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
             {running ? (
               <button
                 type="button"
-                className="cm-ai-button ml-2 px-2 py-0.5 text-xs"
+                className="cm-ai-button ml-2 px-2 py-0.5"
                 disabled={cancelling}
                 onClick={() => void cancel()}
               >
@@ -264,8 +273,14 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
           </div>
         </>
       ) : null}
+      {busyWith !== null && !running ? (
+        <p role="status" className="mt-3 text-ink-strong">
+          Evals are running for {busyName ?? 'another Skill'}. One run at a
+          time.
+        </p>
+      ) : null}
       {running ? (
-        <p role="status" className="mt-1 text-ink-faint">
+        <p role="status" className="mt-3 text-ink-faint">
           Running Evals. This can take a few minutes.
         </p>
       ) : null}
@@ -281,6 +296,6 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
           onClose={close}
         />
       ) : null}
-    </section>
+    </article>
   )
 }

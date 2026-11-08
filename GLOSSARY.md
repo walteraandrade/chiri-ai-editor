@@ -37,7 +37,8 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Eval run** | One run of all of a Skill's Evals through the Claude CLI, asked for by the user. Each Eval runs in both Arms, 1 to 5 times. |
 | **Arm** | One side of an Eval run: with the Skill, or without it; or, against an older Version of `SKILL.md`, today's Skill and the Version (`--ablation none`). Comparing the Arms tells whether the Skill helped. |
 | **Stage** | The temporary copy of a Skill an Eval run works on, without the folders that load code (`hooks/` and others). Deleted when the run ends. |
-| **Suspicious case** | An Eval whose result says little: it passes in both Arms, fails in both, or its runs disagree. Flagged in the panel, still counted. |
+| **Evals page** | The page "How this Skill performs", in the main column like Full history. It shows a Skill's last complete run and starts the next. Opened from the Evals button, shown only for a file in a Library Skill ([ADR 0020](docs/chiri/adr/0020-evals-page-and-foldable-library.md)). |
+| **Suspicious case** | An Eval whose result says little: it passes in both Arms, fails in both, or its runs disagree. Flagged on the Evals page, still counted. |
 | **External change** | (Backlog) A change to a file made outside the app (an agent, another editor, `git pull`). Recorded as an External Version. The External change notice offers "Reload from disk" or "Keep mine"; Save shows it when the disk no longer holds the text last read or written. |
 | **Web build** | (Backlog) The browser app as submitted: a tab on the Vite dev server, `pnpm dev`. Gets shared code, no new platform features ([ADR 0016](docs/chiri/adr/0016-web-and-electron-builds.md)). |
 | **Electron build** | (Backlog) The native app: an Electron window, `pnpm dev:electron` ([ADR 0013](docs/chiri/adr/0013-native-app-on-electron.md)). The Library, the watcher and `history.sqlite` exist only here. |

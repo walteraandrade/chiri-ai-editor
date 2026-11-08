@@ -7,6 +7,7 @@ import {
   skillCount,
   skillFileLabel,
   skillHoldingFile,
+  skillOfFile,
 } from './library-view'
 import type { Skill } from './scan-skills'
 
@@ -235,5 +236,17 @@ describe('openSkillFile', () => {
   it('is undefined for a file outside the Library', () => {
     expect(openSkillFile(listing, opening('/tmp/x.md'))).toBeUndefined()
     expect(openSkillFile([], opening('/tmp/x.md'))).toBeUndefined()
+  })
+})
+
+describe('skillOfFile', () => {
+  it('returns the whole Skill that holds the open file', () => {
+    expect(
+      skillOfFile(LISTING, (path) => path === '/skills/git/notes.md')?.name,
+    ).toBe('git')
+  })
+
+  it('returns nothing for a file outside the Library', () => {
+    expect(skillOfFile(LISTING, () => false)).toBeUndefined()
   })
 })

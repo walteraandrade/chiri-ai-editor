@@ -120,6 +120,7 @@ describe('status', () => {
         last: null,
         running: false,
         cancelling: false,
+        runningSkill: null,
         stopped: null,
       },
     )
@@ -744,6 +745,42 @@ describe('after a run', () => {
     expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
       running: false,
       cancelling: false,
+    })
+  })
+
+  it('names the running Skill in the status of another Skill', async () => {
+    const { deps } = setup({ skills: [SKILL, '/skills/docx'] })
+    const exit = deferred<EvalExit>()
+    let started = false
+    const handlers = createEvalHandlers({
+      ...deps,
+      runner: {
+        version: async () => '2.1.319',
+        kill: () => {
+          exit.resolve({ exitCode: 143, signal: null })
+          return true
+        },
+        run: () => {
+          started = true
+          return exit.promise
+        },
+      },
+    })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
+    const running = handlers.run(REQUEST)
+    await vi.waitFor(() => expect(started).toBe(true))
+    expect(await handlers.status({ skillPath: '/skills/docx' })).toMatchObject({
+      running: false,
+      runningSkill: SKILL,
+    })
+    expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
+      running: true,
+      runningSkill: SKILL,
+    })
+    await handlers.cancel(undefined)
+    await running
+    expect(await handlers.status({ skillPath: '/skills/docx' })).toMatchObject({
+      runningSkill: null,
     })
   })
 
