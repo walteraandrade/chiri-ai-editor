@@ -11,6 +11,7 @@ import {
 import type { Skill } from '../skills/scan-skills'
 import { EvalPanel } from './EvalPanel'
 import type { LibraryControls } from './use-library'
+import type { SkillUnsaved } from './use-skill-unsaved'
 
 type LibraryProps<Ref> = {
   readonly library: LibraryKit<Ref>
@@ -19,6 +20,7 @@ type LibraryProps<Ref> = {
   readonly onOpen: (ref: Ref) => void
   readonly onNewSkill: () => void
   readonly evals: EvalsKit | null
+  readonly unsaved: SkillUnsaved
 }
 
 type SkillItemProps = {
@@ -29,6 +31,7 @@ type SkillItemProps = {
   readonly onToggle: () => void
   readonly onOpenFile: (path: string) => void
   readonly evals: EvalsKit | null
+  readonly unsaved: SkillUnsaved
 }
 
 function SkillItem({
@@ -39,6 +42,7 @@ function SkillItem({
   onToggle,
   onOpenFile,
   evals,
+  unsaved,
 }: SkillItemProps) {
   return (
     <li>
@@ -106,7 +110,7 @@ function SkillItem({
         </ul>
       ) : null}
       {open && evals !== null ? (
-        <EvalPanel evals={evals} skill={skill} />
+        <EvalPanel evals={evals} unsaved={unsaved} skill={skill} />
       ) : null}
     </li>
   )
@@ -121,6 +125,7 @@ type RootSectionProps = {
   readonly onOpenFile: (path: string) => void
   readonly onRemove: () => void
   readonly evals: EvalsKit | null
+  readonly unsaved: SkillUnsaved
 }
 
 function RootSection({
@@ -132,6 +137,7 @@ function RootSection({
   onOpenFile,
   onRemove,
   evals,
+  unsaved,
 }: RootSectionProps) {
   return (
     <section aria-label={root.label} className="pb-3">
@@ -177,6 +183,7 @@ function RootSection({
                 onToggle={() => onToggle(skill.realPath, !open)}
                 onOpenFile={onOpenFile}
                 evals={evals}
+                unsaved={unsaved}
               />
             )
           })}
@@ -193,6 +200,7 @@ export function Library<Ref>({
   onOpen,
   onNewSkill,
   evals,
+  unsaved,
 }: LibraryProps<Ref>) {
   const [choices, setChoices] = useState<SkillChoices>({})
   const isActiveFile = (path: string): boolean =>
@@ -280,6 +288,7 @@ export function Library<Ref>({
             onOpenFile={(path) => onOpen(library.toRef(path))}
             onRemove={() => void removeRoot(root.root, root.label)}
             evals={evals}
+            unsaved={unsaved}
           />
         ))}
       </div>

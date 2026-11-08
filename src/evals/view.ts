@@ -1,4 +1,5 @@
 import type { Tally } from './report'
+import type { SuspiciousKind } from './signals'
 
 export const countLabel = ({ passed, total }: Tally): string =>
   `${passed}/${total}`
@@ -25,3 +26,29 @@ export const stoppedText = ({
   costUsd === null
     ? message
     : `${message}. Cost ${costEstimate(costUsd)}, the CLI's figure.`
+
+export type ArmLabels = {
+  readonly first: string
+  readonly second: string
+}
+
+export const SKILL_ARMS: ArmLabels = {
+  first: 'with the Skill',
+  second: 'without the Skill',
+}
+
+export const suspiciousText = (
+  kind: SuspiciousKind,
+  { first, second }: ArmLabels = SKILL_ARMS,
+): string =>
+  kind === 'passes-in-both'
+    ? `passes ${first} and ${second}, so it does not tell them apart`
+    : kind === 'fails-in-both'
+      ? `fails ${first} and ${second}, so it is likely broken`
+      : 'its runs disagree, so it is noisy'
+
+export const erroredText = (count: number): string =>
+  `${count} ${count === 1 ? 'run' : 'runs'} ended on an error and ${count === 1 ? 'is' : 'are'} not counted`
+
+export const leftOutText = (count: number): string =>
+  `${count} ${count === 1 ? 'Eval has' : 'Evals have'} no run without the Skill and ${count === 1 ? 'is' : 'are'} left out of the comparison`

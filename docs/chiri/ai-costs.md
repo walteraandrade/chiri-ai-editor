@@ -185,3 +185,5 @@ Runs of `claude plugin eval` through the Chiri app ([ADR 0018](adr/0018-skill-ev
 | 2026-11-07 | #88 | Same command from a shell, 3 Evals, 5 runs, SIGTERM after 6 s: exit 143, `interrupted` | `haiku` | 2.1.319 | 0.0015 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
 | 2026-11-07 | #88 | Skill whose only case is invalid for the CLI (`cases: []`), from the app and once from a shell | `haiku` | 2.1.319 | 0 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
 | 2026-11-07 | #88 review | Run from the app, 3 Evals, 5 runs, cancelled mid-run; panel showed "Cancelled. Cost about US$0.0061" | `haiku` | 2.1.319 | 0.0061 | [88-eval-cancel.md](verification/88-eval-cancel.md) |
+| 2026-11-07 | #89 | Eval run from the app: 3 Evals (Skill fires, passes in both, fails in both), 2 runs, with and without | `haiku` | 2.1.319 | 0.0163 | [89-eval-signals.md](verification/89-eval-signals.md) |
+| 2026-11-07 | #89 | Same Skill, 3 runs, with unsaved text in `SKILL.md` | `haiku` | 2.1.319 | 0.0250 | [89-eval-signals.md](verification/89-eval-signals.md) |
