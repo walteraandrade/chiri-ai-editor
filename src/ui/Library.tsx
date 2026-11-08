@@ -19,11 +19,13 @@ import {
 } from '../skills/library-tree'
 import { skillCount } from '../skills/library-view'
 import { type TreeAction, treeKey } from '../skills/tree-keys'
+import { LibrarySearch } from './LibrarySearch'
 import type { LibraryPlacement } from './library-layout'
 import type { LibraryControls } from './use-library'
 
 export type LibraryHandle = {
   readonly focusTree: () => void
+  readonly focusSearch: () => void
   readonly holdsFocus: () => boolean
 }
 
@@ -35,8 +37,10 @@ type LibraryProps<Ref> = {
   readonly controls: LibraryControls
   readonly activeRef: Ref | null
   readonly onOpen: (ref: Ref, focusText: boolean) => Promise<void>
+  readonly onOpenResult: (ref: Ref) => Promise<void>
   readonly onNewSkill: () => void
   readonly onEscape: () => void
+  readonly onSearchBlur: (next: Element | null) => void
 }
 
 type Choices = Readonly<Record<string, boolean>>
@@ -156,8 +160,10 @@ export function Library<Ref>({
   controls: { state, refresh, addRoot, removeRoot },
   activeRef,
   onOpen,
+  onOpenResult,
   onNewSkill,
   onEscape,
+  onSearchBlur,
 }: LibraryProps<Ref>) {
   const [choices, setChoices] = useState<Choices>({})
   const [focusedId, setFocusedId] = useState<string | null>(null)
@@ -171,6 +177,7 @@ export function Library<Ref>({
   const treeRef = useRef<HTMLDivElement>(null)
   const asideRef = useRef<HTMLElement>(null)
   const addRef = useRef<HTMLButtonElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   const isActiveFile = (path: string): boolean =>
     activeRef !== null && library.toRef(path) === activeRef
@@ -218,6 +225,10 @@ export function Library<Ref>({
     focusTree: () => {
       if (tabbableId !== null) focusItem(tabbableId)
       else addRef.current?.focus()
+    },
+    focusSearch: () => {
+      searchRef.current?.focus()
+      searchRef.current?.select()
     },
     holdsFocus: () =>
       asideRef.current?.contains(document.activeElement) ?? false,
@@ -357,7 +368,7 @@ export function Library<Ref>({
         if (event.key === 'Escape') onEscape()
       }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 pt-6 pb-3">
+      <div className="px-3 pt-6 pb-3">
         <h2 className="whitespace-nowrap font-display font-semibold text-ink-strong text-lg tracking-wide">
           Library
           {state.status === 'ready' ? (
@@ -367,34 +378,40 @@ export function Library<Ref>({
             </span>
           ) : null}
         </h2>
-        <div className="flex items-center gap-1 text-sm">
-          <button
-            type="button"
-            className="cm-ai-button"
-            title="Create a skill from a template"
-            disabled={state.status !== 'ready'}
-            onClick={onNewSkill}
-          >
-            New
-          </button>
-          <button
-            type="button"
-            className="cm-ai-button"
-            title="Scan the folders again"
-            onClick={() => void refresh()}
-          >
-            Refresh
-          </button>
-          <button
-            ref={addRef}
-            type="button"
-            className="cm-ai-button"
-            title="Add a project folder of skills, such as .claude/skills"
-            onClick={() => void addRoot()}
-          >
-            Add
-          </button>
-        </div>
+      </div>
+      <LibrarySearch
+        roots={roots}
+        inputRef={searchRef}
+        onOpen={(path) => onOpenResult(library.toRef(path))}
+        onBlurTo={onSearchBlur}
+      />
+      <div className="flex items-center gap-1 px-3 pb-3 text-sm">
+        <button
+          type="button"
+          className="cm-ai-button"
+          title="Create a skill from a template"
+          disabled={state.status !== 'ready'}
+          onClick={onNewSkill}
+        >
+          New
+        </button>
+        <button
+          type="button"
+          className="cm-ai-button"
+          title="Scan the folders again"
+          onClick={() => void refresh()}
+        >
+          Refresh
+        </button>
+        <button
+          ref={addRef}
+          type="button"
+          className="cm-ai-button"
+          title="Add a project folder of skills, such as .claude/skills"
+          onClick={() => void addRoot()}
+        >
+          Add
+        </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto pb-6">
         {state.status === 'loading' ? (

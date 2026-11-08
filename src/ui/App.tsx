@@ -55,6 +55,7 @@ import {
   isEchoOfKey,
   isLibraryShortcut,
   isModalOpen,
+  isSearchShortcut,
   libraryKeyAnswer,
   railAnswer,
 } from './library-fold'
@@ -195,6 +196,8 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const [libraryOpen, setLibraryOpen] = useState(false)
   const libraryHandle = useRef<LibraryHandle>(null)
   const focusTreeWhenOpen = useRef(false)
+  const focusSearchWhenOpen = useRef(false)
+  const searchUnfolded = useRef(false)
   const viewportWidth = useViewportWidth()
   const placement = libraryPlacement(viewportWidth)
   const lastLibraryKeyAt = useRef<number | null>(null)
@@ -232,19 +235,53 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     if (placement === 'overlay') setLibraryOpen(false)
   }, [placement])
   const focusTextFromLibrary = useCallback(() => {
+    const foldSearch = searchUnfolded.current
     focusEditor()
-    foldOverlay()
+    if (foldSearch) {
+      searchUnfolded.current = false
+      setLibraryOpen(false)
+    } else foldOverlay()
   }, [focusEditor, foldOverlay])
+  const searchLibrary = useCallback(() => {
+    if (libraryOpen) return libraryHandle.current?.focusSearch()
+    searchUnfolded.current = true
+    focusSearchWhenOpen.current = true
+    setLibraryOpen(true)
+  }, [libraryOpen])
+  const requestSearch = useEffectEvent(() => {
+    if (!isModalOpen(document)) searchLibrary()
+  })
+  const searchOpening = useRef(false)
+  const leaveSearch = useCallback((next: Element | null): void => {
+    if (searchOpening.current) return
+    if (next !== null && next.closest('dialog') === null)
+      searchUnfolded.current = false
+  }, [])
   useEffect(() => {
-    if (!libraryOpen || !focusTreeWhenOpen.current) return
-    focusTreeWhenOpen.current = false
-    libraryHandle.current?.focusTree()
+    if (!libraryOpen) {
+      searchUnfolded.current = false
+      return
+    }
+    if (focusSearchWhenOpen.current) {
+      focusSearchWhenOpen.current = false
+      libraryHandle.current?.focusSearch()
+    } else if (focusTreeWhenOpen.current) {
+      focusTreeWhenOpen.current = false
+      libraryHandle.current?.focusTree()
+    }
   }, [libraryOpen])
   useEffect(() => {
     if (library === undefined) return
     const apple = detectApplePlatform()
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (!isLibraryShortcut(event, apple) || isModalOpen(document)) return
+      if (isModalOpen(document)) return
+      if (isSearchShortcut(event, apple)) {
+        event.preventDefault()
+        event.stopPropagation()
+        if (!event.repeat) requestSearch()
+        return
+      }
+      if (!isLibraryShortcut(event, apple)) return
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
@@ -386,6 +423,17 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       textFocusFor.current = null
     },
     [file, openRef, focusTextFromLibrary],
+  )
+  const openSearchResult = useCallback(
+    async (ref: Ref): Promise<void> => {
+      searchOpening.current = true
+      try {
+        await openFromLibrary(ref, true)
+      } finally {
+        searchOpening.current = false
+      }
+    },
+    [openFromLibrary],
   )
   useEffect(() => {
     if (openRef === null || textFocusFor.current !== openRef) return
@@ -639,7 +687,11 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     page
   ) : (
     <div className="flex items-start">
-      <LibraryRail open={libraryOpen} onToggle={toggleLibraryFromRail} />
+      <LibraryRail
+        open={libraryOpen}
+        onToggle={toggleLibraryFromRail}
+        onSearch={searchLibrary}
+      />
       <Library
         open={libraryOpen}
         placement={placement}
@@ -648,6 +700,8 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         controls={libraryControls}
         activeRef={openRef}
         onOpen={openFromLibrary}
+        onOpenResult={openSearchResult}
+        onSearchBlur={leaveSearch}
         onNewSkill={() => setNewSkillOpen(true)}
         onEscape={focusTextFromLibrary}
       />

@@ -90,4 +90,17 @@ describe('menuTemplate', () => {
     )
     expect(accelerators.filter((a) => a === 'CmdOrCtrl+B')).toHaveLength(1)
   })
+
+  it('binds no menu item to CmdOrCtrl+P, so the renderer owns search and nothing prints', () => {
+    const accelerators = menuTemplate(vi.fn(), vi.fn()).flatMap((menu) =>
+      Array.isArray(menu.submenu)
+        ? menu.submenu.map((item) => item.accelerator)
+        : [],
+    )
+    expect(accelerators).not.toContain('CmdOrCtrl+P')
+    const roles = menuTemplate(vi.fn(), vi.fn()).flatMap((menu) =>
+      Array.isArray(menu.submenu) ? menu.submenu.map((item) => item.role) : [],
+    )
+    expect(roles).not.toContain('print')
+  })
 })
