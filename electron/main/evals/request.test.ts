@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { parseRunRequest, parseSkillRequest } from './request'
+import {
+  parseCancelRequest,
+  parseRunRequest,
+  parseSkillRequest,
+} from './request'
 
 const valid = {
   skillPath: '/home/u/.claude/skills/pdf',
@@ -41,5 +45,20 @@ describe('parseSkillRequest', () => {
     })
     expect(parseSkillRequest(valid)).toBeNull()
     expect(parseSkillRequest({ skillPath: 'x' })).toBeNull()
+  })
+})
+
+describe('parseCancelRequest', () => {
+  it('accepts no argument or an empty object', () => {
+    expect(parseCancelRequest(undefined)).toBe(true)
+    expect(parseCancelRequest({})).toBe(true)
+  })
+
+  it.each([
+    ['a path', { skillPath: '/a' }],
+    ['text', 'now'],
+    ['null', null],
+  ])('refuses %s', (_name, input) => {
+    expect(parseCancelRequest(input)).toBeNull()
   })
 })

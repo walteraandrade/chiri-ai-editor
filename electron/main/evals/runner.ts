@@ -23,6 +23,7 @@ export type RunnerEnv = {
 }
 
 const VERSION_TIMEOUT_MS = 10_000
+const DEFAULT_KILL_AFTER_MS = 3000
 const VERSION_PATTERN = /^\d+(\.\d+)+/
 
 export const childEnv = ({
@@ -33,8 +34,26 @@ export const childEnv = ({
   ...(path === undefined ? {} : { PATH: path }),
 })
 
-export const createSpawnRunner = (env: RunnerEnv): EvalRunner => {
+export type RunnerOptions = {
+  readonly killAfterMs?: number
+}
+
+const signalGroup = (pid: number, signal: NodeJS.Signals): boolean => {
+  try {
+    process.kill(-pid, signal)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export const createSpawnRunner = (
+  env: RunnerEnv,
+  { killAfterMs = DEFAULT_KILL_AFTER_MS }: RunnerOptions = {},
+): EvalRunner => {
   let current: ChildProcess | null = null
+  let killed = false
+  let killTimer: NodeJS.Timeout | undefined
   return {
     version: (executable) =>
       new Promise((resolve) => {
@@ -59,14 +78,28 @@ export const createSpawnRunner = (env: RunnerEnv): EvalRunner => {
           cwd,
           env: childEnv(env),
           stdio: 'ignore',
+          detached: true,
         })
         current = child
+        killed = false
         child.on('error', reject)
         child.on('close', (exitCode, signal) => {
           if (current === child) current = null
+          clearTimeout(killTimer)
+          if (killed && child.pid !== undefined)
+            signalGroup(child.pid, 'SIGKILL')
           resolve({ exitCode, signal })
         })
       }),
-    kill: () => current?.kill('SIGTERM') ?? false,
+    kill: () => {
+      const pid = current?.pid
+      if (pid === undefined) return false
+      killed = true
+      const sent = signalGroup(pid, 'SIGTERM')
+      clearTimeout(killTimer)
+      killTimer = setTimeout(() => signalGroup(pid, 'SIGKILL'), killAfterMs)
+      killTimer.unref()
+      return sent
+    },
   }
 }

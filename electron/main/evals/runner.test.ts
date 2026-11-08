@@ -1,7 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { childEnv, createSpawnRunner } from './runner'
 
 const made: string[] = []
@@ -99,5 +99,49 @@ describe('createSpawnRunner', () => {
   it('returns null when there is no version', async () => {
     const runner = createSpawnRunner({ home: tmpdir(), path: undefined })
     expect(await runner.version('/no/such/claude')).toBeNull()
+  })
+
+  it('kills the whole process tree, even when SIGTERM is ignored', async () => {
+    const dir = scratch()
+    const pids = join(dir, 'pids')
+    const script = `trap '' TERM; (sleep 300 & echo $! >> '${pids}'; wait) & echo $$ >> '${pids}'; wait`
+    const runner = createSpawnRunner(
+      { home: process.env.HOME ?? '/', path: process.env.PATH },
+      { killAfterMs: 300 },
+    )
+    const exit = runner.run({
+      executable: '/bin/sh',
+      args: ['-c', script],
+      cwd: dir,
+    })
+    const read = (): number[] => {
+      try {
+        return readFileSync(pids, 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map(Number)
+      } catch {
+        return []
+      }
+    }
+    await vi.waitFor(() => expect(read()).toHaveLength(2))
+    const alive = (pid: number): boolean => {
+      try {
+        process.kill(pid, 0)
+        return true
+      } catch {
+        return false
+      }
+    }
+    expect(read().every(alive)).toBe(true)
+    expect(runner.kill()).toBe(true)
+    await exit
+    await vi.waitFor(() => expect(read().some(alive)).toBe(false), {
+      timeout: 3000,
+    })
+  })
+
+  it('does not kill anything when nothing runs', () => {
+    expect(createSpawnRunner({ home: '/', path: undefined }).kill()).toBe(false)
   })
 })

@@ -8,6 +8,7 @@ const api = (overrides: Partial<EvalsApi> = {}): EvalsApi => ({
   evalPrepare: vi.fn(async () => ({ kind: 'no-cli' as const })),
   evalRun: vi.fn(async () => ({ kind: 'busy' as const })),
   evalOpenReport: vi.fn(async () => ({ kind: 'opened' as const })),
+  evalCancel: vi.fn(async () => ({ kind: 'cancelling' as const })),
   ...overrides,
 })
 
@@ -20,6 +21,7 @@ describe('createElectronEvals', () => {
       await evals.run({ ...request, runs: 1, model: 'haiku', maxCostUsd: 1 }),
     ).toEqual({ kind: 'busy' })
     expect(await evals.openReport(request)).toEqual({ kind: 'opened' })
+    expect(await evals.cancel()).toEqual({ kind: 'cancelling' })
   })
 
   it('turns a rejected call into a failure', async () => {

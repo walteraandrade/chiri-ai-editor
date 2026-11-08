@@ -1,5 +1,5 @@
 import type { EvalsKit } from '../evals/types'
-import { costEstimate, countLabel } from '../evals/view'
+import { costEstimate, countLabel, stoppedText } from '../evals/view'
 import type { Skill } from '../skills/scan-skills'
 import { EvalRunDialog } from './EvalRunDialog'
 import { useEvalPanel } from './use-eval-panel'
@@ -14,11 +14,13 @@ export function EvalPanel({ evals, skill }: EvalPanelProps) {
     state,
     dialog,
     running,
+    cancelling,
     message,
     refresh,
     ask,
     close,
     run,
+    cancel,
     openReport,
   } = useEvalPanel(evals, skill.realPath)
   const last = state.status === 'ready' ? state.last : null
@@ -66,6 +68,11 @@ export function EvalPanel({ evals, skill }: EvalPanelProps) {
       )}
       {state.status === 'ready' ? (
         <>
+          {state.stopped === null ? null : (
+            <p role="status" className="mt-1 text-ink-strong">
+              {stoppedText(state.stopped)}
+            </p>
+          )}
           {last === null ? (
             <p className="mt-1 text-ink-faint">No complete run yet</p>
           ) : (
@@ -135,6 +142,16 @@ export function EvalPanel({ evals, skill }: EvalPanelProps) {
             >
               {running ? 'Running…' : 'Run Evals'}
             </button>
+            {running ? (
+              <button
+                type="button"
+                className="cm-ai-button ml-2 px-2 py-0.5 text-xs"
+                disabled={cancelling}
+                onClick={() => void cancel()}
+              >
+                {cancelling ? 'Cancelling…' : 'Cancel'}
+              </button>
+            ) : null}
           </div>
         </>
       ) : null}

@@ -106,7 +106,14 @@ describe('status', () => {
   it('reports the CLI version and no last run', async () => {
     const { deps } = setup()
     expect(await createEvalHandlers(deps).status({ skillPath: SKILL })).toEqual(
-      { kind: 'ready', claudeVersion: '2.1.319', last: null },
+      {
+        kind: 'ready',
+        claudeVersion: '2.1.319',
+        last: null,
+        running: false,
+        cancelling: false,
+        stopped: null,
+      },
     )
   })
 
@@ -245,6 +252,7 @@ describe('run', () => {
     expect(await handlers.run(REQUEST)).toEqual({
       kind: 'not-complete',
       message: 'No Evals in this skill',
+      costUsd: expect.any(Number),
     })
     expect(readFileSync(join(last, 'result.json'), 'utf8')).toBe('previous')
     expect(existsSync(join(userData, 'eval-runs', key, 'next'))).toBe(false)
@@ -380,6 +388,502 @@ describe('run', () => {
     const { deps } = setup({ executable: null })
     expect(await createEvalHandlers(deps).run(REQUEST)).toEqual({
       kind: 'no-cli',
+    })
+  })
+})
+
+describe('cancel', () => {
+  const cancelledReport = (reason: string | null): string =>
+    JSON.stringify({
+      ...JSON.parse(fixture('auth-failed.json')),
+      partial: true,
+      partialReason: reason,
+    })
+
+  const deferred = <T>() => {
+    let resolve: (value: T) => void = () => undefined
+    const promise = new Promise<T>((r) => {
+      resolve = r
+    })
+    return { promise, resolve }
+  }
+
+  const keepLast = (userData: string): string => {
+    const last = join(userData, 'eval-runs', skillKeyOf(SKILL), 'last')
+    mkdirSync(last, { recursive: true })
+    writeFileSync(join(last, 'result.json'), 'previous')
+    return last
+  }
+
+  it('does nothing when no run is going', async () => {
+    const { deps } = setup()
+    const kill = vi.spyOn(deps.runner, 'kill')
+    expect(await createEvalHandlers(deps).cancel(undefined)).toEqual({
+      kind: 'idle',
+    })
+    expect(kill).not.toHaveBeenCalled()
+  })
+
+  it('refuses a request with fields', async () => {
+    const { deps } = setup()
+    expect(
+      (await createEvalHandlers(deps).cancel({ skillPath: SKILL })).kind,
+    ).toBe('failed')
+  })
+
+  it('kills the child, says Cancelled and keeps the last run', async () => {
+    const { deps, cleanup, userData } = setup()
+    const exit = deferred<EvalExit>()
+    let started = false
+    const kill = vi.fn(() => {
+      exit.resolve({ exitCode: 143, signal: null })
+      return true
+    })
+    const handlers = createEvalHandlers({
+      ...deps,
+      runner: {
+        version: async () => '2.1.319',
+        kill,
+        run: () => {
+          started = true
+          return exit.promise
+        },
+      },
+    })
+    const last = keepLast(userData)
+    await handlers.prepare({ skillPath: SKILL })
+    cleanup.mockClear()
+    const running = handlers.run(REQUEST)
+    await vi.waitFor(() => expect(started).toBe(true))
+    expect(await handlers.cancel(undefined)).toEqual({ kind: 'cancelling' })
+    expect(kill).toHaveBeenCalledTimes(1)
+    expect(await running).toEqual({
+      kind: 'not-complete',
+      message: 'Cancelled',
+      costUsd: null,
+    })
+    expect(readFileSync(join(last, 'result.json'), 'utf8')).toBe('previous')
+    expect(cleanup).toHaveBeenCalledTimes(1)
+    expect(
+      existsSync(join(userData, 'eval-runs', skillKeyOf(SKILL), 'next')),
+    ).toBe(false)
+    expect(handlers.isRunning()).toBe(false)
+  })
+
+  it('never turns a cancelled run into a pass, even with a complete report', async () => {
+    const { deps, userData } = setup()
+    const exit = deferred<EvalExit>()
+    let started = false
+    const handlers = createEvalHandlers({
+      ...deps,
+      runner: {
+        version: async () => '2.1.319',
+        kill: () => {
+          exit.resolve({ exitCode: 0, signal: null })
+          return true
+        },
+        run: async (job) => {
+          started = true
+          const jsonFile = job.args[job.args.indexOf('--json') + 1] ?? ''
+          writeFileSync(jsonFile, fixture('with-without.json'))
+          return exit.promise
+        },
+      },
+    })
+    const last = keepLast(userData)
+    await handlers.prepare({ skillPath: SKILL })
+    const running = handlers.run(REQUEST)
+    await vi.waitFor(() => expect(started).toBe(true))
+    await handlers.cancel(undefined)
+    expect(await running).toEqual({
+      kind: 'not-complete',
+      message: 'Cancelled',
+      costUsd: 0.00265497,
+    })
+    expect(readFileSync(join(last, 'result.json'), 'utf8')).toBe('previous')
+  })
+
+  it('says Cancelled for an interrupted partial report and keeps the last run', async () => {
+    const { deps, userData } = setup({
+      report: cancelledReport('interrupted'),
+      exitCode: 130,
+    })
+    const handlers = createEvalHandlers(deps)
+    const last = keepLast(userData)
+    await handlers.prepare({ skillPath: SKILL })
+    expect(await handlers.run(REQUEST)).toEqual({
+      kind: 'not-complete',
+      message: 'Cancelled',
+      costUsd: 0,
+    })
+    expect(readFileSync(join(last, 'result.json'), 'utf8')).toBe('previous')
+  })
+
+  it.each([
+    ['cost_ceiling', 'Stopped at the cost limit (US$0.50)'],
+    ['auth_failed', 'Claude is not logged in'],
+  ])('maps %s and keeps the last run', async (reason, message) => {
+    const { deps, userData } = setup({
+      report: cancelledReport(reason),
+      exitCode: 2,
+    })
+    const handlers = createEvalHandlers(deps)
+    const last = keepLast(userData)
+    await handlers.prepare({ skillPath: SKILL })
+    expect(await handlers.run(REQUEST)).toEqual({
+      kind: 'not-complete',
+      message,
+      costUsd: 0,
+    })
+    expect(readFileSync(join(last, 'result.json'), 'utf8')).toBe('previous')
+    expect(
+      existsSync(join(userData, 'eval-runs', skillKeyOf(SKILL), 'next')),
+    ).toBe(false)
+  })
+
+  const gated = (gate: 'stage' | 'begin') => {
+    const { deps, cleanup, userData } = setup()
+    const open = deferred<void>()
+    const entered = deferred<void>()
+    const run = vi.fn(
+      async (): Promise<EvalExit> => ({
+        exitCode: 0,
+        signal: null,
+      }),
+    )
+    const kill = vi.fn(() => false)
+    const armed = { on: false }
+    const handlers = createEvalHandlers({
+      ...deps,
+      runner: { version: async () => '2.1.319', kill, run },
+      stage: async (path) => {
+        const stage = await deps.stage(path)
+        if (gate === 'stage' && armed.on) {
+          entered.resolve()
+          await open.promise
+        }
+        return stage
+      },
+      results: {
+        ...deps.results,
+        begin: async (key) => {
+          const next = await deps.results.begin(key)
+          if (gate === 'begin' && armed.on) {
+            entered.resolve()
+            await open.promise
+          }
+          return next
+        },
+      },
+    })
+    return { handlers, cleanup, userData, open, entered, run, kill, armed }
+  }
+
+  it.each(['stage', 'begin'] as const)(
+    'stops a run cancelled during %s before it spawns, and deletes the Stage and next/',
+    async (gate) => {
+      const { handlers, cleanup, userData, open, entered, run, armed } =
+        gated(gate)
+      await handlers.prepare({ skillPath: SKILL })
+      armed.on = true
+      cleanup.mockClear()
+      const running = handlers.run(REQUEST)
+      await entered.promise
+      expect(await handlers.cancel(undefined)).toEqual({ kind: 'cancelling' })
+      open.resolve()
+      expect(await running).toEqual({
+        kind: 'not-complete',
+        message: 'Cancelled',
+        costUsd: null,
+      })
+      expect(run).not.toHaveBeenCalled()
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(
+        existsSync(join(userData, 'eval-runs', skillKeyOf(SKILL), 'next')),
+      ).toBe(false)
+      expect(handlers.isRunning()).toBe(false)
+    },
+  )
+
+  it('stops a run cancelled while looking for the CLI', async () => {
+    const { deps, jobs } = setup()
+    const open = deferred<string | null>()
+    const entered = deferred<void>()
+    let calls = 0
+    const handlers = createEvalHandlers({
+      ...deps,
+      findClaude: async () => {
+        calls += 1
+        if (calls === 1) return deps.findClaude()
+        entered.resolve()
+        return open.promise
+      },
+    })
+    await handlers.prepare({ skillPath: SKILL })
+    const running = handlers.run(REQUEST)
+    await entered.promise
+    await handlers.cancel(undefined)
+    open.resolve('/bin/claude')
+    expect(await running).toEqual({
+      kind: 'not-complete',
+      message: 'Cancelled',
+      costUsd: null,
+    })
+    expect(jobs).toEqual([])
+  })
+
+  it('shutdown before the spawn stops the run and deletes the Stage and next/', async () => {
+    const { handlers, cleanup, userData, open, entered, run, armed } =
+      gated('begin')
+    await handlers.prepare({ skillPath: SKILL })
+    armed.on = true
+    cleanup.mockClear()
+    const running = handlers.run(REQUEST)
+    await entered.promise
+    const shutting = handlers.shutdown()
+    open.resolve()
+    await shutting
+    expect(await running).toEqual({
+      kind: 'not-complete',
+      message: 'Cancelled',
+      costUsd: null,
+    })
+    expect(run).not.toHaveBeenCalled()
+    expect(cleanup).toHaveBeenCalledTimes(1)
+    expect(
+      existsSync(join(userData, 'eval-runs', skillKeyOf(SKILL), 'next')),
+    ).toBe(false)
+  })
+
+  it('does not carry a cancel into the next run', async () => {
+    const { deps } = setup()
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare({ skillPath: SKILL })
+    expect((await handlers.run(REQUEST)).kind).toBe('completed')
+    await handlers.cancel(undefined)
+    await handlers.prepare({ skillPath: SKILL })
+    expect((await handlers.run(REQUEST)).kind).toBe('completed')
+  })
+})
+
+describe('after a run', () => {
+  const deferred = <T>() => {
+    let resolve: (value: T) => void = () => undefined
+    const promise = new Promise<T>((r) => {
+      resolve = r
+    })
+    return { promise, resolve }
+  }
+
+  it('names the CLI version when the report is not JSON', async () => {
+    const { deps } = setup({ report: 'not json' })
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare({ skillPath: SKILL })
+    const result = await handlers.run(REQUEST)
+    expect(result.kind === 'not-complete' && result.message).toBe(
+      'The Eval report could not be read (Claude CLI 2.1.319)',
+    )
+  })
+
+  it('says No Evals in this skill for exit 0 too', async () => {
+    const empty = { ...JSON.parse(fixture('with-without.json')), cases: [] }
+    const { deps } = setup({ report: JSON.stringify(empty), exitCode: 0 })
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare({ skillPath: SKILL })
+    const result = await handlers.run(REQUEST)
+    expect(result.kind === 'not-complete' && result.message).toBe(
+      'No Evals in this skill',
+    )
+  })
+
+  it('shows running and cancelling in status, per skill', async () => {
+    const { deps } = setup()
+    const exit = deferred<EvalExit>()
+    let started = false
+    const handlers = createEvalHandlers({
+      ...deps,
+      runner: {
+        version: async () => '2.1.319',
+        kill: () => {
+          exit.resolve({ exitCode: 143, signal: null })
+          return true
+        },
+        run: () => {
+          started = true
+          return exit.promise
+        },
+      },
+    })
+    await handlers.prepare({ skillPath: SKILL })
+    const running = handlers.run(REQUEST)
+    await vi.waitFor(() => expect(started).toBe(true))
+    expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
+      running: true,
+      cancelling: false,
+    })
+    await handlers.cancel(undefined)
+    expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
+      running: true,
+      cancelling: true,
+    })
+    await running
+    expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
+      running: false,
+      cancelling: false,
+    })
+  })
+
+  it('keeps the last stopped outcome in memory until the next run completes', async () => {
+    const { deps } = setup({
+      report: JSON.stringify({
+        ...JSON.parse(fixture('auth-failed.json')),
+        costUsd: 0.0015,
+      }),
+      exitCode: 2,
+    })
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare({ skillPath: SKILL })
+    await handlers.run(REQUEST)
+    expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
+      stopped: { message: 'Claude is not logged in', costUsd: 0.0015 },
+    })
+  })
+
+  it('clears the stopped outcome when a run completes', async () => {
+    const { deps } = setup()
+    const handlers = createEvalHandlers(deps)
+    await handlers.prepare({ skillPath: SKILL })
+    await handlers.run({ ...REQUEST, skillPath: '/skills/pdf' })
+    expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
+      stopped: null,
+    })
+  })
+
+  it('never ends completed when a cancel was answered before the report was read', async () => {
+    const { deps, userData } = setup()
+    const read = deferred<void>()
+    const reading = deferred<void>()
+    const results = {
+      ...deps.results,
+      readNext: async (key: string) => {
+        reading.resolve()
+        await read.promise
+        return deps.results.readNext(key)
+      },
+    }
+    const handlers = createEvalHandlers({ ...deps, results })
+    const last = join(userData, 'eval-runs', skillKeyOf(SKILL), 'last')
+    await handlers.prepare({ skillPath: SKILL })
+    const running = handlers.run(REQUEST)
+    await reading.promise
+    expect(await handlers.cancel(undefined)).toEqual({ kind: 'cancelling' })
+    read.resolve()
+    expect(await running).toEqual({
+      kind: 'not-complete',
+      message: 'Cancelled',
+      costUsd: expect.any(Number),
+    })
+    expect(existsSync(last)).toBe(false)
+  })
+
+  it('shutdown while committing waits for promote to finish', async () => {
+    const { deps, userData } = setup()
+    const promoting = deferred<void>()
+    const hold = deferred<void>()
+    const kill = vi.spyOn(deps.runner, 'kill')
+    const results = {
+      ...deps.results,
+      promote: async (key: string) => {
+        promoting.resolve()
+        await hold.promise
+        return deps.results.promote(key)
+      },
+    }
+    const handlers = createEvalHandlers({ ...deps, results })
+    await handlers.prepare({ skillPath: SKILL })
+    const running = handlers.run(REQUEST)
+    await promoting.promise
+    let shutDown = false
+    const shutting = handlers.shutdown().then(() => {
+      shutDown = true
+    })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(shutDown).toBe(false)
+    expect(kill).not.toHaveBeenCalled()
+    hold.resolve()
+    await shutting
+    expect((await running).kind).toBe('completed')
+    expect(
+      existsSync(
+        join(userData, 'eval-runs', skillKeyOf(SKILL), 'last', 'result.json'),
+      ),
+    ).toBe(true)
+  })
+
+  it('answers idle for a cancel once the run is being promoted', async () => {
+    const { deps } = setup()
+    const promoting = deferred<void>()
+    const hold = deferred<void>()
+    const results = {
+      ...deps.results,
+      promote: async (key: string) => {
+        promoting.resolve()
+        await hold.promise
+        return deps.results.promote(key)
+      },
+    }
+    const handlers = createEvalHandlers({ ...deps, results })
+    await handlers.prepare({ skillPath: SKILL })
+    const running = handlers.run(REQUEST)
+    await promoting.promise
+    expect(await handlers.cancel(undefined)).toEqual({ kind: 'idle' })
+    hold.resolve()
+    expect((await running).kind).toBe('completed')
+  })
+
+  it('says Cancelled when cancelled before a library or CLI check fails', async () => {
+    const gate = deferred<string | null>()
+    const entered = deferred<void>()
+    const { deps } = setup()
+    const handlers = createEvalHandlers({
+      ...deps,
+      findClaude: async () => {
+        entered.resolve()
+        return gate.promise
+      },
+    })
+    const running = handlers.run(REQUEST)
+    await entered.promise
+    await handlers.cancel(undefined)
+    gate.resolve(null)
+    expect(await running).toEqual({
+      kind: 'not-complete',
+      message: 'Cancelled',
+      costUsd: null,
+    })
+  })
+
+  it('says Cancelled when cancelled during stage, before risks-changed', async () => {
+    const gate = deferred<void>()
+    const entered = deferred<void>()
+    const { deps } = setup()
+    const handlers = createEvalHandlers({
+      ...deps,
+      stage: async (path) => {
+        const stage = await deps.stage(path)
+        entered.resolve()
+        await gate.promise
+        return stage
+      },
+    })
+    const running = handlers.run(REQUEST)
+    await entered.promise
+    await handlers.cancel(undefined)
+    gate.resolve()
+    expect(await running).toEqual({
+      kind: 'not-complete',
+      message: 'Cancelled',
+      costUsd: null,
     })
   })
 })

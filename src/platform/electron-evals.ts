@@ -3,7 +3,7 @@ import type { EvalsKit } from '../evals/types'
 
 export type EvalsApi = Pick<
   ChiriApi,
-  'evalStatus' | 'evalPrepare' | 'evalRun' | 'evalOpenReport'
+  'evalStatus' | 'evalPrepare' | 'evalRun' | 'evalOpenReport' | 'evalCancel'
 >
 
 const UNREACHABLE = {
@@ -26,4 +26,5 @@ export const createElectronEvals = (api: EvalsApi): EvalsKit => ({
   prepare: (request) => orFailure(() => api.evalPrepare(request)),
   run: (request) => orFailure(() => api.evalRun(request)),
   openReport: (request) => orFailure(() => api.evalOpenReport(request)),
+  cancel: () => orFailure(() => api.evalCancel()),
 })

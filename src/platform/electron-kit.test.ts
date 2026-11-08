@@ -107,6 +107,7 @@ const fakeEvals: EvalsKit = {
   prepare: async () => ({ kind: 'no-cli' }),
   run: async () => ({ kind: 'no-cli' }),
   openReport: async () => ({ kind: 'failed', reason: 'none' }),
+  cancel: async () => ({ kind: 'idle' }),
 }
 
 const setup = (
