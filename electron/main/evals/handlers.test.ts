@@ -7,7 +7,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createEvalHandlers, type EvalDeps } from './handlers'
 import { createResultsStore, skillKeyOf } from './results'
@@ -771,11 +771,11 @@ describe('after a run', () => {
     await vi.waitFor(() => expect(started).toBe(true))
     expect(await handlers.status({ skillPath: '/skills/docx' })).toMatchObject({
       running: false,
-      runningSkill: basename(SKILL),
+      runningSkill: SKILL,
     })
     expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
       running: true,
-      runningSkill: basename(SKILL),
+      runningSkill: SKILL,
     })
     await handlers.cancel(undefined)
     await running

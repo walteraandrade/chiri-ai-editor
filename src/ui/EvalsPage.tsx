@@ -16,11 +16,12 @@ import { type SkillUnsaved, useSkillUnsaved } from './use-skill-unsaved'
 
 type EvalsPageProps = {
   readonly skill: Skill
+  readonly busyName: string | null
   readonly panel: ReturnType<typeof useEvalPanel>
   readonly unsaved: SkillUnsaved
 }
 
-export function EvalsPage({ skill, panel, unsaved }: EvalsPageProps) {
+export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
   const {
     state,
     dialog,
@@ -274,7 +275,8 @@ export function EvalsPage({ skill, panel, unsaved }: EvalsPageProps) {
       ) : null}
       {busyWith !== null && !running ? (
         <p role="status" className="mt-3 text-ink-strong">
-          Evals are running for {busyWith}. One run at a time.
+          Evals are running for {busyName ?? 'another Skill'}. One run at a
+          time.
         </p>
       ) : null}
       {running ? (

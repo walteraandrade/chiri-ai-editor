@@ -216,17 +216,31 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     path: openSkill.realPath,
     name: openSkill.name,
   }
+  const openSkillPath = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    openSkillPath.current = openSkill?.realPath
+  })
   const onEvalsEnded = (ended: EvalSkill, result: EvalRunResult): void => {
     const here = openSkill?.realPath === ended.path
     if (here && mode.kind === 'evals') return
+    const show = (): void => {
+      if (openSkillPath.current === ended.path) historyView.openEvals()
+    }
     showToast(
       endedText(ended.name, result),
-      here ? [{ label: 'Show', run: historyView.openEvals }] : [],
+      here ? [{ label: 'Show', run: show }] : [],
     )
   }
   const evalPanel = useEvalPanel(evals ?? null, openSkillId ?? null, {
     onEnded: onEvalsEnded,
   })
+  const busyName =
+    evalPanel.busyWith === null || libraryControls.state.status !== 'ready'
+      ? null
+      : (libraryControls.state.roots
+          .flatMap(({ skills }) => skills)
+          .find(({ realPath }) => realPath === evalPanel.busyWith)?.name ??
+        null)
   const skillUnsaved = useMemo<SkillUnsaved>(
     () => ({
       isOpen: (path) =>
@@ -369,11 +383,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
                   className="cm-ai-button"
                   title="How this Skill performs"
                   aria-pressed={mode.kind === 'evals'}
-                  aria-busy={
-                    evalPanel.running ||
-                    evalPanel.busyWith !== null ||
-                    undefined
-                  }
+                  aria-busy={evalPanel.going !== null || undefined}
                   onClick={historyView.toggleEvals}
                 >
                   Evals
@@ -442,6 +452,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         {mode.kind === 'evals' && openSkill ? (
           <EvalsPage
             skill={openSkill}
+            busyName={busyName}
             panel={evalPanel}
             unsaved={skillUnsaved}
           />

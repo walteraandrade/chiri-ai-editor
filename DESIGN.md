@@ -136,7 +136,7 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 
 ### Evals page
 - **Place:** the main column, like Full history, under the title "How this Skill performs" (display font) and the Skill's name. Opened by the Evals button in the header, which shows only for a file in a Library Skill (Electron build). `Esc` or the Timeline's Now returns to the text.
-- **Content:** the last complete run as plain sections (Did the Skill fire?, Did it help?), a table at the column's width split by hairlines, Suspicious cases, cost, then the report buttons and Run Evals. Everything is ink on canvas; the AI color does not appear, since the CLI's judge is not the AI author (the One Author Color Rule).
+- **Content:** the last complete run as plain sections (Did the Skill fire?, Did it help?), a table at the column's width split by hairlines, Suspicious cases, cost, then the report buttons and Run Evals. Everything is ink on canvas; the AI color marks no text here, since the CLI's judge is not the AI author (the One Author Color Rule). The one exception is the Busy sweep on the Evals and Run Evals buttons: Busy is the shared button state (Review and New skill wear it too), a sweep of light and not an authorship mark.
 - **Running:** the Evals button wears the Busy sweep for as long as a run goes, on the page or off it. On the page, Run Evals shows "Running…" and Cancel sits beside it. A page for another Skill names the Skill that runs and disables Run Evals.
 - **End of a run:** with the page closed, a toast says how it ended, with Show.
 

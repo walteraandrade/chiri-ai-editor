@@ -27,6 +27,10 @@ export const useHistoryView = (
     kind: 'editing',
   })
   const mode = visiblePage(requested, versions, evalsAvailable)
+  useEffect(() => {
+    if (!evalsAvailable && requested.kind === 'evals')
+      dispatch({ type: 'close' })
+  }, [evalsAvailable, requested.kind])
   const [hovered, setHovered] = useState<VersionId | null>(null)
   const [flashId, setFlashId] = useState<VersionId | null>(null)
   const close = useCallback(() => dispatch({ type: 'close' }), [])

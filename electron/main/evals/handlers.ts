@@ -1,4 +1,4 @@
-import { basename, join } from 'node:path'
+import { join } from 'node:path'
 import type { RunBaseline } from '../../../src/evals/baseline'
 import { buildEvalArgs } from '../../../src/evals/command'
 import { compareSummaries, summaryOfStored } from '../../../src/evals/compare'
@@ -175,7 +175,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
   const stopped = new Map<string, StoppedRun>()
   let running = false
   let runningKey: string | null = null
-  let runningName: string | null = null
+  let runningReal: string | null = null
   let committing = false
   let abort = new AbortController()
   let inflight: Promise<unknown> = Promise.resolve()
@@ -390,7 +390,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
       last: await lastSummary(key),
       running: here,
       cancelling: here && abort.signal.aborted,
-      runningSkill: running ? runningName : null,
+      runningSkill: running ? runningReal : null,
       stopped: stopped.get(key) ?? null,
     }
   }
@@ -495,7 +495,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     running = true
     committing = false
     runningKey = null
-    runningName = null
+    runningReal = null
     abort = new AbortController()
     const { signal } = abort
     let release: () => void = () => undefined
@@ -509,7 +509,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
       if (real === null) return NOT_A_SKILL
       key = skillKeyOf(real)
       runningKey = key
-      runningName = basename(real)
+      runningReal = real
       stopped.delete(key)
       const executable = await deps.findClaude()
       if (signal.aborted) return CANCELLED
@@ -521,7 +521,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     } finally {
       running = false
       runningKey = null
-      runningName = null
+      runningReal = null
       release()
     }
   }

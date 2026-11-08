@@ -21,9 +21,7 @@ export type EvalPanelState =
       readonly status: 'ready'
       readonly claudeVersion: string
       readonly last: EvalSummary | null
-      readonly running: boolean
       readonly cancelling: boolean
-      readonly runningSkill: string | null
       readonly stopped: StoppedRun | null
     }
   | { readonly status: 'no-cli' }
@@ -64,21 +62,21 @@ export const useEvalPanel = (
   }, [])
   const [message, setMessage] = useState<string | null>(null)
   const latest = useRef(0)
+  const [going, setGoing] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     if (evals === null || skillPath === null) return
     const load = ++latest.current
     const result = await evals.status({ skillPath })
     if (load !== latest.current) return
+    if (result.kind === 'ready') setGoing(result.runningSkill)
     setState(
       result.kind === 'ready'
         ? {
             status: 'ready',
             claudeVersion: result.claudeVersion,
             last: result.last,
-            running: result.running,
             cancelling: result.cancelling,
-            runningSkill: result.runningSkill,
             stopped: result.stopped,
           }
         : result.kind === 'no-cli'
@@ -94,11 +92,10 @@ export const useEvalPanel = (
     void refresh()
   }, [refresh, setDialog])
 
-  const running = state.status === 'ready' && state.running
-  const cancelling = state.status === 'ready' && state.cancelling
-  const busyWith =
-    state.status === 'ready' && !state.running ? state.runningSkill : null
-  const polling = running || busyWith !== null
+  const running = going !== null && going === skillPath
+  const cancelling = running && state.status === 'ready' && state.cancelling
+  const busyWith = going !== null && going !== skillPath ? going : null
+  const polling = going !== null
 
   useEffect(() => {
     if (!polling) return
@@ -155,13 +152,15 @@ export const useEvalPanel = (
       if (evals === null || skillPath === null) return
       setDialog({ status: 'closed' })
       latest.current += 1
-      patchReady({ running: true, cancelling: false, stopped: null })
+      setGoing(skillPath)
+      patchReady({ cancelling: false, stopped: null })
       setMessage(null)
       const result = await evals.run({ skillPath, baseline, ...settings })
+      setGoing(null)
       ended.current({ path: skillPath, name: skillName }, result)
       if (currentPath.current !== skillPath) return
       latest.current += 1
-      const finished = { running: false, cancelling: false }
+      const finished = { cancelling: false }
       if (result.kind === 'completed') {
         patchReady({ ...finished, last: result.summary, stopped: null })
         return
@@ -206,6 +205,7 @@ export const useEvalPanel = (
     running,
     cancelling,
     busyWith,
+    going,
     message,
     refresh,
     ask,
