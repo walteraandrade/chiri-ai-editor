@@ -298,6 +298,24 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     requestAnimationFrame(() => frontmatterPanel.current?.focus())
   }, [closeHistory])
   const [newSkillOpen, setNewSkillOpen] = useState(false)
+  const textFocusFor = useRef<Ref | null>(null)
+  const openFromLibrary = useCallback(
+    (ref: Ref, focusText: boolean): void => {
+      textFocusFor.current = focusText ? ref : null
+      if (focusText && ref === openRef) {
+        textFocusFor.current = null
+        focusEditor()
+        return
+      }
+      void file.openRef(ref)
+    },
+    [file, openRef, focusEditor],
+  )
+  useEffect(() => {
+    if (openRef === null || textFocusFor.current !== openRef) return
+    textFocusFor.current = null
+    focusEditor()
+  }, [openRef, focusEditor])
   const { createSkill: createLibrarySkill } = libraryControls
   const createSkill = useCallback(
     async (request: CreateSkillRequest): Promise<NewSkillOutcome> => {
@@ -545,8 +563,9 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         library={library}
         controls={libraryControls}
         activeRef={openRef}
-        onOpen={(ref) => void file.openRef(ref)}
+        onOpen={openFromLibrary}
         onNewSkill={() => setNewSkillOpen(true)}
+        onEscape={focusEditor}
       />
       {newSkillOpen && libraryControls.state.status === 'ready' ? (
         <NewSkillDialog

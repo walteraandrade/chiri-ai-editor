@@ -133,6 +133,8 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 
 ### Lists (Library)
 - **Open file:** the canvas color behind medium-weight ink, with a solid 6px accent square before the name. The skill that holds it gets an accent caret.
+- **Tree rows:** roots, Skills, folders and files are rows of one tree, indented 12px per level, with a ▸ / ▾ caret on every node that has children. A Skill row shows its name only; its description shows under it while the row is focused or hovered. A Skill with a frontmatter problem wears the danger color, and the problem shows with the description. A file that does not open in Chiri is faint. A folder can carry a faint `· detail` (`evals/` shows its Eval count).
+- **Focused row:** the canvas color and a 1px accent outline drawn inside the row, no shadow. The tree is one Tab stop; the arrow keys move the focus.
 
 ### Evals page
 - **Place:** the main column, like Full history, under the title "How this Skill performs" (display font) and the Skill's name. Opened by the Evals button in the header, which shows only for a file in a Library Skill (Electron build). `Esc` or the Timeline's Now returns to the text.
