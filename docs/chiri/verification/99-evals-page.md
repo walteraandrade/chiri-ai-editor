@@ -20,7 +20,7 @@ Throwaway skills in the session scratchpad, never `~/.claude/skills`: `status-ta
 | Run ended with the page closed: toast "Evals for status-tag finished" with Show ([99-6](img/99-6.png)); Show opened the page | Pass |
 | Another Skill's page during a run (`quiet`): the button kept the sweep, the page says "Evals are running for status-tag. One run at a time." and Run Evals is disabled ([99-5](img/99-5.png)). When the run ended, polling re-enabled Run Evals with no reload | Pass |
 | Review round 1, rechecked after the fixes. Run ended with the page closed: toast with Show and, read in the same moment, no `aria-busy` on the button ([99-6](img/99-6.png)); Show opened the page, which showed no "running for" line, Run Evals enabled | Pass |
-| Text edited (heading) and saved during a run, page closed: "Saved SKILL.md", the Evals button kept the sweep, the run ended with the toast ([99-7](img/99-7.png)) | Pass |
+| Text edited (heading) and saved during a run, page closed: "Saved SKILL.md", the Evals button kept `aria-busy="true"` (read with `eval`; a still image cannot show the sweep), the run ended with the toast ([99-7](img/99-7.png)) | Pass |
 | Another Skill's run ended while the `quiet` file was open: toast "Evals for status-tag finished" with no Show, since the open Skill is not the one that ran ([99-8](img/99-8.png)); the button's sweep went away | Pass |
 | Show is bound to the Skill that ran: with a different Skill open at click time it does nothing (code: `openSkillPath` ref; not clicked in the window, the toast has no Show for another Skill) | By code |
 

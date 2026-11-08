@@ -157,9 +157,9 @@ export const useEvalPanel = (
       setMessage(null)
       const result = await evals.run({ skillPath, baseline, ...settings })
       setGoing(null)
+      latest.current += 1
       ended.current({ path: skillPath, name: skillName }, result)
       if (currentPath.current !== skillPath) return
-      latest.current += 1
       const finished = { cancelling: false }
       if (result.kind === 'completed') {
         patchReady({ ...finished, last: result.summary, stopped: null })
