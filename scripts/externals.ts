@@ -1,8 +1,8 @@
 import { builtinModules } from 'node:module'
 
 const PATTERNS = [
-  /^\s*(?:import|export)\b[^;'"`]*?\bfrom\s*["']([^"']+)["']/gm,
-  /^\s*import\s*["']([^"']+)["']/gm,
+  /^[^\S\r\n]*(?:import|export)\b[^;'"`]*\bfrom\s*["']([^"']+)["']/gm,
+  /^[^\S\r\n]*import\s*["']([^"']+)["']/gm,
   /(?<![\w$.])(?:__require|require|import)\s*\(\s*["']([^"']+)["']\s*\)/g,
 ]
 
@@ -29,4 +29,4 @@ export const bareImports = (source: string): string[] =>
         .filter((specifier) => !isIgnored(specifier))
         .map(packageName),
     ),
-  ].sort()
+  ].sort((a, b) => a.localeCompare(b))

@@ -35,7 +35,7 @@ export const watchDirectories = ({
       ...skills.flatMap(foldersOf),
       ...(openFile === null ? [] : [dirname(openFile)]),
     ]),
-  ].toSorted()
+  ].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 
 export const diffWatches = (
   active: ReadonlyMap<string, string>,

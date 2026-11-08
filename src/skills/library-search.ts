@@ -20,8 +20,6 @@ type Ranked = SearchResult & { readonly rank: number }
 
 const SEPARATORS = /[\s\-_/.()[\]{},;:!?'"`“”‘’]/
 
-const LINE_BREAKS = /\s*[\r\n]+\s*/g
-
 export const isWordStart = (text: string, index: number): boolean =>
   index === 0 || SEPARATORS.test(text.charAt(index - 1))
 
@@ -89,7 +87,12 @@ const prefixMatch = (text: string, needle: string): MatchRange | null => {
 const wordMatch = (text: string, needle: string): MatchRange | null =>
   matchAt(text, needle, isWordStart)
 
-const oneLine = (text: string): string => text.replace(LINE_BREAKS, ' ').trim()
+const oneLine = (text: string): string =>
+  text
+    .split(/[\r\n]/)
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .join(' ')
 
 const skillRow = (
   skill: Skill,

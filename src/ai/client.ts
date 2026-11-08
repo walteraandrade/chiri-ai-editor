@@ -210,7 +210,10 @@ export const createModelClient = (config: ModelClientConfig): ModelClient => {
 
   const track = (set: Set<Promise<void>>, work: Promise<void>): void => {
     set.add(work)
-    work.finally(() => set.delete(work))
+    void work.then(
+      () => set.delete(work),
+      () => set.delete(work),
+    )
   }
 
   const drain = async (set: ReadonlySet<Promise<void>>): Promise<void> => {

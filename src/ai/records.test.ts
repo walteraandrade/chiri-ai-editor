@@ -192,6 +192,11 @@ describe('formatRecordRow', () => {
     expect(row.split('\n')).toHaveLength(1)
   })
 
+  it('collapses whitespace runs around newlines and keeps other runs', () => {
+    const row = formatRecordRow({ ...record, task: 'a \t\r\n\n  b  c' })
+    expect(row).toContain('a b  c')
+  })
+
   it('shows the attempt number for a retry', () => {
     expect(formatRecordRow({ ...record, attempt: 2 })).toContain('retry')
   })

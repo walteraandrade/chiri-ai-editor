@@ -121,7 +121,9 @@ export const stageSkill = async (
     if (skillTextOverride !== undefined)
       await writeFile(join(dir, SKILL_FILE_NAME), skillTextOverride, 'utf8')
     const skillText = await readFile(join(dir, SKILL_FILE_NAME), 'utf8')
-    const leftOut = [...present, ...skipped.flat()].toSorted()
+    const leftOut = [...present, ...skipped.flat()].toSorted((a, b) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    )
     return {
       dir,
       skillText,

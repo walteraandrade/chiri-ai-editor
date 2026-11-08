@@ -69,6 +69,19 @@ describe('headingText', () => {
     expect(block && headingText(block)).toBe('Closed')
   })
 
+  it.each([
+    ['## Closed \t##  \t', 'Closed'],
+    ['## Closed ###', 'Closed'],
+    ['## Closed#', 'Closed#'],
+    ['## A # B', 'A # B'],
+    ['## A #  B #', 'A #  B'],
+    ['##   ', ''],
+    ['## #', '#'],
+  ])('strips ATX markers from %j', (source, expected) => {
+    const [block] = extractBlocks(`${source}\n`)
+    expect(block && headingText(block)).toBe(expected)
+  })
+
   it('drops the setext underline', () => {
     const [block] = extractBlocks('Setext title\n============\n')
     expect(block && headingText(block)).toBe('Setext title')

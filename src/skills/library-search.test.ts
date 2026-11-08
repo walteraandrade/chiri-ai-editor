@@ -205,6 +205,13 @@ describe('searchLibrary', () => {
     })
   })
 
+  it('collapses mixed whitespace and blank lines around line breaks', () => {
+    const roots = listing(
+      skill('a', [], '  one \r\n \n\t two  three\n\n pr\n '),
+    )
+    expect(searchLibrary(roots, 'pr')[0]?.detail).toBe('one two  three pr')
+  })
+
   it('returns at most 12 rows', () => {
     const many = Array.from({ length: 30 }, (_, index) => skill(`pr-${index}`))
     expect(searchLibrary(listing(...many), 'pr')).toHaveLength(

@@ -76,13 +76,8 @@ export const createDocumentHistory = ({
     if (listing === null) listing = listAgain()
   }
 
-  const start = (write: HistoryWrite): Promise<void> => {
-    try {
-      return applyWrite(store, key, write)
-    } catch (error) {
-      return Promise.reject(error)
-    }
-  }
+  const start = async (write: HistoryWrite): Promise<void> =>
+    applyWrite(store, key, write)
 
   const send = (write: HistoryWrite): void => {
     const sent: Promise<void> = start(write)

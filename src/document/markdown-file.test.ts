@@ -25,6 +25,10 @@ describe('suggestedFileName', () => {
     expect(name).toMatch(/^word(-word)*\.md$/)
   })
 
+  it('trims dashes at both ends of the slug', () => {
+    expect(suggestedFileName('# -- Hello, World! --\n')).toBe('hello-world.md')
+  })
+
   it('falls back to a default name without a usable title', () => {
     expect(suggestedFileName('Just a paragraph.')).toBe(DEFAULT_FILE_NAME)
     expect(suggestedFileName('# !!!\n')).toBe(DEFAULT_FILE_NAME)

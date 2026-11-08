@@ -80,6 +80,22 @@ const isInside = (parent: string, child: string): boolean => {
   )
 }
 
+export const resolveInside = (base: string, ...segments: string[]): string => {
+  const root = resolve(base)
+  const target = resolve(root, ...segments)
+  if (!isInside(root, target)) {
+    throw new Error(`Path escapes ${root}: ${target}`)
+  }
+  return target
+}
+
+const assertPlainName = (name: string): string => {
+  if (name.includes('/') || name.includes('\\') || name.includes('..')) {
+    throw new Error(`Invalid project prefix: ${name}`)
+  }
+  return name
+}
+
 const assertDisjoint = (sourceRoot: string, dest: string): void => {
   const source = resolve(sourceRoot)
   const target = resolve(dest)
@@ -114,7 +130,7 @@ const listProjectFiles = async (
   sourceRoot: string,
   project: string,
 ): Promise<readonly SessionFile[]> => {
-  const projectDir = join(sourceRoot, project)
+  const projectDir = resolveInside(sourceRoot, project)
   const entries = await readDirents(projectDir, 'Source')
   const sessions = entries.filter(
     (entry) =>
@@ -128,7 +144,7 @@ const listProjectFiles = async (
       (entry) => entry.isDirectory() && entry.name === stem,
     )
     const inside = hasSibling
-      ? (await listFilesUnder(join(projectDir, stem), 'Source')).map(
+      ? (await listFilesUnder(resolveInside(projectDir, stem), 'Source')).map(
           (path) => `${stem}/${path}`,
         )
       : []
@@ -144,8 +160,9 @@ export const listSessionFiles = async (
   sourceRoot: string,
   prefix: string,
 ): Promise<readonly SessionFile[]> => {
+  const safePrefix = assertPlainName(prefix)
   const projects = (await readDirents(sourceRoot, 'Source'))
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith(prefix))
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(safePrefix))
     .map((entry) => entry.name)
     .sort(byText)
   return (
@@ -171,9 +188,11 @@ const expectedBytes = (
 const copyFile =
   (sourceRoot: string, staging: string, secrets: readonly string[]) =>
   async (file: SessionFile): Promise<ExportedFile> => {
-    const source = await readFile(join(sourceRoot, file.project, file.path))
+    const source = await readFile(
+      resolveInside(sourceRoot, file.project, file.path),
+    )
     const { bytes, spans, text } = expectedBytes(file, source, secrets)
-    const target = join(staging, file.project, file.path)
+    const target = resolveInside(staging, file.project, file.path)
     await mkdir(dirname(target), { recursive: true })
     await writeFile(target, bytes)
     return { path: keyOf(file), bytes: bytes.length, spans, text }
@@ -257,9 +276,13 @@ const compare =
   async (
     file: SessionFile,
   ): Promise<{ readonly key: string; readonly result: Comparison }> => {
-    const source = await readFile(join(sourceRoot, file.project, file.path))
+    const source = await readFile(
+      resolveInside(sourceRoot, file.project, file.path),
+    )
     const expected = expectedBytes(file, source, secrets).bytes
-    const actual = await readIfPresent(join(dest, file.project, file.path))
+    const actual = await readIfPresent(
+      resolveInside(dest, file.project, file.path),
+    )
     const result: Comparison =
       actual === null
         ? 'missing'
@@ -276,7 +299,7 @@ const scanExported =
   async (
     path: string,
   ): Promise<{ readonly residual: number; readonly secretHits: number }> => {
-    const bytes = await readFile(join(dest, path))
+    const bytes = await readFile(resolveInside(dest, path))
     return {
       residual: residualKeyCount(bytes.toString('latin1')),
       secretHits: countSecretOccurrences(bytes, secrets),

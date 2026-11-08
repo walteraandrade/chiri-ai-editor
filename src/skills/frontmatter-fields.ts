@@ -152,9 +152,12 @@ export const readYamlFields = (
 const closingLineStart = (text: string, { to }: Frontmatter): number =>
   text.lastIndexOf('\n', to - 1) + 1
 
+const trailingNewlineStart = (text: string, end: number): number =>
+  end > 0 && text[end - 1] === '\n' ? trailingNewlineStart(text, end - 1) : end
+
 const isUnclosed = (text: string): boolean => {
   if (!OPENING_DELIMITER.test(text)) return false
-  const closed = `${text.replace(/\n+$/, '')}\n---`
+  const closed = `${text.slice(0, trailingNewlineStart(text, text.length))}\n---`
   const found = findFrontmatter(closed)
   return (
     found !== undefined &&

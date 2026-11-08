@@ -13,7 +13,7 @@ const slugOf = (title: string): string =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .slice(0, MAX_SLUG_LENGTH)
-    .replace(/^-+|-+$/g, '')
+    .replace(/^-|-$/g, '')
 
 export const suggestedFileName = (doc: string): string => {
   const title = extractBlocks(doc).find(

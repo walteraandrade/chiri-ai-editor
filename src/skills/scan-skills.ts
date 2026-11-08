@@ -61,8 +61,13 @@ const attempt = async <T>(run: () => Promise<T>): Promise<T | undefined> => {
   }
 }
 
+const trailingSlashStart = (text: string, end: number): number =>
+  end > 0 && (text[end - 1] === '/' || text[end - 1] === '\\')
+    ? trailingSlashStart(text, end - 1)
+    : end
+
 const joinPath = (directory: string, name: string): string =>
-  `${directory.replace(/[\\/]+$/, '')}/${name}`
+  `${directory.slice(0, trailingSlashStart(directory, directory.length))}/${name}`
 
 const compareText = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0

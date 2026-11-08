@@ -10,7 +10,14 @@ export type LineRun =
 
 type Part = ArrayChange<string>
 
-const linesOf = (text: string): string[] => text.replace(/\n+$/, '').split('\n')
+const trailingNewlineStart = (text: string, end: number): number =>
+  end > 0 && text[end - 1] === '\n' ? trailingNewlineStart(text, end - 1) : end
+
+const withoutTrailingNewlines = (text: string): string =>
+  text.slice(0, trailingNewlineStart(text, text.length))
+
+const linesOf = (text: string): string[] =>
+  withoutTrailingNewlines(text).split('\n')
 
 const joined = (part: Part | undefined): string => part?.value.join('\n') ?? ''
 

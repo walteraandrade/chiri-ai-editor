@@ -125,7 +125,9 @@ export const shapeAiCallRecord = ({
 const DASH = '–'
 
 const cell = (value: string): string =>
-  value.replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ')
+  value
+    .replace(/\|/g, '\\|')
+    .replace(/\s+/g, (run) => (run.includes('\n') ? ' ' : run))
 
 const show = (value: number | string | null): string =>
   value === null ? DASH : String(value)

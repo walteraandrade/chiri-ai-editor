@@ -683,6 +683,13 @@ describe('scanSkillRoots', () => {
     })
   })
 
+  it('accepts a root written with several trailing slashes', async () => {
+    const [claude] = await scan({ [`${CLAUDE}/s/SKILL.md`]: skillText('s') }, [
+      `${CLAUDE}///`,
+    ])
+    expect(claude?.skills[0]).toMatchObject({ realPath: `${CLAUDE}/s` })
+  })
+
   it('reads the machine layout: many skills, links into another root and a repo', async () => {
     const tree: Record<string, string | { link: string }> = {}
     const names = Array.from({ length: 12 }, (_, i) => `skill-${i}`)
