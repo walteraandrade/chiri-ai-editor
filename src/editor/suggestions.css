@@ -378,7 +378,8 @@
   font-style: italic;
 }
 
-.cm-ai-ask-item mark {
+.cm-ai-ask-item mark,
+.library-search-item mark {
   background: transparent;
   color: inherit;
   font-weight: 600;

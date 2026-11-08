@@ -44,9 +44,12 @@ describe('isWordStart', () => {
     expect(isWordStart('pr-format', 0)).toBe(true)
   })
 
-  it.each(['-', '_', '/', ' ', '.'])('starts a word after %j', (separator) => {
-    expect(isWordStart(`a${separator}b`, 2)).toBe(true)
-  })
+  it.each(['-', '_', '/', ' ', '.', '(', ',', '"'])(
+    'starts a word after %j',
+    (separator) => {
+      expect(isWordStart(`a${separator}b`, 2)).toBe(true)
+    },
+  )
 
   it('does not start a word inside a word', () => {
     expect(isWordStart('improve', 2)).toBe(false)
@@ -109,14 +112,20 @@ describe('searchLibrary', () => {
     expect(searchLibrary(listing(skill('improve')), 'pr')).toEqual([])
   })
 
-  it('matches a file path anywhere in it', () => {
+  it('matches a file path by the start of a word in it', () => {
     const roots = listing(skill('docs', ['evals/a/graders/before.md']))
     expect(labels(searchLibrary(roots, 'graders'))).toEqual([
       'file:evals/a/graders/before.md',
     ])
-    expect(labels(searchLibrary(roots, 'ders/bef'))).toEqual([
+    expect(labels(searchLibrary(roots, 'graders/bef'))).toEqual([
       'file:evals/a/graders/before.md',
     ])
+    expect(searchLibrary(roots, 'raders')).toEqual([])
+  })
+
+  it('does not match inside a word of a file path', () => {
+    const roots = listing(skill('docs', ['evals/improve.md']))
+    expect(searchLibrary(roots, 'pr')).toEqual([])
   })
 
   it('matches a description by the start of a word only', () => {
@@ -216,6 +225,27 @@ describe('searchLibrary', () => {
     const one = root([skill('pr')])
     const two = { ...root([skill('pr')]), root: '/b' }
     expect(searchLibrary([one, two], 'pr')).toHaveLength(1)
+  })
+
+  it.each(['(', ')', ',', '"', "'"])(
+    'starts a description word after %j',
+    (mark) => {
+      const roots = listing(skill('a', [], `see${mark}pr text`))
+      expect(searchLibrary(roots, 'pr')[0]?.detailMatch).toEqual({
+        start: 4,
+        end: 6,
+      })
+    },
+  )
+
+  it('keeps ranges on the original text when lower-casing changes its length', () => {
+    const roots = listing(skill('İpr-x'))
+    expect(searchLibrary(roots, 'pr-')).toEqual([])
+    const named = listing(skill('İstanbul-pr'))
+    expect(searchLibrary(named, 'pr')[0]).toMatchObject({
+      label: 'İstanbul-pr',
+      labelMatch: { start: 9, end: 11 },
+    })
   })
 
   it('trims the text', () => {

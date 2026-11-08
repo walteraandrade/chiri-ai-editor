@@ -18,42 +18,73 @@ export type SearchResult = {
 
 type Ranked = SearchResult & { readonly rank: number }
 
-const SEPARATORS = /[\s\-_/.]/
+const SEPARATORS = /[\s\-_/.()[\]{},;:!?'"`“”‘’]/
 
 const LINE_BREAKS = /\s*[\r\n]+\s*/g
 
 export const isWordStart = (text: string, index: number): boolean =>
   index === 0 || SEPARATORS.test(text.charAt(index - 1))
 
-const rangeAt = (start: number, length: number): MatchRange => ({
-  start,
-  end: start + length,
+type Folded = {
+  readonly text: string
+  readonly starts: readonly number[]
+  readonly ends: readonly number[]
+}
+
+const fold = (text: string): Folded =>
+  [...text].reduce<{
+    text: string
+    starts: number[]
+    ends: number[]
+    at: number
+  }>(
+    (folded, char) => {
+      const lower = char.toLowerCase()
+      const end = folded.at + char.length
+      return {
+        text: folded.text + lower,
+        starts: [...folded.starts, ...Array(lower.length).fill(folded.at)],
+        ends: [...folded.ends, ...Array(lower.length).fill(end)],
+        at: end,
+      }
+    },
+    { text: '', starts: [], ends: [], at: 0 },
+  )
+
+const rangeIn = (
+  folded: Folded,
+  start: number,
+  length: number,
+): MatchRange => ({
+  start: folded.starts[start] ?? start,
+  end: folded.ends[start + length - 1] ?? start + length,
 })
 
-const indexesOf = (text: string, needle: string): readonly number[] => {
-  const lower = text.toLowerCase()
-  const found: number[] = []
+const matchAt = (
+  text: string,
+  needle: string,
+  accept: (original: string, originalIndex: number) => boolean,
+): MatchRange | null => {
+  const folded = fold(text)
   for (
-    let at = lower.indexOf(needle);
+    let at = folded.text.indexOf(needle);
     at !== -1;
-    at = lower.indexOf(needle, at + 1)
-  )
-    found.push(at)
-  return found
+    at = folded.text.indexOf(needle, at + 1)
+  ) {
+    const original = folded.starts[at] ?? at
+    if (folded.starts[at - 1] !== original && accept(text, original))
+      return rangeIn(folded, at, needle.length)
+  }
+  return null
 }
 
 const prefixMatch = (text: string, needle: string): MatchRange | null =>
-  text.toLowerCase().startsWith(needle) ? rangeAt(0, needle.length) : null
+  fold(text).text.startsWith(needle)
+    ? rangeIn(fold(text), 0, needle.length)
+    : null
 
-const wordMatch = (text: string, needle: string): MatchRange | null => {
-  const at = indexesOf(text, needle).find((index) => isWordStart(text, index))
-  return at === undefined ? null : rangeAt(at, needle.length)
-}
-
-const substringMatch = (text: string, needle: string): MatchRange | null => {
-  const at = indexesOf(text, needle)[0]
-  return at === undefined ? null : rangeAt(at, needle.length)
-}
+const wordMatch = (text: string, needle: string): MatchRange | null =>
+  matchAt(text, needle, isWordStart)
 
 const oneLine = (text: string): string => text.replace(LINE_BREAKS, ' ').trim()
 
@@ -95,7 +126,7 @@ const fileResults = (skill: Skill, needle: string): readonly Ranked[] =>
   skill.files
     .filter(({ name, isMarkdown }) => isMarkdown && name !== SKILL_FILE_NAME)
     .flatMap((file): readonly Ranked[] => {
-      const match = substringMatch(file.name, needle)
+      const match = wordMatch(file.name, needle)
       return match === null
         ? []
         : [

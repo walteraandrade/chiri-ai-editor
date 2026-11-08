@@ -23,7 +23,8 @@ type LibrarySearchProps = {
 
 const LIST_ID = 'library-search-list'
 
-const optionId = (index: number): string => `library-search-option-${index}`
+const optionId = (id: string): string =>
+  `library-search-option-${encodeURIComponent(id)}`
 
 const marked = (text: string, range: MatchRange | null): ReactNode =>
   range === null ? (
@@ -50,12 +51,18 @@ export function LibrarySearch({
   const current = Math.min(active, Math.max(results.length - 1, 0))
   const showList = focused && results.length > 0
   const showEmpty = focused && searching && results.length === 0
+  const announcement =
+    !focused || !searching
+      ? ''
+      : results.length === 0
+        ? `No Skill or file matches ${text.trim()}`
+        : `${results.length} ${results.length === 1 ? 'result' : 'results'}`
   const apple = detectApplePlatform()
   const shortcut = formatShortcut('P', apple)
 
   const scrollTo = (index: number): void =>
     document
-      .getElementById(optionId(index))
+      .getElementById(optionId(results[index]?.id ?? ''))
       ?.scrollIntoView({ block: 'nearest' })
 
   const open = (result: SearchResult | undefined): void => {
@@ -95,7 +102,11 @@ export function LibrarySearch({
         aria-autocomplete="list"
         aria-expanded={showList}
         aria-controls={LIST_ID}
-        aria-activedescendant={showList ? optionId(current) : undefined}
+        aria-activedescendant={
+          showList && results[current] !== undefined
+            ? optionId(results[current].id)
+            : undefined
+        }
         aria-keyshortcuts={apple ? 'Meta+P' : 'Control+P'}
         title={`Search the Library (${shortcut})`}
         placeholder={`Search · ${shortcut}`}
@@ -114,6 +125,9 @@ export function LibrarySearch({
           onBlurTo(event.relatedTarget)
         }}
       />
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       <div className="mt-1 max-h-[60vh] overflow-y-auto">
         <div
           id={LIST_ID}
@@ -126,7 +140,7 @@ export function LibrarySearch({
             // biome-ignore lint/a11y/useKeyWithClickEvents: the combobox input takes the keys
             <div
               key={result.id}
-              id={optionId(index)}
+              id={optionId(result.id)}
               role="option"
               tabIndex={-1}
               aria-selected={index === current}
@@ -159,7 +173,7 @@ export function LibrarySearch({
           ))}
         </div>
         {showEmpty ? (
-          <p role="status" className="library-search-empty">
+          <p aria-hidden="true" className="library-search-empty">
             No Skill or file matches “{text.trim()}”
           </p>
         ) : null}

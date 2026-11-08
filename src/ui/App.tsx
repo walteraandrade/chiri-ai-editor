@@ -254,8 +254,9 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const searchOpening = useRef(false)
   const leaveSearch = useCallback((next: Element | null): void => {
     if (searchOpening.current) return
-    if (next !== null && next.closest('dialog') === null)
-      searchUnfolded.current = false
+    if (next === null ? !document.hasFocus() : next.closest('dialog') !== null)
+      return
+    searchUnfolded.current = false
   }, [])
   useEffect(() => {
     if (!libraryOpen) {
