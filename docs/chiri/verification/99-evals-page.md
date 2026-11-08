@@ -19,10 +19,12 @@ Throwaway skills in the session scratchpad, never `~/.claude/skills`: `status-ta
 | `Esc` closed the page during the run: the run kept going, the button kept `aria-busy`, polling continued | Pass |
 | Run ended with the page closed: toast "Evals for status-tag finished" with Show ([99-6](img/99-6.png)); Show opened the page | Pass |
 | Another Skill's page during a run (`quiet`): the button kept the sweep, the page says "Evals are running for status-tag. One run at a time." and Run Evals is disabled ([99-5](img/99-5.png)). When the run ended, polling re-enabled Run Evals with no reload | Pass |
-| Page of a Skill other than the running one when it ended: the toast was not seen (it may have gone between two polls of my script); the code path is the one without Show | Not seen |
-| Editing the text during a run | Not shown in the window; the run state lives in the App and keys on the Skill's path, which an edit does not change |
+| Review round 1, rechecked after the fixes. Run ended with the page closed: toast with Show and, read in the same moment, no `aria-busy` on the button ([99-6](img/99-6.png)); Show opened the page, which showed no "running for" line, Run Evals enabled | Pass |
+| Text edited (heading) and saved during a run, page closed: "Saved SKILL.md", the Evals button kept the sweep, the run ended with the toast ([99-7](img/99-7.png)) | Pass |
+| Another Skill's run ended while the `quiet` file was open: toast "Evals for status-tag finished" with no Show, since the open Skill is not the one that ran ([99-8](img/99-8.png)); the button's sweep went away | Pass |
+| Show is bound to the Skill that ran: with a different Skill open at click time it does nothing (code: `openSkillPath` ref; not clicked in the window, the toast has no Show for another Skill) | By code |
 
-Covered by tests: `page-mode.test.ts` (opening one page closes the one before, `Esc` and close go back to the text, Version steps ignored on the Evals page, a Version that is gone and an unavailable Evals page fall back to the text), `ended.test.ts` (the end-of-run texts), `library-view.test.ts` (`skillOfFile`), and `handlers.test.ts` (`evals:status` names the running Skill in the status of another Skill, and goes back to `null`).
+Covered by tests: `page-mode.test.ts` (opening one page closes the one before, `Esc` and close go back to the text, Version steps ignored on the Evals page, a Version that is gone and an unavailable Evals page fall back to the text), `ended.test.ts` (the end-of-run texts), `library-view.test.ts` (`skillOfFile`), and `handlers.test.ts` (`evals:status` returns the running Skill's real path in the status of another Skill, and goes back to `null`; the page resolves the display name from the Library).
 
 ## Runs
 
@@ -31,4 +33,7 @@ Covered by tests: `page-mode.test.ts` (opening one page closes the one before, `
 | 1, from the page | 1 | 0.0052 |
 | 2, page closed with `Esc`, other Skill's page opened | 1 | not read, replaced by run 3 (about 0.005) |
 | 3, page closed with `Esc`, toast Show | 1 | 0.0051 |
-| Total | | about 0.0153 |
+| 4, edited and saved during the run | 1 | not read (about 0.005) |
+| 5, other Skill's file open when it ended | 1 | not read (about 0.005) |
+| 6, toast Show again | 1 | 0.0053 |
+| Total | | about 0.031 |
