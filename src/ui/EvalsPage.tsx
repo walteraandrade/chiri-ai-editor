@@ -186,6 +186,7 @@ export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
   const checking = unsavedFiles.checking
   const last = state.status === 'ready' ? state.last : null
   const noEvals = state.status === 'ready' && state.caseCount === 0
+  const noRunYet = last === null && !noEvals
   const signals = last === null ? [] : last.cases.map(caseSignals)
   const suspicious = signals.filter(({ suspicious }) => suspicious.length > 0)
   const fired = last === null ? null : firedOverall(last.cases)
@@ -266,6 +267,7 @@ export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
           {noEvals ? (
             <FirstEvalGuide
               skillName={skill.name}
+              folderName={skill.folderName}
               onCheck={() => void refresh()}
             />
           ) : null}
@@ -314,11 +316,12 @@ export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
               {notice}
             </p>
           )}
-          {last === null && noEvals ? null : last === null ? (
+          {noRunYet ? (
             <p className="mt-6 border border-hairline px-4 py-6 text-center text-ink-faint">
               No complete run yet. Run Evals to see how this Skill does.
             </p>
-          ) : (
+          ) : null}
+          {last === null ? null : (
             <div className="mt-6">
               {view.comparedNote === null ? null : (
                 <p className="mb-3 text-ink-faint text-xs">

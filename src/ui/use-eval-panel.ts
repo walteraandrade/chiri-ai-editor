@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { NO_BASELINE, type RunBaseline } from '../evals/baseline'
 import {
   type EvalDialogState,
+  settleAsk,
   settlePick,
   startPick,
 } from '../evals/dialog-state'
@@ -117,24 +118,14 @@ export const useEvalPanel = (
     if (evals === null || skillPath === null) return
     setMessage(null)
     setDialog({ status: 'preparing' })
-    const prepared = await evals.prepare({ skillPath, baseline: NO_BASELINE })
-    if (prepared.kind === 'ready' && prepared.caseCount === 0) {
-      setDialog({ status: 'closed' })
-      patchReady({ caseCount: 0 })
-      return
-    }
-    if (prepared.kind === 'ready') {
-      setDialog({
-        status: 'confirm',
-        prepared,
-        baseline: NO_BASELINE,
-        refreshing: false,
-      })
-      return
-    }
-    setDialog({ status: 'closed' })
-    if (prepared.kind === 'no-cli') setState({ status: 'no-cli' })
-    else setMessage(prepared.reason)
+    const settled = settleAsk(
+      await evals.prepare({ skillPath, baseline: NO_BASELINE }),
+    )
+    setDialog(settled.dialog)
+    if (settled.effect.kind === 'no-evals') patchReady({ caseCount: 0 })
+    else if (settled.effect.kind === 'no-cli') setState({ status: 'no-cli' })
+    else if (settled.effect.kind === 'message')
+      setMessage(settled.effect.reason)
   }, [evals, skillPath, setDialog, patchReady])
 
   const pick = useCallback(

@@ -2,14 +2,19 @@ import { firstEvalExample } from '../evals/first-eval'
 
 type FirstEvalGuideProps = {
   readonly skillName: string
+  readonly folderName: string
   readonly onCheck: () => void
 }
 
 const CODE =
   'mt-1 overflow-x-auto border border-hairline bg-raised px-3 py-2 font-mono text-xs leading-relaxed'
 
-export function FirstEvalGuide({ skillName, onCheck }: FirstEvalGuideProps) {
-  const { tree, files } = firstEvalExample(skillName)
+export function FirstEvalGuide({
+  skillName,
+  folderName,
+  onCheck,
+}: FirstEvalGuideProps) {
+  const { tree, files } = firstEvalExample(skillName, folderName)
   return (
     <section aria-labelledby="first-eval-title" className="mt-6">
       <h3

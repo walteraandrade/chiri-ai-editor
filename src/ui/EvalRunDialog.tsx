@@ -108,7 +108,7 @@ export function EvalRunDialog({
         </h2>
         <p className="mt-2 text-sm">
           {noCases
-            ? 'This Skill has no Evals. Add a folder under evals/ with a prompt.md and a graders/ folder.'
+            ? 'This Skill has no Evals yet. Close this dialog to see how to write the first one.'
             : copy.intro(prepared.caseCount, prepared.claudeVersion)}
         </p>
         <label

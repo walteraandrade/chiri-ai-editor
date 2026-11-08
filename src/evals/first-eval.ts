@@ -29,9 +29,15 @@ const frontmatter = (
     '',
   ].join('\n')
 
-export const firstEvalExample = (skillName: string): FirstEvalExample => ({
+const skillNamePattern = (skillName: string): string =>
+  `[":]${escapeRegex(skillName)}"`
+
+export const firstEvalExample = (
+  skillName: string,
+  folderName: string,
+): FirstEvalExample => ({
   tree: [
-    `${skillName}/${FOLDER}/`,
+    `${folderName}/${FOLDER}/`,
     '├── prompt.md       what a user would ask',
     '└── graders/',
     '    ├── fired.md    type: tool_used, did the Skill fire?',
@@ -54,7 +60,7 @@ export const firstEvalExample = (skillName: string): FirstEvalExample => ({
         [
           ['type', 'tool_used'],
           ['tool', 'Skill'],
-          ['input_match', quoted(escapeRegex(skillName))],
+          ['input_match', quoted(skillNamePattern(skillName))],
         ],
         'Passes when the agent loads this Skill.',
       ),
