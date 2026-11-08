@@ -170,6 +170,7 @@ export function Library<Ref>({
   )
   const treeRef = useRef<HTMLDivElement>(null)
   const asideRef = useRef<HTMLElement>(null)
+  const addRef = useRef<HTMLButtonElement>(null)
 
   const isActiveFile = (path: string): boolean =>
     activeRef !== null && library.toRef(path) === activeRef
@@ -216,7 +217,7 @@ export function Library<Ref>({
   useImperativeHandle(handleRef, () => ({
     focusTree: () => {
       if (tabbableId !== null) focusItem(tabbableId)
-      else asideRef.current?.focus()
+      else addRef.current?.focus()
     },
     holdsFocus: () =>
       asideRef.current?.contains(document.activeElement) ?? false,
@@ -385,6 +386,7 @@ export function Library<Ref>({
             Refresh
           </button>
           <button
+            ref={addRef}
             type="button"
             className="cm-ai-button"
             title="Add a project folder of skills, such as .claude/skills"

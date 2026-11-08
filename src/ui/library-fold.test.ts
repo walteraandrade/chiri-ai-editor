@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { isLibraryShortcut, libraryKeyAnswer } from './library-fold'
+import {
+  ECHO_WINDOW_MS,
+  isEchoOfKey,
+  isLibraryShortcut,
+  isModalOpen,
+  libraryKeyAnswer,
+  railAnswer,
+} from './library-fold'
 
 describe('libraryKeyAnswer', () => {
   it('opens and focuses a folded Library', () => {
@@ -64,5 +71,33 @@ describe('isLibraryShortcut', () => {
     expect(isLibraryShortcut(press({ ctrlKey: true, key: 'p' }), false)).toBe(
       false,
     )
+  })
+})
+
+describe('railAnswer', () => {
+  it('folds an open Library whatever holds the focus', () => {
+    expect(railAnswer(true)).toBe('fold-and-return')
+  })
+
+  it('opens a folded Library and focuses the tree', () => {
+    expect(railAnswer(false)).toBe('open-and-focus')
+  })
+})
+
+describe('isEchoOfKey', () => {
+  it('is an echo within the window after a handled key', () => {
+    expect(isEchoOfKey(1000, 1000 + ECHO_WINDOW_MS - 1)).toBe(true)
+  })
+
+  it('is not an echo later, or with no key before', () => {
+    expect(isEchoOfKey(1000, 1000 + ECHO_WINDOW_MS)).toBe(false)
+    expect(isEchoOfKey(null, 1000)).toBe(false)
+  })
+})
+
+describe('isModalOpen', () => {
+  it('sees an open dialog', () => {
+    expect(isModalOpen({ querySelector: () => ({}) as Element })).toBe(true)
+    expect(isModalOpen({ querySelector: () => null })).toBe(false)
   })
 })

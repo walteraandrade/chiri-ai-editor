@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 
 export const useViewportWidth = (): number => {
-  const [width, setWidth] = useState(() => window.innerWidth)
+  const [width, setWidth] = useState(() => document.documentElement.clientWidth)
   useEffect(() => {
-    const onResize = (): void => setWidth(window.innerWidth)
+    const onResize = (): void => setWidth(document.documentElement.clientWidth)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])

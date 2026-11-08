@@ -3,6 +3,7 @@ import type { MenuItemConstructorOptions } from 'electron'
 export const menuTemplate = (
   onPreferences: () => void,
   onLibrary: () => void,
+  platform: NodeJS.Platform = process.platform,
 ): MenuItemConstructorOptions[] => [
   {
     label: 'File',
@@ -23,6 +24,7 @@ export const menuTemplate = (
       {
         label: 'Library',
         accelerator: 'CmdOrCtrl+B',
+        registerAccelerator: platform === 'darwin',
         click: onLibrary,
       },
       { type: 'separator' },

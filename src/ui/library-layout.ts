@@ -1,6 +1,6 @@
 export const RAIL_WIDTH_PX = 40
 export const LIBRARY_WIDTH_PX = 288
-export const TEXT_COLUMN_PX = 768 + 48
+export const TEXT_COLUMN_PX = 768
 
 export type LibraryPlacement = 'column' | 'overlay'
 

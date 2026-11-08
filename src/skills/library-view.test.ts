@@ -80,13 +80,13 @@ describe('skillFileLabel', () => {
 
   it('is the skill name and the file inside the skill', () => {
     expect(skillFileLabel(listing, opening('/skills/pdf-tools/SKILL.md'))).toBe(
-      'pdf-tools / SKILL.md',
+      'pdf-tools › SKILL.md',
     )
   })
 
   it('keeps the path inside the skill for a nested file', () => {
     expect(skillFileLabel(listing, opening('/real/forms.md'))).toBe(
-      'pdf-tools / references/forms.md',
+      'pdf-tools › references/forms.md',
     )
   })
 
@@ -95,7 +95,7 @@ describe('skillFileLabel', () => {
       root([skill('pdf', { name: 'pdf-processing' })]),
     ]
     expect(skillFileLabel(renamed, opening('/skills/pdf/SKILL.md'))).toBe(
-      'pdf-processing / SKILL.md',
+      'pdf-processing › SKILL.md',
     )
   })
 

@@ -9,8 +9,9 @@ import {
 const fits = RAIL_WIDTH_PX + LIBRARY_WIDTH_PX + TEXT_COLUMN_PX
 
 describe('libraryPlacement', () => {
-  it('measures the text column as 48rem plus its 1.5rem gutters', () => {
-    expect(TEXT_COLUMN_PX).toBe(768 + 48)
+  it('measures the text column as its 48rem border box, gutters included', () => {
+    expect(TEXT_COLUMN_PX).toBe(768)
+    expect(fits).toBe(1096)
   })
 
   it('takes its own column when the rail, the Library and the text fit', () => {

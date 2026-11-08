@@ -51,7 +51,13 @@ import { LeaveDialog } from './LeaveDialog'
 import { Library, type LibraryHandle } from './Library'
 import { LibraryRail } from './LibraryRail'
 import { LineDiff } from './LineDiff'
-import { isLibraryShortcut, libraryKeyAnswer } from './library-fold'
+import {
+  isEchoOfKey,
+  isLibraryShortcut,
+  isModalOpen,
+  libraryKeyAnswer,
+  railAnswer,
+} from './library-fold'
 import { libraryPlacement } from './library-layout'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { ModelDialog } from './ModelDialog'
@@ -191,20 +197,44 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const focusTreeWhenOpen = useRef(false)
   const viewportWidth = useViewportWidth()
   const placement = libraryPlacement(viewportWidth)
-  const toggleLibrary = useEffectEvent(() => {
-    const answer = libraryKeyAnswer({
-      open: libraryOpen,
-      focused: libraryHandle.current?.holdsFocus() ?? false,
-    })
-    if (answer === 'open-and-focus') {
-      focusTreeWhenOpen.current = true
-      setLibraryOpen(true)
-    } else if (answer === 'focus') libraryHandle.current?.focusTree()
-    else {
-      setLibraryOpen(false)
-      focusEditor()
-    }
+  const lastLibraryKeyAt = useRef<number | null>(null)
+  const applyLibraryAnswer = useCallback(
+    (answer: ReturnType<typeof libraryKeyAnswer>): void => {
+      if (answer === 'open-and-focus') {
+        focusTreeWhenOpen.current = true
+        setLibraryOpen(true)
+      } else if (answer === 'focus') libraryHandle.current?.focusTree()
+      else {
+        setLibraryOpen(false)
+        focusEditor()
+      }
+    },
+    [focusEditor],
+  )
+  const toggleLibrary = useEffectEvent(() =>
+    applyLibraryAnswer(
+      libraryKeyAnswer({
+        open: libraryOpen,
+        focused: libraryHandle.current?.holdsFocus() ?? false,
+      }),
+    ),
+  )
+  const requestLibrary = useEffectEvent(() => {
+    if (isModalOpen(document)) return
+    if (isEchoOfKey(lastLibraryKeyAt.current, Date.now())) return
+    toggleLibrary()
   })
+  const toggleLibraryFromRail = useCallback(
+    () => applyLibraryAnswer(railAnswer(libraryOpen)),
+    [applyLibraryAnswer, libraryOpen],
+  )
+  const foldOverlay = useCallback(() => {
+    if (placement === 'overlay') setLibraryOpen(false)
+  }, [placement])
+  const focusTextFromLibrary = useCallback(() => {
+    focusEditor()
+    foldOverlay()
+  }, [focusEditor, foldOverlay])
   useEffect(() => {
     if (!libraryOpen || !focusTreeWhenOpen.current) return
     focusTreeWhenOpen.current = false
@@ -214,15 +244,17 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     if (library === undefined) return
     const apple = detectApplePlatform()
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (!isLibraryShortcut(event, apple)) return
+      if (!isLibraryShortcut(event, apple) || isModalOpen(document)) return
       event.preventDefault()
       event.stopPropagation()
-      if (!event.repeat) toggleLibrary()
+      if (event.repeat) return
+      lastLibraryKeyAt.current = Date.now()
+      toggleLibrary()
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [library])
-  useEffect(() => libraryRequests?.(toggleLibrary), [libraryRequests])
+  useEffect(() => libraryRequests?.(requestLibrary), [libraryRequests])
   const openRef = file.session?.ref ?? null
   const openSkill =
     library === undefined ||
@@ -347,19 +379,19 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       textFocusFor.current = focusText ? ref : null
       if (focusText && ref === openRef) {
         textFocusFor.current = null
-        focusEditor()
+        focusTextFromLibrary()
         return
       }
       await file.openRef(ref)
       textFocusFor.current = null
     },
-    [file, openRef, focusEditor],
+    [file, openRef, focusTextFromLibrary],
   )
   useEffect(() => {
     if (openRef === null || textFocusFor.current !== openRef) return
     textFocusFor.current = null
-    focusEditor()
-  }, [openRef, focusEditor])
+    focusTextFromLibrary()
+  }, [openRef, focusTextFromLibrary])
   const { createSkill: createLibrarySkill } = libraryControls
   const createSkill = useCallback(
     async (request: CreateSkillRequest): Promise<NewSkillOutcome> => {
@@ -607,7 +639,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     page
   ) : (
     <div className="flex items-start">
-      <LibraryRail open={libraryOpen} onToggle={toggleLibrary} />
+      <LibraryRail open={libraryOpen} onToggle={toggleLibraryFromRail} />
       <Library
         open={libraryOpen}
         placement={placement}
@@ -617,7 +649,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         activeRef={openRef}
         onOpen={openFromLibrary}
         onNewSkill={() => setNewSkillOpen(true)}
-        onEscape={focusEditor}
+        onEscape={focusTextFromLibrary}
       />
       {newSkillOpen && libraryControls.state.status === 'ready' ? (
         <NewSkillDialog

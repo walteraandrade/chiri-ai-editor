@@ -52,6 +52,19 @@ describe('menuTemplate', () => {
     expect(onLibrary).toHaveBeenCalledOnce()
   })
 
+  it('leaves the Library key to the renderer where the menu would also fire it', () => {
+    const accelerated = (platform: NodeJS.Platform) => {
+      const view = menuTemplate(vi.fn(), vi.fn(), platform).find(
+        (menu) => menu.label === 'View',
+      )
+      const items = Array.isArray(view?.submenu) ? view.submenu : []
+      return items.find((item) => item.label === 'Library')?.registerAccelerator
+    }
+    expect(accelerated('linux')).toBe(false)
+    expect(accelerated('win32')).toBe(false)
+    expect(accelerated('darwin')).toBe(true)
+  })
+
   it('keeps the View menu items it replaced', () => {
     const view = menuTemplate(vi.fn(), vi.fn()).find(
       (menu) => menu.label === 'View',
