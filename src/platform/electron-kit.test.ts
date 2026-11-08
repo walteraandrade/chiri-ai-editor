@@ -137,6 +137,7 @@ const setup = (
     subscribe: () => () => undefined,
   }
   const preferencesRequests = (): (() => void) => () => undefined
+  const libraryRequests = (): (() => void) => () => undefined
   const quickActions = createQuickActionStore({
     read: async () => null,
     write: async () => undefined,
@@ -151,13 +152,24 @@ const setup = (
     external: fakeExternal,
     launches,
     preferencesRequests,
+    libraryRequests,
     now: () => 1000,
     hasApiKey: true,
     onHide: (flush) => {
       hide.flush = flush
     },
   })
-  return { kit, api, kept, entries, hide, files, launches, preferencesRequests }
+  return {
+    kit,
+    api,
+    kept,
+    entries,
+    hide,
+    files,
+    launches,
+    preferencesRequests,
+    libraryRequests,
+  }
 }
 
 const session = (savedText: string, ref: string | null = PATH) => ({
@@ -373,6 +385,11 @@ describe('createElectronKit launched with a file', () => {
   it('carries the Preferences requests it was given', async () => {
     const { kit, preferencesRequests } = setup()
     expect((await kit).preferencesRequests).toBe(preferencesRequests)
+  })
+
+  it('carries the Library requests it was given', async () => {
+    const { kit, libraryRequests } = setup()
+    expect((await kit).libraryRequests).toBe(libraryRequests)
   })
 })
 

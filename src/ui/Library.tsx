@@ -1,7 +1,9 @@
 import {
   type KeyboardEvent,
   type ReactNode,
+  type Ref as ReactRef,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -17,9 +19,18 @@ import {
 } from '../skills/library-tree'
 import { skillCount } from '../skills/library-view'
 import { type TreeAction, treeKey } from '../skills/tree-keys'
+import type { LibraryPlacement } from './library-layout'
 import type { LibraryControls } from './use-library'
 
+export type LibraryHandle = {
+  readonly focusTree: () => void
+  readonly holdsFocus: () => boolean
+}
+
 type LibraryProps<Ref> = {
+  readonly open: boolean
+  readonly placement: LibraryPlacement
+  readonly handleRef: ReactRef<LibraryHandle>
   readonly library: LibraryKit<Ref>
   readonly controls: LibraryControls
   readonly activeRef: Ref | null
@@ -138,6 +149,9 @@ function Row({ item, isActive, focused, holdsOpenFile, onRemove }: RowProps) {
 }
 
 export function Library<Ref>({
+  open,
+  placement,
+  handleRef,
   library,
   controls: { state, refresh, addRoot, removeRoot },
   activeRef,
@@ -155,6 +169,8 @@ export function Library<Ref>({
     undefined,
   )
   const treeRef = useRef<HTMLDivElement>(null)
+  const asideRef = useRef<HTMLElement>(null)
+  const addRef = useRef<HTMLButtonElement>(null)
 
   const isActiveFile = (path: string): boolean =>
     activeRef !== null && library.toRef(path) === activeRef
@@ -197,6 +213,15 @@ export function Library<Ref>({
       focusItem(next)
     else setFocusedId(next)
   })
+
+  useImperativeHandle(handleRef, () => ({
+    focusTree: () => {
+      if (tabbableId !== null) focusItem(tabbableId)
+      else addRef.current?.focus()
+    },
+    holdsFocus: () =>
+      asideRef.current?.contains(document.activeElement) ?? false,
+  }))
 
   const focusItem = (id: string): void => {
     setFocusedId(id)
@@ -318,8 +343,16 @@ export function Library<Ref>({
 
   return (
     <aside
+      id="library-panel"
+      ref={asideRef}
+      tabIndex={-1}
+      hidden={!open}
       aria-label="Library"
-      className="sticky top-0 flex h-screen w-72 shrink-0 flex-col bg-surface"
+      className={`library-in flex h-screen w-72 shrink-0 flex-col bg-surface focus:outline-none ${
+        placement === 'column'
+          ? 'sticky top-0'
+          : 'fixed top-0 left-10 z-40 border-hairline border-r'
+      }`}
       onKeyDown={(event) => {
         if (event.key === 'Escape') onEscape()
       }}
@@ -353,6 +386,7 @@ export function Library<Ref>({
             Refresh
           </button>
           <button
+            ref={addRef}
             type="button"
             className="cm-ai-button"
             title="Add a project folder of skills, such as .claude/skills"

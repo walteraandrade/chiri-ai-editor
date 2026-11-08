@@ -21,7 +21,7 @@ export const skillFileLabel = (
     .flatMap((skill) =>
       skill.files
         .filter(({ path }) => isOpenFile(path))
-        .map((file) => `${skill.name} / ${file.name}`),
+        .map((file) => `${skill.name} › ${file.name}`),
     )
     .at(0)
 

@@ -59,6 +59,7 @@ type ElectronKitDeps = {
   readonly external: ExternalKit<string>
   readonly launches: LaunchKit<string>
   readonly preferencesRequests: (listener: () => void) => () => void
+  readonly libraryRequests: (listener: () => void) => () => void
   readonly quickActions: QuickActionStore
   readonly now: () => number
   readonly hasApiKey: boolean
@@ -146,6 +147,7 @@ export const createElectronKit = async ({
   external,
   launches,
   preferencesRequests,
+  libraryRequests,
   quickActions,
   now,
   hasApiKey,
@@ -243,6 +245,7 @@ export const createElectronKit = async ({
     external,
     launches,
     preferencesRequests,
+    libraryRequests,
     quickActions,
   }
 }
@@ -270,6 +273,7 @@ export const browserElectronKit: PlatformKitFactory<string> =
       external: createElectronExternal(api),
       launches: createElectronLaunches(api),
       preferencesRequests: api.onPreferencesRequest,
+      libraryRequests: api.onLibraryRequest,
       quickActions: createQuickActionStore({
         read: api.loadQuickActions,
         write: api.saveQuickActions,

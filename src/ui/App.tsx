@@ -48,12 +48,22 @@ import { FullHistory } from './FullHistory'
 import { Hint } from './Hint'
 import { KeyDialog } from './KeyDialog'
 import { LeaveDialog } from './LeaveDialog'
-import { Library } from './Library'
+import { Library, type LibraryHandle } from './Library'
+import { LibraryRail } from './LibraryRail'
 import { LineDiff } from './LineDiff'
+import {
+  isEchoOfKey,
+  isLibraryShortcut,
+  isModalOpen,
+  libraryKeyAnswer,
+  railAnswer,
+} from './library-fold'
+import { libraryPlacement } from './library-layout'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { ModelDialog } from './ModelDialog'
 import { NewSkillDialog } from './NewSkillDialog'
 import { PreferencesDialog } from './PreferencesDialog'
+import { detectApplePlatform } from './platform'
 import { isPreferencesShortcut } from './preferences-shortcut'
 import { ReviewToolbar } from './ReviewToolbar'
 import { Timeline } from './Timeline'
@@ -70,6 +80,7 @@ import { useQuickActions } from './use-quick-actions'
 import type { SkillUnsaved } from './use-skill-unsaved'
 import { useTheme } from './use-theme'
 import { useVersionTexts } from './use-version-texts'
+import { useViewportWidth } from './use-viewport-width'
 import { VersionBar } from './VersionBar'
 
 type AppProps<Ref> = {
@@ -89,6 +100,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     external,
     launches,
     preferencesRequests,
+    libraryRequests,
   } = kit
   const key = useKeyState(kit)
   const initialDoc = unsavedText.initial
@@ -180,6 +192,69 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
   const libraryControls = useLibrary(library, showToast)
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const libraryHandle = useRef<LibraryHandle>(null)
+  const focusTreeWhenOpen = useRef(false)
+  const viewportWidth = useViewportWidth()
+  const placement = libraryPlacement(viewportWidth)
+  const lastLibraryKeyAt = useRef<number | null>(null)
+  const applyLibraryAnswer = useCallback(
+    (answer: ReturnType<typeof libraryKeyAnswer>): void => {
+      if (answer === 'open-and-focus') {
+        focusTreeWhenOpen.current = true
+        setLibraryOpen(true)
+      } else if (answer === 'focus') libraryHandle.current?.focusTree()
+      else {
+        setLibraryOpen(false)
+        focusEditor()
+      }
+    },
+    [focusEditor],
+  )
+  const toggleLibrary = useEffectEvent(() =>
+    applyLibraryAnswer(
+      libraryKeyAnswer({
+        open: libraryOpen,
+        focused: libraryHandle.current?.holdsFocus() ?? false,
+      }),
+    ),
+  )
+  const requestLibrary = useEffectEvent(() => {
+    if (isModalOpen(document)) return
+    if (isEchoOfKey(lastLibraryKeyAt.current, Date.now())) return
+    toggleLibrary()
+  })
+  const toggleLibraryFromRail = useCallback(
+    () => applyLibraryAnswer(railAnswer(libraryOpen)),
+    [applyLibraryAnswer, libraryOpen],
+  )
+  const foldOverlay = useCallback(() => {
+    if (placement === 'overlay') setLibraryOpen(false)
+  }, [placement])
+  const focusTextFromLibrary = useCallback(() => {
+    focusEditor()
+    foldOverlay()
+  }, [focusEditor, foldOverlay])
+  useEffect(() => {
+    if (!libraryOpen || !focusTreeWhenOpen.current) return
+    focusTreeWhenOpen.current = false
+    libraryHandle.current?.focusTree()
+  }, [libraryOpen])
+  useEffect(() => {
+    if (library === undefined) return
+    const apple = detectApplePlatform()
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!isLibraryShortcut(event, apple) || isModalOpen(document)) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      lastLibraryKeyAt.current = Date.now()
+      toggleLibrary()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [library])
+  useEffect(() => libraryRequests?.(requestLibrary), [libraryRequests])
   const openRef = file.session?.ref ?? null
   const openSkill =
     library === undefined ||
@@ -304,19 +379,19 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       textFocusFor.current = focusText ? ref : null
       if (focusText && ref === openRef) {
         textFocusFor.current = null
-        focusEditor()
+        focusTextFromLibrary()
         return
       }
       await file.openRef(ref)
       textFocusFor.current = null
     },
-    [file, openRef, focusEditor],
+    [file, openRef, focusTextFromLibrary],
   )
   useEffect(() => {
     if (openRef === null || textFocusFor.current !== openRef) return
     textFocusFor.current = null
-    focusEditor()
-  }, [openRef, focusEditor])
+    focusTextFromLibrary()
+  }, [openRef, focusTextFromLibrary])
   const { createSkill: createLibrarySkill } = libraryControls
   const createSkill = useCallback(
     async (request: CreateSkillRequest): Promise<NewSkillOutcome> => {
@@ -503,7 +578,11 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         </div>
       </main>
       <div className="pointer-events-none sticky bottom-0 z-30">
-        <div className="pointer-events-auto mb-4 ml-4 flex w-fit gap-2 bg-canvas text-sm">
+        <div
+          className={`pointer-events-auto mb-4 flex w-fit gap-2 bg-canvas text-sm ${
+            libraryOpen && placement === 'overlay' ? 'ml-76' : 'ml-4'
+          }`}
+        >
           <button
             type="button"
             className="cm-ai-button"
@@ -560,13 +639,17 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     page
   ) : (
     <div className="flex items-start">
+      <LibraryRail open={libraryOpen} onToggle={toggleLibraryFromRail} />
       <Library
+        open={libraryOpen}
+        placement={placement}
+        handleRef={libraryHandle}
         library={library}
         controls={libraryControls}
         activeRef={openRef}
         onOpen={openFromLibrary}
         onNewSkill={() => setNewSkillOpen(true)}
-        onEscape={focusEditor}
+        onEscape={focusTextFromLibrary}
       />
       {newSkillOpen && libraryControls.state.status === 'ready' ? (
         <NewSkillDialog

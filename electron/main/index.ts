@@ -7,6 +7,7 @@ import {
   Menu,
 } from 'electron'
 import {
+  LIBRARY_REQUEST_CHANNEL,
   PREFERENCES_REQUEST_CHANNEL,
   SHELL_INFO_CHANNEL,
   type ShellInfo,
@@ -114,8 +115,9 @@ const start = (): void => {
     const window = createWindow()
     Menu.setApplicationMenu(
       Menu.buildFromTemplate(
-        menuTemplate(() =>
-          window.webContents.send(PREFERENCES_REQUEST_CHANNEL),
+        menuTemplate(
+          () => window.webContents.send(PREFERENCES_REQUEST_CHANNEL),
+          () => window.webContents.send(LIBRARY_REQUEST_CHANNEL),
         ),
       ),
     )
