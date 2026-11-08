@@ -116,6 +116,13 @@ describe('readFrontmatter', () => {
     })
   })
 
+  it('reports an unclosed frontmatter followed by many blank lines', () => {
+    expect(readFrontmatter('---\nname: demo\n\n\n\n')).toMatchObject({
+      kind: 'invalid',
+      problem: { rule: 'frontmatter-not-closed' },
+    })
+  })
+
   it('reports an unclosed frontmatter at the very end of the Document', () => {
     expect(readFrontmatter('---\nname: demo')).toMatchObject({
       kind: 'invalid',

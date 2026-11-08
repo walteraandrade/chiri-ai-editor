@@ -45,10 +45,37 @@ const nearestBlock = (
     undefined,
   )
 
+const skipBackward = (
+  text: string,
+  end: number,
+  matches: (char: string) => boolean,
+): number => {
+  let index = end
+  while (index > 0 && matches(text.charAt(index - 1))) index -= 1
+  return index
+}
+
+const isBlank = (char: string): boolean => char === ' ' || char === '\t'
+const isHash = (char: string): boolean => char === '#'
+
+const stripClosingHashes = (line: string): string => {
+  const afterHashes = skipBackward(line, line.length, isBlank)
+  const beforeHashes = skipBackward(line, afterHashes, isHash)
+  const beforeSpace = skipBackward(line, beforeHashes, isBlank)
+  return beforeHashes < afterHashes && beforeSpace < beforeHashes
+    ? line.slice(0, beforeSpace)
+    : line
+}
+
+const isLineBreak = (char: string): boolean => char === '\r' || char === '\n'
+
+const countTrailingBreaks = (text: string): number =>
+  text.length - skipBackward(text, text.length, isLineBreak)
+
 export const headingText = (block: Block): string => {
   const lines = block.text.split('\n')
   const content = lines[0]?.startsWith('#')
-    ? lines[0].replace(/^#{1,6}[ \t]*/, '').replace(/[ \t]+#+[ \t]*$/, '')
+    ? stripClosingHashes(lines[0].replace(/^#{1,6}[ \t]*/, ''))
     : lines.slice(0, -1).join(' ')
   return content.trim()
 }
@@ -57,7 +84,6 @@ const overlaps = (block: Block, from: number, to: number): boolean =>
   block.from < to && block.to > from
 
 const LEADING_BREAKS = /^[\r\n]*/
-const TRAILING_BREAKS = /[\r\n]*$/
 
 const resolveSelectionTarget = (
   blocks: readonly Block[],
@@ -67,7 +93,7 @@ const resolveSelectionTarget = (
   const selected = text.slice(selection.from, selection.to)
   if (selected.trim() === '') return undefined
   const from = selection.from + (LEADING_BREAKS.exec(selected)?.[0].length ?? 0)
-  const to = selection.to - (TRAILING_BREAKS.exec(selected)?.[0].length ?? 0)
+  const to = selection.to - countTrailingBreaks(selected)
   return {
     source: 'selection',
     from,

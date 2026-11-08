@@ -1,7 +1,8 @@
-const leadingWhitespace = (text: string): string => /^\s*/.exec(text)?.[0] ?? ''
+const leadingWhitespace = (text: string): string =>
+  text.slice(0, text.length - text.trimStart().length)
 
 const trailingWhitespace = (text: string): string =>
-  text.trim() === '' ? '' : (/\s*$/.exec(text)?.[0] ?? '')
+  text.trim() === '' ? '' : text.slice(text.trimEnd().length)
 
 export const matchEdgeWhitespace = (
   original: string,

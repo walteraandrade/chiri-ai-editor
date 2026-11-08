@@ -29,4 +29,13 @@ describe('matchEdgeWhitespace', () => {
   it('handles an original made only of whitespace', () => {
     expect(matchEdgeWhitespace('  ', 'Hi')).toBe('  Hi')
   })
+
+  it('treats tabs and carriage returns as edge whitespace', () => {
+    expect(matchEdgeWhitespace('\t\r\nHello \t', '  Hi\n')).toBe('\t\r\nHi \t')
+  })
+
+  it('handles an empty original and an empty replacement', () => {
+    expect(matchEdgeWhitespace('', ' Hi ')).toBe('Hi')
+    expect(matchEdgeWhitespace(' x ', '')).toBe('  ')
+  })
 })

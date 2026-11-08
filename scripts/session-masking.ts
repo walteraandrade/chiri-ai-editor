@@ -45,10 +45,13 @@ export const maskSecrets = (
   text: string,
   exactSecrets: readonly string[] = [],
 ): MaskResult => {
-  const afterExact = usableSecrets(exactSecrets).reduce(maskExact, {
-    text,
-    spans: 0,
-  })
+  const afterExact = usableSecrets(exactSecrets).reduce(
+    (acc, secret) => maskExact(acc, secret),
+    {
+      text,
+      spans: 0,
+    },
+  )
   const patternSpans = [...afterExact.text.matchAll(KEY_PATTERN)].length
   return {
     text: afterExact.text.replace(KEY_PATTERN, MASK),

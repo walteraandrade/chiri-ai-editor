@@ -11,15 +11,17 @@ type WriteReport = {
   readonly worked: () => void
 }
 
-const settle = (
+const settle = async (
   send: () => Promise<void>,
   { failed, worked }: WriteReport,
-): void => {
+): Promise<void> => {
   try {
-    send().then(worked, failed)
+    await send()
   } catch (error) {
     failed(error)
+    return
   }
+  worked()
 }
 
 export const createElectronUnsavedStore = (
@@ -27,7 +29,10 @@ export const createElectronUnsavedStore = (
   report: WriteReport,
 ): UnsavedStore<string> => ({
   load: (path) => bridge.unsavedLoad(path),
-  keep: (path, unsaved) =>
-    settle(() => bridge.unsavedSave(path, unsaved), report),
-  drop: (path) => settle(() => bridge.unsavedClear(path), report),
+  keep: (path, unsaved) => {
+    void settle(() => bridge.unsavedSave(path, unsaved), report)
+  },
+  drop: (path) => {
+    void settle(() => bridge.unsavedClear(path), report)
+  },
 })

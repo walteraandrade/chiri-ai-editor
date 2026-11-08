@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   exportSessions,
   listSessionFiles,
+  resolveInside,
   type SessionFile,
   swapInto,
   verifyExport,
@@ -625,5 +626,16 @@ describe('swapInto', () => {
     expect(await listTree(dest)).toEqual(['old.jsonl'])
     expect(await listTree(staging)).toEqual(['new.jsonl'])
     expect(await readdir(root)).not.toContain('.export-sessions-abc.previous')
+  })
+})
+
+describe('resolveInside', () => {
+  it('resolves paths under the base', () => {
+    expect(resolveInside('/base', 'a', 'b.jsonl')).toBe('/base/a/b.jsonl')
+  })
+
+  it('rejects paths that escape the base', () => {
+    expect(() => resolveInside('/base', '..', 'etc')).toThrow(/escapes/)
+    expect(() => resolveInside('/base', '/etc/passwd')).toThrow(/escapes/)
   })
 })
