@@ -11,6 +11,7 @@ export type TreeNode = {
   readonly children: readonly TreeNode[]
   readonly path?: string
   readonly openable?: boolean
+  readonly inSkill?: boolean
   readonly removable?: boolean
   readonly detail?: string
   readonly note?: string
@@ -51,7 +52,8 @@ const evalCount = (folder: TreeNode): number =>
     ({ kind, children }) =>
       kind === 'folder' &&
       children.some(
-        ({ kind: child, name }) => child === 'file' && name === PROMPT_FILE,
+        ({ kind: child, name, inSkill }) =>
+          child === 'file' && name === PROMPT_FILE && inSkill === true,
       ),
   ).length
 
@@ -59,6 +61,7 @@ const evalDetail = (count: number): string | undefined =>
   count === 0 ? undefined : `${count} ${count === 1 ? 'Eval' : 'Evals'}`
 
 const buildLevel = (
+  skillPath: string,
   ownerId: string,
   prefix: string,
   entries: readonly Entry[],
@@ -73,6 +76,7 @@ const buildLevel = (
         name,
         path: leaf.file.path,
         openable: leaf.file.isMarkdown,
+        inSkill: leaf.file.path === `${skillPath}/${prefix}${name}`,
         children: [],
       }
     const id = `${ownerId}/${prefix}${name}`
@@ -81,6 +85,7 @@ const buildLevel = (
       kind: 'folder',
       name,
       children: buildLevel(
+        skillPath,
         ownerId,
         `${prefix}${name}/`,
         group
@@ -102,6 +107,7 @@ const buildSkill = (skill: Skill): TreeNode => ({
   description: skill.description,
   problem: skill.problem,
   children: buildLevel(
+    skill.realPath,
     skillId(skill.realPath),
     '',
     skill.files.map((file) => ({ file, parts: file.name.split('/') })),
@@ -116,30 +122,19 @@ const rootNote = (root: LibraryRoot, skills: readonly Skill[]) =>
       ? 'No skills here'
       : undefined
 
+const buildRoot = (root: LibraryRoot): TreeNode => ({
+  id: rootId(root.root),
+  kind: 'root',
+  name: root.label,
+  path: root.root,
+  removable: root.removable,
+  detail: root.readable ? String(root.skills.length) : undefined,
+  note: rootNote(root, root.skills),
+  children: root.skills.map(buildSkill),
+})
+
 export const buildLibraryTree = (roots: LibraryListing): readonly TreeNode[] =>
-  roots.reduce<{
-    readonly seen: ReadonlySet<string>
-    readonly nodes: readonly TreeNode[]
-  }>(
-    ({ seen, nodes }, root) => {
-      const skills = root.skills.filter(({ realPath }) => !seen.has(realPath))
-      const node: TreeNode = {
-        id: rootId(root.root),
-        kind: 'root',
-        name: root.label,
-        path: root.root,
-        removable: root.removable,
-        detail: root.readable ? String(root.skills.length) : undefined,
-        note: rootNote(root, root.skills),
-        children: skills.map(buildSkill),
-      }
-      return {
-        seen: new Set([...seen, ...skills.map(({ realPath }) => realPath)]),
-        nodes: [...nodes, node],
-      }
-    },
-    { seen: new Set(), nodes: [] },
-  ).nodes
+  roots.map(buildRoot)
 
 const flatten = (
   nodes: readonly TreeNode[],

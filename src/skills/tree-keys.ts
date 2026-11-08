@@ -21,6 +21,7 @@ export type TreeAction =
 export type TreeKeyResult = {
   readonly action: TreeAction
   readonly typed: string
+  readonly handled: boolean
 }
 
 const NONE: TreeAction = { kind: 'none' }
@@ -57,7 +58,7 @@ const typeAhead = (
   const prefix = cycling ? (buffer[0] ?? '') : buffer
   const from = cycling ? at + 1 : Math.max(at, 0)
   const found = matchesFrom(items, from, prefix)
-  return { action: focus(found?.node.id), typed: buffer }
+  return { action: focus(found?.node.id), typed: buffer, handled: true }
 }
 
 const isCharacter = (key: string): boolean => [...key].length === 1
@@ -107,17 +108,19 @@ export const treeKey = (
   typed: string,
 ): TreeKeyResult => {
   if (event.ctrlKey || event.metaKey || event.altKey || items.length === 0)
-    return { action: NONE, typed: '' }
+    return { action: NONE, typed: '', handled: false }
   const at = items.findIndex(({ node }) => node.id === focusedId)
   const current = items[at]
   if (event.key === ' ' && typed === '')
     return {
       action: current === undefined ? NONE : activate(current, false),
       typed: '',
+      handled: true,
     }
   const navigation = navigate(items, at, event.key)
-  if (navigation !== undefined) return { action: navigation, typed: '' }
+  if (navigation !== undefined)
+    return { action: navigation, typed: '', handled: true }
   return isCharacter(event.key)
     ? typeAhead(items, at, event.key, typed)
-    : { action: NONE, typed: '' }
+    : { action: NONE, typed: '', handled: false }
 }

@@ -225,3 +225,18 @@ describe('type-ahead', () => {
     expect(press('Escape', 'r').action).toEqual({ kind: 'none' })
   })
 })
+
+describe('handled', () => {
+  it('is true for keys the tree answers to, even when nothing moves', () => {
+    expect(press('ArrowDown', 'r2').handled).toBe(true)
+    expect(press('ArrowUp', 'r').handled).toBe(true)
+    expect(press(' ', 'f2').handled).toBe(true)
+    expect(press('z', 's1').handled).toBe(true)
+  })
+
+  it('is false for Tab, Escape and keys with modifiers', () => {
+    expect(press('Tab', 'r').handled).toBe(false)
+    expect(press('Escape', 'r').handled).toBe(false)
+    expect(press('b', 'r', '', { ctrlKey: true }).handled).toBe(false)
+  })
+})

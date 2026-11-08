@@ -308,6 +308,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         return
       }
       await file.openRef(ref)
+      textFocusFor.current = null
     },
     [file, openRef, focusEditor],
   )

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import { createFakeFileSystem, link } from './fake-file-system'
 import type { LibraryListing, LibraryRoot } from './library'
 import {
   ancestorIds,
   buildLibraryTree,
+  openFileId,
   type TreeNode,
   visibleItems,
 } from './library-tree'
-import type { Skill, SkillFile } from './scan-skills'
+import { type Skill, type SkillFile, scanSkillRoots } from './scan-skills'
 
 const file = (path: string, name: string): SkillFile => ({
   path,
@@ -155,14 +157,38 @@ describe('buildLibraryTree', () => {
     ).toBeUndefined()
   })
 
-  it('shows a Skill reached through two roots once', () => {
-    const shared = skill('pdf')
-    const tree = buildLibraryTree([
-      root([shared]),
-      root([{ ...shared, folderName: 'pdf-link' }], { root: '/project' }),
-    ])
-    expect(tree[0]?.children).toHaveLength(1)
-    expect(tree[1]?.children).toHaveLength(0)
+  it('shows a Skill reached through a link and through its target once', async () => {
+    const real = '/agents/shared'
+    const scans = await scanSkillRoots(
+      createFakeFileSystem({
+        [`${real}/SKILL.md`]: '---\nname: shared\n---\n',
+        '/claude/shared': link(real),
+      }),
+      ['/claude', '/agents'],
+    )
+    const tree = buildLibraryTree(
+      scans.map((scan) => ({ ...scan, label: scan.root, removable: false })),
+    )
+    expect(tree.flatMap(({ children }) => names(children))).toEqual(['shared'])
+  })
+
+  it('does not count an Eval whose prompt.md is a link', async () => {
+    const scans = await scanSkillRoots(
+      createFakeFileSystem({
+        '/s/a/SKILL.md': '---\nname: a\n---\n',
+        '/s/a/evals/one/prompt.md': 'p',
+        '/s/a/evals/two/prompt.md': link('/elsewhere/prompt.md'),
+        '/elsewhere/prompt.md': 'p',
+      }),
+      ['/s'],
+    )
+    const tree = buildLibraryTree(
+      scans.map((scan) => ({ ...scan, label: scan.root, removable: false })),
+    )
+    const evals = tree[0]?.children[0]?.children.find(
+      ({ name }) => name === 'evals',
+    )
+    expect(evals?.detail).toBe('1 Eval')
   })
 
   it('keeps unreadable and empty roots with the note shown today', () => {
@@ -280,5 +306,20 @@ describe('ancestorIds', () => {
 
   it('is empty when no file matches', () => {
     expect(ancestorIds(tree, () => false)).toEqual([])
+  })
+})
+
+describe('openFileId', () => {
+  const tree = buildLibraryTree([
+    root([skill('a', ['SKILL.md', 'refs/x.md']), skill('b')]),
+  ])
+
+  it('is the id of the file node that is open, even in a folded folder', () => {
+    const id = openFileId(tree, (path) => path === '/skills/a/refs/x.md')
+    expect(id).toBe('skill:/skills/a/refs/x.md')
+  })
+
+  it('is undefined when no file is open', () => {
+    expect(openFileId(tree, () => false)).toBeUndefined()
   })
 })

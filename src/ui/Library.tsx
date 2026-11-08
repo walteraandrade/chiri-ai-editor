@@ -1,6 +1,7 @@
 import {
   type KeyboardEvent,
   type ReactNode,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -35,23 +36,33 @@ const INDENT_PX = 12
 const labelId = (id: string): string =>
   `library-label-${encodeURIComponent(id)}`
 
+const detailId = (id: string): string =>
+  `library-detail-${encodeURIComponent(id)}`
+
+const noteId = (id: string): string => `library-note-${encodeURIComponent(id)}`
+
 const caret = (item: TreeItem): string =>
   !item.expandable ? '' : item.expanded ? '▾' : '▸'
 
 type RowProps = {
   readonly item: TreeItem
   readonly isActive: boolean
+  readonly focused: boolean
   readonly holdsOpenFile: boolean
   readonly onRemove: (node: TreeNode) => void
 }
 
-function Row({ item, isActive, holdsOpenFile, onRemove }: RowProps) {
+function Row({ item, isActive, focused, holdsOpenFile, onRemove }: RowProps) {
   const { node, level } = item
   const faint = node.kind === 'file' && node.openable !== true
   return (
     <div
-      className={`group/row flex flex-col gap-0.5 py-1 pr-3 text-left group-focus/item:bg-canvas group-focus/item:outline group-focus/item:outline-1 group-focus/item:outline-accent group-focus/item:-outline-offset-1 ${
-        isActive ? 'bg-canvas' : 'hover:bg-canvas'
+      className={`group/row flex flex-col gap-0.5 py-1 pr-3 text-left ${
+        focused
+          ? 'bg-canvas outline outline-1 outline-accent -outline-offset-1'
+          : isActive
+            ? 'bg-canvas'
+            : 'hover:bg-canvas'
       }`}
       style={{ paddingLeft: `${(level - 1) * INDENT_PX + 12}px` }}
       title={node.kind === 'file' ? node.path : undefined}
@@ -61,14 +72,12 @@ function Row({ item, isActive, holdsOpenFile, onRemove }: RowProps) {
           aria-hidden="true"
           className={`w-2 shrink-0 text-xs ${holdsOpenFile ? 'text-accent' : 'text-ink-faint'}`}
         >
-          {node.kind === 'file' ? '' : caret(item)}
+          {node.kind === 'file' ? (
+            <span className={`block size-1.5 ${isActive ? 'bg-accent' : ''}`} />
+          ) : (
+            caret(item)
+          )}
         </span>
-        {node.kind === 'file' ? (
-          <span
-            aria-hidden="true"
-            className={`size-1.5 shrink-0 ${isActive ? 'bg-accent' : ''}`}
-          />
-        ) : null}
         <span
           id={labelId(node.id)}
           className={`min-w-0 truncate ${
@@ -84,7 +93,10 @@ function Row({ item, isActive, holdsOpenFile, onRemove }: RowProps) {
           {node.name}
         </span>
         {node.detail === undefined ? null : (
-          <span className="shrink-0 text-ink-faint text-xs">
+          <span
+            id={detailId(node.id)}
+            className="shrink-0 text-ink-faint text-xs"
+          >
             · {node.detail}
           </span>
         )}
@@ -105,7 +117,10 @@ function Row({ item, isActive, holdsOpenFile, onRemove }: RowProps) {
         ) : null}
       </span>
       {node.kind === 'skill' ? (
-        <span className="hidden pl-4 group-focus/item:block group-hover/row:block">
+        <span
+          id={noteId(node.id)}
+          className={`pl-4 ${focused ? 'block' : 'hidden group-hover/row:block'}`}
+        >
           {node.description === undefined ? null : (
             <span className="line-clamp-2 block text-ink-muted text-xs">
               {node.description}
@@ -132,6 +147,9 @@ export function Library<Ref>({
 }: LibraryProps<Ref>) {
   const [choices, setChoices] = useState<Choices>({})
   const [focusedId, setFocusedId] = useState<string | null>(null)
+  const [hotId, setHotId] = useState<string | null>(null)
+  const lastItems = useRef<readonly TreeItem[]>([])
+  const inTree = useRef(false)
   const typed = useRef('')
   const typedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -156,6 +174,30 @@ export function Library<Ref>({
       ? activeId
       : (items[0]?.node.id ?? null)
 
+  useEffect(() => {
+    if (activeId !== undefined) setFocusedId(null)
+  }, [activeId])
+
+  useEffect(() => {
+    const previous = lastItems.current
+    lastItems.current = items
+    if (focusedId === null || itemsById.has(focusedId)) return
+    const parents = new Map(
+      previous.map(({ node, parentId }) => [node.id, parentId]),
+    )
+    const survivor = (id: string | null | undefined): string | undefined =>
+      id == null
+        ? undefined
+        : itemsById.has(id)
+          ? id
+          : survivor(parents.get(id))
+    const next = survivor(focusedId) ?? items[0]?.node.id
+    if (next === undefined) return setFocusedId(null)
+    if (inTree.current || document.activeElement === document.body)
+      focusItem(next)
+    else setFocusedId(next)
+  })
+
   const focusItem = (id: string): void => {
     setFocusedId(id)
     treeRef.current
@@ -177,10 +219,10 @@ export function Library<Ref>({
 
   const removeNode = (node: TreeNode): void => {
     if (node.path === undefined) return
-    const at = items.findIndex((item) => item.node.id === node.id)
-    const neighbor = (items[at - 1] ?? items[at + 1])?.node.id
-    void removeRoot(node.path, node.name).then(() => {
-      if (neighbor !== undefined) focusItem(neighbor)
+    const at = tree.findIndex(({ id }) => id === node.id)
+    const neighbor = (tree[at - 1] ?? tree[at + 1])?.id
+    void removeRoot(node.path, node.name).then((removed) => {
+      if (removed && neighbor !== undefined) focusItem(neighbor)
     })
   }
 
@@ -207,8 +249,7 @@ export function Library<Ref>({
     typedTimer.current = setTimeout(() => {
       typed.current = ''
     }, TYPE_AHEAD_MS)
-    if (result.action.kind !== 'none' || result.typed !== '')
-      event.preventDefault()
+    if (result.handled) event.preventDefault()
     run(result.action)
   }
 
@@ -226,11 +267,30 @@ export function Library<Ref>({
           aria-level={item.level}
           aria-expanded={item.expandable ? item.expanded : undefined}
           aria-current={isActive ? 'true' : undefined}
-          aria-labelledby={labelId(node.id)}
+          aria-labelledby={
+            node.detail === undefined
+              ? labelId(node.id)
+              : `${labelId(node.id)} ${detailId(node.id)}`
+          }
+          aria-describedby={
+            node.kind === 'skill' &&
+            (node.description !== undefined || node.problem !== undefined)
+              ? noteId(node.id)
+              : undefined
+          }
           className="group/item cursor-default focus:outline-none"
           onKeyDown={(event) => onItemKeyDown(event, node.id)}
           onFocus={(event) => {
-            if (event.target === event.currentTarget) setFocusedId(node.id)
+            if (event.target !== event.currentTarget) return
+            inTree.current = true
+            setFocusedId(node.id)
+            setHotId(node.id)
+          }}
+          onBlur={(event) => {
+            if (event.target !== event.currentTarget) return
+            setHotId(null)
+            if (!treeRef.current?.contains(event.relatedTarget))
+              inTree.current = false
           }}
           onClick={(event) => {
             event.stopPropagation()
@@ -241,6 +301,7 @@ export function Library<Ref>({
           <Row
             item={item}
             isActive={isActive}
+            focused={hotId === node.id}
             holdsOpenFile={holding.has(node.id) && node.kind === 'skill'}
             onRemove={removeNode}
           />
