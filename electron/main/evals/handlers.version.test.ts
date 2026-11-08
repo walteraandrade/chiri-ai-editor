@@ -133,6 +133,7 @@ const setup = ({
       versions: (path) => (path === FILE ? versions : []),
       text: (path, id) => (path === FILE && id === 7 ? olderText : null),
     },
+    countEvals: async () => 2,
     openPath: async () => '',
   }
   return { userData, jobs, cleaned, stagedTexts, deps }

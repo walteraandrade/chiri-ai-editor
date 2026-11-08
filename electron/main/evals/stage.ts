@@ -78,8 +78,8 @@ const copyEntry = async (
   return nested.flat()
 }
 
-const countCases = async (stageDir: string): Promise<number> => {
-  const evals = join(stageDir, 'evals')
+export const countEvals = async (skillDir: string): Promise<number> => {
+  const evals = join(skillDir, 'evals')
   const names = (await attempt(() => readdir(evals))) ?? []
   const found = await Promise.all(
     names.map(async (name) => {
@@ -127,7 +127,7 @@ export const stageSkill = async (
     return {
       dir,
       skillText,
-      caseCount: await countCases(dir),
+      caseCount: await countEvals(dir),
       leftOut,
       cleanup,
     }

@@ -79,7 +79,10 @@ const envelopeSchema = z.object({
 type EntryOf = z.infer<typeof entry>
 type GraderDefinition = z.infer<typeof graderDefinition>
 
-const matchesSkillName = (pattern: unknown, skillName: string): boolean => {
+export const matchesSkillName = (
+  pattern: unknown,
+  skillName: string,
+): boolean => {
   if (typeof pattern !== 'string') return true
   try {
     const regex = new RegExp(pattern)

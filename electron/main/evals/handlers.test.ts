@@ -52,6 +52,7 @@ type SetupOptions = {
   readonly executable?: string | null
   readonly skills?: readonly string[]
   readonly version?: string | null
+  readonly evalCount?: number
 }
 
 const setup = ({
@@ -62,6 +63,7 @@ const setup = ({
   executable = '/bin/claude',
   skills = [SKILL],
   version = '2.1.319',
+  evalCount = 2,
 }: SetupOptions = {}): Setup => {
   const userData = mkdtempSync(join(tmpdir(), 'chiri-handlers-test-'))
   made.push(userData)
@@ -97,6 +99,7 @@ const setup = ({
       cleanup,
     }),
     results,
+    countEvals: async () => evalCount,
     history: { versions: () => [], text: () => null },
     openPath,
   }
@@ -117,6 +120,7 @@ describe('status', () => {
       {
         kind: 'ready',
         claudeVersion: '2.1.319',
+        caseCount: 2,
         last: null,
         running: false,
         cancelling: false,
@@ -124,6 +128,13 @@ describe('status', () => {
         stopped: null,
       },
     )
+  })
+
+  it('counts the Evals saved in the Skill folder', async () => {
+    const { deps } = setup({ evalCount: 0 })
+    expect(
+      await createEvalHandlers(deps).status({ skillPath: SKILL }),
+    ).toMatchObject({ kind: 'ready', caseCount: 0 })
   })
 
   it('refuses a path that is not a Skill in the Library', async () => {

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { summaryView } from '../evals/baseline-view'
 import {
   type CaseSignals,
@@ -19,6 +20,7 @@ import {
 import { formatClock } from '../history/time'
 import type { Skill } from '../skills/scan-skills'
 import { EvalRunDialog } from './EvalRunDialog'
+import { FirstEvalGuide } from './FirstEvalGuide'
 import type { useEvalPanel } from './use-eval-panel'
 import { type SkillUnsaved, useSkillUnsaved } from './use-skill-unsaved'
 
@@ -172,6 +174,9 @@ export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
     cancel,
     openReport,
   } = panel
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
   const unsavedFiles = useSkillUnsaved(skill, unsaved)
   const notice = unsavedNotice(unsavedFiles.names)
   const askAfterCheck = async () => {
@@ -180,6 +185,7 @@ export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
   }
   const checking = unsavedFiles.checking
   const last = state.status === 'ready' ? state.last : null
+  const noEvals = state.status === 'ready' && state.caseCount === 0
   const signals = last === null ? [] : last.cases.map(caseSignals)
   const suspicious = signals.filter(({ suspicious }) => suspicious.length > 0)
   const fired = last === null ? null : firedOverall(last.cases)
@@ -257,21 +263,29 @@ export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
               {stoppedText(state.stopped)}
             </p>
           )}
+          {noEvals ? (
+            <FirstEvalGuide
+              skillName={skill.name}
+              onCheck={() => void refresh()}
+            />
+          ) : null}
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="cm-ai-button cm-ai-button-strong"
-              disabled={
-                running ||
-                busyWith !== null ||
-                checking ||
-                dialog.status === 'preparing'
-              }
-              aria-busy={running || undefined}
-              onClick={() => void askAfterCheck()}
-            >
-              {running ? 'Running…' : 'Run Evals'}
-            </button>
+            {noEvals ? null : (
+              <button
+                type="button"
+                className="cm-ai-button cm-ai-button-strong"
+                disabled={
+                  running ||
+                  busyWith !== null ||
+                  checking ||
+                  dialog.status === 'preparing'
+                }
+                aria-busy={running || undefined}
+                onClick={() => void askAfterCheck()}
+              >
+                {running ? 'Running…' : 'Run Evals'}
+              </button>
+            )}
             {running ? (
               <button
                 type="button"
@@ -300,7 +314,7 @@ export function EvalsPage({ skill, busyName, panel, unsaved }: EvalsPageProps) {
               {notice}
             </p>
           )}
-          {last === null ? (
+          {last === null && noEvals ? null : last === null ? (
             <p className="mt-6 border border-hairline px-4 py-6 text-center text-ink-faint">
               No complete run yet. Run Evals to see how this Skill does.
             </p>

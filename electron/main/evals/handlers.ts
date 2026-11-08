@@ -51,6 +51,7 @@ export type EvalDeps = {
   readonly findClaude: () => Promise<string | null>
   readonly runner: EvalRunner
   readonly stage: (skillPath: string, skillText?: string) => Promise<Stage>
+  readonly countEvals: (skillPath: string) => Promise<number>
   readonly results: ResultsStore
   readonly history: HistoryReader
   readonly openPath: (path: string) => Promise<string>
@@ -387,6 +388,7 @@ export const createEvalHandlers = (deps: EvalDeps): EvalHandlers => {
     return {
       kind: 'ready',
       claudeVersion,
+      caseCount: await deps.countEvals(real),
       last: await lastSummary(key),
       running: here,
       cancelling: here && abort.signal.aborted,
