@@ -8,7 +8,7 @@ import {
 } from 'react'
 import type { DocumentHistory } from '../history/session'
 import type { VersionId } from '../history/types'
-import { nextHistoryMode, visibleMode } from '../history/view-mode'
+import { nextPageMode, visiblePage } from './page-mode'
 
 const FLASH_MS = 1200
 
@@ -20,12 +20,13 @@ const scrollBehavior = (): ScrollBehavior =>
 export const useHistoryView = (
   history: Pick<DocumentHistory, 'snapshot' | 'subscribe'>,
   onBackToEditor: () => void,
+  evalsAvailable: boolean,
 ) => {
   const versions = useSyncExternalStore(history.subscribe, history.snapshot)
-  const [requested, dispatch] = useReducer(nextHistoryMode(versions), {
+  const [requested, dispatch] = useReducer(nextPageMode(versions), {
     kind: 'editing',
   })
-  const mode = visibleMode(requested, versions)
+  const mode = visiblePage(requested, versions, evalsAvailable)
   const [hovered, setHovered] = useState<VersionId | null>(null)
   const [flashId, setFlashId] = useState<VersionId | null>(null)
   const close = useCallback(() => dispatch({ type: 'close' }), [])
@@ -45,7 +46,10 @@ export const useHistoryView = (
   useEffect(() => {
     if (editing) return undefined
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !event.defaultPrevented) close()
+      const inDialog =
+        event.target instanceof Element && event.target.closest('dialog')
+      if (event.key === 'Escape' && !event.defaultPrevented && !inDialog)
+        close()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -86,6 +90,14 @@ export const useHistoryView = (
     view,
     close,
     step: useCallback((delta: number) => dispatch({ type: 'step', delta }), []),
+    openEvals: useCallback(() => {
+      dispatch({ type: 'open-evals' })
+      window.scrollTo({ top: 0 })
+    }, []),
+    toggleEvals: useCallback(() => {
+      dispatch({ type: 'toggle-evals' })
+      window.scrollTo({ top: 0 })
+    }, []),
     toggleFull: useCallback(() => {
       dispatch({ type: 'toggle-full' })
       window.scrollTo({ top: 0 })
