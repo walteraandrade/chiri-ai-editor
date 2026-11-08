@@ -22,7 +22,7 @@ type LibraryProps<Ref> = {
   readonly library: LibraryKit<Ref>
   readonly controls: LibraryControls
   readonly activeRef: Ref | null
-  readonly onOpen: (ref: Ref, focusText: boolean) => void
+  readonly onOpen: (ref: Ref, focusText: boolean) => Promise<void>
   readonly onNewSkill: () => void
   readonly onEscape: () => void
 }
@@ -167,12 +167,21 @@ export function Library<Ref>({
     setChoices((previous) => ({ ...previous, [id]: expand }))
 
   const openFile = (node: TreeNode, focusText: boolean): void => {
-    if (node.path !== undefined && node.openable === true)
-      onOpen(library.toRef(node.path), focusText)
+    if (node.path === undefined || node.openable !== true) return
+    const opening = onOpen(library.toRef(node.path), focusText)
+    void opening.then(() => {
+      if (!focusText || document.activeElement === document.body)
+        focusItem(node.id)
+    })
   }
 
   const removeNode = (node: TreeNode): void => {
-    if (node.path !== undefined) void removeRoot(node.path, node.name)
+    if (node.path === undefined) return
+    const at = items.findIndex((item) => item.node.id === node.id)
+    const neighbor = (items[at - 1] ?? items[at + 1])?.node.id
+    void removeRoot(node.path, node.name).then(() => {
+      if (neighbor !== undefined) focusItem(neighbor)
+    })
   }
 
   const run = (action: TreeAction): void => {
@@ -192,7 +201,6 @@ export function Library<Ref>({
     id: string,
   ): void => {
     if (event.target !== event.currentTarget) return
-    event.stopPropagation()
     const result = treeKey(items, id, event, typed.current)
     typed.current = result.typed
     clearTimeout(typedTimer.current)
@@ -226,7 +234,7 @@ export function Library<Ref>({
           }}
           onClick={(event) => {
             event.stopPropagation()
-            if (node.kind === 'file') openFile(node, false)
+            if (node.kind === 'file') openFile(node, true)
             else if (item.expandable) setExpanded(node.id, !item.expanded)
           }}
         >

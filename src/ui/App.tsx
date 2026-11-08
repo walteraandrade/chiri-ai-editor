@@ -300,14 +300,14 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const [newSkillOpen, setNewSkillOpen] = useState(false)
   const textFocusFor = useRef<Ref | null>(null)
   const openFromLibrary = useCallback(
-    (ref: Ref, focusText: boolean): void => {
+    async (ref: Ref, focusText: boolean): Promise<void> => {
       textFocusFor.current = focusText ? ref : null
       if (focusText && ref === openRef) {
         textFocusFor.current = null
         focusEditor()
         return
       }
-      void file.openRef(ref)
+      await file.openRef(ref)
     },
     [file, openRef, focusEditor],
   )
