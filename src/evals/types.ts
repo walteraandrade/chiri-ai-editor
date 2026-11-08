@@ -29,6 +29,7 @@ export type EvalStatus =
   | {
       readonly kind: 'ready'
       readonly claudeVersion: string
+      readonly caseCount: number
       readonly last: EvalSummary | null
       readonly running: boolean
       readonly cancelling: boolean

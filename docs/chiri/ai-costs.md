@@ -195,3 +195,5 @@ Runs of `claude plugin eval` through the Chiri app ([ADR 0018](adr/0018-skill-ev
 | 2026-11-08 | #99 | Second run, started on the page, closed with Esc, another Skill's page open while it ran (cost not read, replaced by run 3) | `haiku` | 2.1.319 | about 0.005 | [99-evals-page.md](verification/99-evals-page.md) |
 | 2026-11-08 | #99 | Third run, page closed with Esc, toast with Show clicked | `haiku` | 2.1.319 | 0.0051 | [99-evals-page.md](verification/99-evals-page.md) |
 | 2026-11-08 | #99 review | Three more runs on the Evals page: edit and save during a run, another Skill's file open at the end, toast Show | `haiku` | 2.1.319 | about 0.015 (one read: 0.0053) | [99-evals-page.md](verification/99-evals-page.md) |
+| 2026-11-08 | #97 | One run on the first Eval guide's example (`quiet`, 1 Eval, 1 run per Arm) | `haiku` | 2.1.319 | 0.0052 | [97-first-eval-guide.md](verification/97-first-eval-guide.md) |
+| 2026-11-08 | #97 review | Recheck with the anchored `input_match` (1 run per Arm) | `haiku` | 2.1.319 | 0.0045 | [97-first-eval-guide.md](verification/97-first-eval-guide.md) |

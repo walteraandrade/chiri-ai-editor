@@ -13,7 +13,7 @@ import { findClaude, isExecutableFile } from './find-claude'
 import { createEvalHandlers } from './handlers'
 import { createResultsStore } from './results'
 import { createSpawnRunner } from './runner'
-import { stageSkill } from './stage'
+import { countEvals, stageSkill } from './stage'
 
 type Trust = (event: IpcMainInvokeEvent) => boolean
 
@@ -35,6 +35,7 @@ export const registerEvalHandlers = (
     runner: createSpawnRunner({ home, path }),
     stage: (skillPath, skillText) =>
       stageSkill(skillPath, undefined, skillText),
+    countEvals,
     history: {
       versions: (file) => history.db().list(file),
       text: (file, id) => history.db().text(file, id),

@@ -3,6 +3,7 @@ import type { RunBaseline } from './baseline'
 import {
   type EvalDialogState,
   type PreparedReady,
+  settleAsk,
   settlePick,
   startPick,
 } from './dialog-state'
@@ -81,5 +82,37 @@ describe('settlePick', () => {
   it('does not reopen a dialog that was closed meanwhile', () => {
     const closed: EvalDialogState = { status: 'closed' }
     expect(settlePick(closed, first, ready(1)).dialog).toBe(closed)
+  })
+})
+
+describe('settleAsk', () => {
+  it('opens the dialog when the Skill has Evals', () => {
+    expect(settleAsk(ready(2))).toEqual({
+      dialog: {
+        status: 'confirm',
+        prepared: ready(2),
+        baseline: none,
+        refreshing: false,
+      },
+      effect: { kind: 'none' },
+    })
+  })
+
+  it('keeps the dialog closed and says there are no Evals', () => {
+    expect(settleAsk(ready(0))).toEqual({
+      dialog: { status: 'closed' },
+      effect: { kind: 'no-evals' },
+    })
+  })
+
+  it('closes on a missing CLI or a failure', () => {
+    expect(settleAsk({ kind: 'no-cli' })).toEqual({
+      dialog: { status: 'closed' },
+      effect: { kind: 'no-cli' },
+    })
+    expect(settleAsk({ kind: 'failed', reason: 'Boom' })).toEqual({
+      dialog: { status: 'closed' },
+      effect: { kind: 'message', reason: 'Boom' },
+    })
   })
 })

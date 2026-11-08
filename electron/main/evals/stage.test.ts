@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { stageSkill } from './stage'
+import { countEvals, stageSkill } from './stage'
 
 const made: string[] = []
 
@@ -173,5 +173,19 @@ describe('stageSkill', () => {
     const temp = scratch()
     await expect(stageSkill(skill, temp)).rejects.toThrow()
     expect(readdirSync(temp)).toEqual([])
+  })
+})
+
+describe('countEvals', () => {
+  it('counts the folders under evals/ that hold a prompt.md', async () => {
+    const { skill } = skillIn()
+    put(skill, 'evals/draft/graders/a.md')
+    expect(await countEvals(skill)).toBe(2)
+  })
+
+  it('is 0 when the Skill has no evals/ folder', async () => {
+    const skill = join(scratch(), 'bare')
+    put(skill, 'SKILL.md')
+    expect(await countEvals(skill)).toBe(0)
   })
 })
