@@ -242,7 +242,7 @@ export function EvalRunDialog({
           </button>
           <button
             type="submit"
-            className="cm-ai-button cm-ai-button-primary"
+            className="cm-ai-button cm-ai-button-strong"
             disabled={!ready}
           >
             Run

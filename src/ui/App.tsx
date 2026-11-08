@@ -67,6 +67,7 @@ import { PreferencesDialog } from './PreferencesDialog'
 import { detectApplePlatform } from './platform'
 import { isPreferencesShortcut } from './preferences-shortcut'
 import { ReviewToolbar } from './ReviewToolbar'
+import { SettingsButton } from './SettingsButton'
 import { Timeline } from './Timeline'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useDescriptionAi } from './use-description-ai'
@@ -519,37 +520,14 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
               onSave={file.save}
               onShowProblems={showFrontmatterProblems}
             />
-            {evalsAvailable ? (
-              <div className="text-sm">
-                <button
-                  type="button"
-                  className="cm-ai-button"
-                  title="How this Skill performs"
-                  aria-pressed={mode.kind === 'evals'}
-                  aria-busy={evalPanel.going !== null || undefined}
-                  onClick={historyView.toggleEvals}
-                >
-                  Evals
-                </button>
-              </div>
-            ) : null}
-            {key.settings ? (
-              <div className="text-sm">
-                <button
-                  type="button"
-                  className="cm-ai-button"
-                  title="OpenRouter key"
-                  onClick={key.openDialog}
-                >
-                  Key
-                </button>
-              </div>
-            ) : null}
             <ReviewToolbar
               status={review}
               controls={reviewControls}
               triggerRef={reviewTriggerRef}
             />
+            {preferencesRequests === undefined ? (
+              <SettingsButton onClick={() => setPreferencesOpen(true)} />
+            ) : null}
           </div>
         </div>
         {file.conflict ? (
@@ -566,6 +544,14 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           onDot={historyView.onDot}
           onNow={historyView.close}
           onToggleFull={historyView.toggleFull}
+          evals={
+            evalsAvailable
+              ? {
+                  busy: evalPanel.going !== null,
+                  onToggle: historyView.toggleEvals,
+                }
+              : undefined
+          }
         />
         {shown ? (
           <VersionBar
@@ -626,35 +612,17 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           />
         </div>
       </main>
-      <div className="pointer-events-none sticky bottom-0 z-30">
-        <div
-          className={`pointer-events-auto mb-4 flex w-fit gap-2 bg-canvas text-sm ${
-            libraryOpen && placement === 'overlay' ? 'ml-76' : 'ml-4'
-          }`}
-        >
-          <button
-            type="button"
-            className="cm-ai-button"
-            onClick={() => setPreferencesOpen(true)}
-          >
-            Preferences
-          </button>
-          <button
-            type="button"
-            className="cm-ai-button"
-            onClick={() => setModelOpen(true)}
-          >
-            Model
-          </button>
-        </div>
-        {key.present ? null : (
+      {key.present ? null : (
+        <div className="pointer-events-none sticky bottom-0 z-30">
           <MissingKeyBanner onSetKey={key.settings && key.openDialog} />
-        )}
-      </div>
+        </div>
+      )}
       {preferencesOpen ? (
         <PreferencesDialog
           theme={theme}
           quickActions={quickActions}
+          onModel={() => setModelOpen(true)}
+          onKey={key.settings ? key.openDialog : undefined}
           onClose={() => setPreferencesOpen(false)}
         />
       ) : null}

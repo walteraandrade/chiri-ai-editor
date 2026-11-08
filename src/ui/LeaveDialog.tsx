@@ -48,7 +48,7 @@ export function LeaveDialog({ name, onAnswer }: LeaveDialogProps) {
         </button>
         <button
           type="button"
-          className="cm-ai-button bg-accent-tint! text-accent-soft!"
+          className="cm-ai-button cm-ai-button-strong"
           onClick={() => onAnswer('save')}
         >
           Save
