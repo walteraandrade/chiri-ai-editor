@@ -239,6 +239,59 @@
   }
 }
 
+.skill-note {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--motion-state) var(--ease-out-quart),
+    opacity var(--motion-state) var(--ease-out-quart);
+}
+
+.skill-note[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.tree-unfold {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation:
+    unfold-in var(--motion-state) var(--ease-out-quart),
+    tree-fade-in var(--motion-state) var(--ease-out-quart);
+}
+
+.tree-unfold > * {
+  min-height: 0;
+  overflow: clip;
+  overflow-clip-margin: 2px;
+}
+
+@keyframes tree-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.skill-note-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  padding-top: 0.125rem;
+}
+
+.timeline-evals[aria-busy="true"] svg {
+  animation: evals-breathe 1.8s var(--ease-out-quart) infinite alternate;
+}
+
+@keyframes evals-breathe {
+  to {
+    opacity: 0.25;
+  }
+}
+
 /* biome-ignore-start lint/complexity/noImportantStyles: reduced motion has to beat every component animation */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -271,7 +324,9 @@
 }
 
 .quick-action-row .cm-ai-button {
-  padding: 0.15rem 0.45rem;
+  min-height: 1.5rem;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
 }
 
 .quick-action-form {

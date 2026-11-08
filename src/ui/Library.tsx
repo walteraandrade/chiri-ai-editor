@@ -63,11 +63,19 @@ type RowProps = {
   readonly item: TreeItem
   readonly isActive: boolean
   readonly focused: boolean
+  readonly noteOpen: boolean
   readonly holdsOpenFile: boolean
   readonly onRemove: (node: TreeNode) => void
 }
 
-function Row({ item, isActive, focused, holdsOpenFile, onRemove }: RowProps) {
+function Row({
+  item,
+  isActive,
+  focused,
+  noteOpen,
+  holdsOpenFile,
+  onRemove,
+}: RowProps) {
   const { node, level } = item
   const faint = node.kind === 'file' && node.openable !== true
   return (
@@ -119,7 +127,7 @@ function Row({ item, isActive, focused, holdsOpenFile, onRemove }: RowProps) {
           <button
             type="button"
             tabIndex={-1}
-            className="cm-ai-button ml-auto px-2 py-0 text-xs"
+            className="cm-ai-button cm-ai-button-sm cm-ai-button-icon ml-auto"
             aria-label={`Remove ${node.name} from the Library`}
             title="Remove from the Library. The folder stays on disk."
             onClick={(event) => {
@@ -134,18 +142,24 @@ function Row({ item, isActive, focused, holdsOpenFile, onRemove }: RowProps) {
       {node.kind === 'skill' ? (
         <span
           id={noteId(node.id)}
-          className={`pl-4 ${focused ? 'block' : 'hidden group-hover/row:block'}`}
+          className="skill-note pl-4"
+          data-open={noteOpen || undefined}
         >
-          {node.description === undefined ? null : (
-            <span className="line-clamp-2 block text-ink-muted text-xs">
-              {node.description}
-            </span>
-          )}
-          {node.problem === undefined ? null : (
-            <span className="block text-danger text-xs">
-              Frontmatter: {node.problem.message}
-            </span>
-          )}
+          <span className="min-h-0 overflow-hidden">
+            {node.description === undefined ? null : (
+              <span
+                className="skill-note-text text-ink-muted text-xs"
+                title={node.description}
+              >
+                {node.description}
+              </span>
+            )}
+            {node.problem === undefined ? null : (
+              <span className="block text-danger text-xs">
+                Frontmatter: {node.problem.message}
+              </span>
+            )}
+          </span>
         </span>
       ) : null}
     </div>
@@ -168,6 +182,7 @@ export function Library<Ref>({
   const [choices, setChoices] = useState<Choices>({})
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [hotId, setHotId] = useState<string | null>(null)
+  const [keyboardHot, setKeyboardHot] = useState(false)
   const lastItems = useRef<readonly TreeItem[]>([])
   const inTree = useRef(false)
   const typed = useRef('')
@@ -321,6 +336,7 @@ export function Library<Ref>({
             inTree.current = true
             setFocusedId(node.id)
             setHotId(node.id)
+            setKeyboardHot(event.currentTarget.matches(':focus-visible'))
           }}
           onBlur={(event) => {
             if (event.target !== event.currentTarget) return
@@ -330,6 +346,10 @@ export function Library<Ref>({
           }}
           onClick={(event) => {
             event.stopPropagation()
+            const group = event.currentTarget.querySelector(
+              ':scope > [role="group"]',
+            )
+            if (group?.contains(event.target as Node)) return
             if (node.kind === 'file') openFile(node, true)
             else if (item.expandable) setExpanded(node.id, !item.expanded)
           }}
@@ -338,6 +358,7 @@ export function Library<Ref>({
             item={item}
             isActive={isActive}
             focused={hotId === node.id}
+            noteOpen={item.expanded || (hotId === node.id && keyboardHot)}
             holdsOpenFile={holding.has(node.id) && node.kind === 'skill'}
             onRemove={removeNode}
           />
@@ -346,7 +367,9 @@ export function Library<Ref>({
           ) : null}
           {item.expanded ? (
             // biome-ignore lint/a11y/useSemanticElements: a tree group is not a form fieldset
-            <div role="group">{renderNodes(node.children)}</div>
+            <div role="group" className="tree-unfold">
+              <div>{renderNodes(node.children)}</div>
+            </div>
           ) : null}
         </div>
       )
@@ -424,7 +447,7 @@ export function Library<Ref>({
             Could not read the skill folders.{' '}
             <button
               type="button"
-              className="underline"
+              className="text-action"
               onClick={() => void refresh()}
             >
               Try again

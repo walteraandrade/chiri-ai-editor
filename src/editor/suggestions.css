@@ -403,19 +403,29 @@
 .cm-ai-button {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.65rem;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 1.875rem;
+  padding: 0 0.75rem;
   border: 1px solid var(--color-hairline);
   background: var(--color-fill);
   color: var(--color-ink);
   font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
+  user-select: none;
   transition:
     background-color var(--motion-state) var(--ease-out-quart),
+    border-color var(--motion-state) var(--ease-out-quart),
     color var(--motion-state) var(--ease-out-quart),
     transform var(--motion-press) var(--ease-out-quart);
 }
 
 .cm-ai-button:hover {
+  border-color: var(--color-ink);
   background: var(--color-fill-hover);
   color: var(--color-ink-strong);
 }
@@ -424,16 +434,62 @@
   transform: scale(0.96);
 }
 
+.cm-ai-button[aria-pressed="true"],
+.cm-ai-button[aria-expanded="true"]:not(.cm-ai-button-quiet) {
+  border-color: var(--color-accent);
+  color: var(--color-ink-strong);
+}
+
+.cm-ai-button-sm {
+  min-height: 1.5rem;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+}
+
+.cm-ai-button-icon {
+  width: 1.875rem;
+  padding: 0;
+}
+
+.cm-ai-button-icon.cm-ai-button-sm {
+  width: 1.5rem;
+}
+
+.cm-ai-button-strong {
+  border-color: var(--color-ink-strong);
+  color: var(--color-ink-strong);
+  font-weight: 600;
+}
+
+.cm-ai-button-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-ink-muted);
+}
+
+.cm-ai-button-quiet:hover {
+  border-color: transparent;
+  background: var(--color-fill);
+}
+
+.cm-ai-button-quiet[aria-pressed="true"] {
+  border-color: var(--color-ink-strong);
+  background: var(--color-fill);
+  color: var(--color-ink-strong);
+}
+
 .cm-ai-button-primary,
 .cm-ai-button-primary:hover {
+  border-color: var(--color-ai);
   background: var(--color-ai);
   color: var(--color-ai-ink);
 }
 
 .cm-ai-bubble-input:focus-visible,
-.cm-ai-button:focus-visible {
+.cm-ai-button:focus-visible,
+.text-action:focus-visible {
   outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 .cm-ai-bubble .cm-ai-bubble-input:focus-visible {
@@ -443,9 +499,27 @@
 .cm-ai-button:disabled,
 .cm-ai-button:disabled:hover {
   border-style: dashed;
+  border-color: var(--color-hairline);
   background: transparent;
   color: var(--color-ink-faint);
   cursor: default;
+}
+
+.cm-ai-button-quiet:disabled,
+.cm-ai-button-quiet:disabled:hover {
+  border-color: transparent;
+}
+
+.text-action {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.text-action:hover {
+  color: var(--color-ink-strong);
+  text-decoration-color: var(--color-accent);
 }
 
 .cm-ai-button[aria-busy="true"] {

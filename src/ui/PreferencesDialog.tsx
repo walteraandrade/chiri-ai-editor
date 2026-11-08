@@ -8,6 +8,8 @@ import type { ThemeState } from './use-theme'
 type PreferencesDialogProps = {
   readonly theme: ThemeState
   readonly quickActions: QuickActionsState
+  readonly onModel: () => void
+  readonly onKey?: (() => void) | undefined
   readonly onClose: () => void
 }
 
@@ -50,6 +52,31 @@ function ThemeRow({ option, checked, onChoose }: ThemeRowProps) {
   )
 }
 
+type SettingRowProps = {
+  readonly title: string
+  readonly detail: string
+  readonly onOpen: () => void
+}
+
+function SettingRow({ title, detail, onOpen }: SettingRowProps) {
+  return (
+    <div className="flex items-center gap-3 border-hairline border-b py-2">
+      <span className="min-w-0 flex-1">
+        <span className="block text-ink-strong text-sm">{title}</span>
+        <span className="block text-ink-muted text-xs">{detail}</span>
+      </span>
+      <button
+        type="button"
+        className="cm-ai-button cm-ai-button-sm"
+        aria-label={`Change ${title}`}
+        onClick={onOpen}
+      >
+        Change
+      </button>
+    </div>
+  )
+}
+
 type ThemeGroupProps = {
   readonly label: string
   readonly options: readonly ThemeOption[]
@@ -78,6 +105,8 @@ function ThemeGroup({ label, options, selected, onChoose }: ThemeGroupProps) {
 export function PreferencesDialog({
   theme,
   quickActions,
+  onModel,
+  onKey,
   onClose,
 }: PreferencesDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -143,6 +172,26 @@ export function PreferencesDialog({
           the book's combinations, so the pairing is ours, not Wada's. Names are
           Duke Ellington compositions.
         </p>
+        <section aria-labelledby="preferences-ai" className="mt-6">
+          <h3
+            id="preferences-ai"
+            className="font-semibold text-ink-strong text-sm"
+          >
+            AI
+          </h3>
+          <SettingRow
+            title="Model"
+            detail="The OpenRouter model that writes Suggestions"
+            onOpen={onModel}
+          />
+          {onKey === undefined ? null : (
+            <SettingRow
+              title="OpenRouter key"
+              detail="Lets Chiri call OpenRouter"
+              onOpen={onKey}
+            />
+          )}
+        </section>
         <QuickActionsSettings quickActions={quickActions} />
       </div>
     </dialog>

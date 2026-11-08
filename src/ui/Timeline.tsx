@@ -13,6 +13,10 @@ type TimelineProps = {
   readonly onDot: (id: VersionId) => void
   readonly onNow: () => void
   readonly onToggleFull: () => void
+  readonly evals?: {
+    readonly busy: boolean
+    readonly onToggle: () => void
+  }
 }
 
 const tooltipSide = (share: number): string =>
@@ -21,6 +25,22 @@ const tooltipSide = (share: number): string =>
     : share > 0.75
       ? 'right-0'
       : 'left-1/2 -translate-x-1/2'
+
+function GaugeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="size-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    >
+      <path d="M2.5 13.5V9M6.5 13.5V5M10.5 13.5V7.5M14 13.5V2.5" />
+    </svg>
+  )
+}
 
 function ListIcon() {
   return (
@@ -45,6 +65,7 @@ export function Timeline({
   onDot,
   onNow,
   onToggleFull,
+  evals,
 }: TimelineProps) {
   const selectedId = mode.kind === 'version' ? mode.id : null
   const focusId = selectedId ?? versions.at(-1)?.id
@@ -70,11 +91,11 @@ export function Timeline({
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 pb-3">
+    <div className="mx-auto flex max-w-3xl items-center gap-2 px-6 pb-3">
       <div
         role="toolbar"
         aria-label="Timeline"
-        className="relative h-8 flex-1"
+        className="relative mr-2 h-8 flex-1"
         onKeyDown={onKeyDown}
       >
         <div className="absolute inset-x-0 top-1/2 h-px bg-hairline" />
@@ -124,7 +145,7 @@ export function Timeline({
         title="Back to the current text (Esc)"
         disabled={mode.kind === 'editing'}
         onClick={onNow}
-        className="text-ink-faint text-xs uppercase tracking-widest enabled:text-accent-soft enabled:hover:text-accent"
+        className="cm-ai-button cm-ai-button-quiet cm-ai-button-sm uppercase tracking-widest"
       >
         Now
       </button>
@@ -132,11 +153,24 @@ export function Timeline({
         type="button"
         aria-pressed={mode.kind === 'full'}
         onClick={onToggleFull}
-        className={`flex items-center gap-1.5 text-xs uppercase tracking-widest ${mode.kind === 'full' ? 'text-accent-soft hover:text-accent' : 'text-ink-muted hover:text-ink-strong'}`}
+        className="cm-ai-button cm-ai-button-quiet cm-ai-button-sm uppercase tracking-widest"
       >
         <ListIcon />
         Full history
       </button>
+      {evals === undefined ? null : (
+        <button
+          type="button"
+          title="How this Skill performs"
+          aria-pressed={mode.kind === 'evals'}
+          aria-busy={evals.busy || undefined}
+          onClick={evals.onToggle}
+          className="timeline-evals cm-ai-button cm-ai-button-quiet cm-ai-button-sm uppercase tracking-widest"
+        >
+          <GaugeIcon />
+          Evals
+        </button>
+      )}
     </div>
   )
 }

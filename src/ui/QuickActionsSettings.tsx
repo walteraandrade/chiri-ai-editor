@@ -16,6 +16,7 @@ import {
   updateUserQuickAction,
 } from '../ai/quick-action-settings'
 import type { QuickActionId } from '../ai/quick-actions'
+import { useListMotion } from './list-motion'
 import type { QuickActionsState } from './use-quick-actions'
 
 type Editing =
@@ -299,6 +300,7 @@ export function QuickActionsSettings({
   const [editing, setEditing] = useState<Editing>(NOT_EDITING)
   const [focus, setFocus] = useState<FocusRequest | null>(null)
   const list = useRef<HTMLDivElement>(null)
+  const motion = useListMotion(list, '[data-quick-action]', 'quickAction')
 
   useEffect(() => {
     if (focus === null) return
@@ -381,12 +383,14 @@ export function QuickActionsSettings({
                   setEditing({ kind: 'delete', id: slot.action.id })
                   setFocus({ id: slot.action.id, control: 'confirm' })
                 }}
-                onConfirmDelete={() => {
-                  change((current) =>
-                    removeUserQuickAction(current, slot.action.id),
-                  )
-                  close({ id: 'new', control: 'new' })
-                }}
+                onConfirmDelete={() =>
+                  void motion.leave(slot.action.id).then(() => {
+                    change((current) =>
+                      removeUserQuickAction(current, slot.action.id),
+                    )
+                    close({ id: 'new', control: 'new' })
+                  })
+                }
                 onKeep={() => close({ id: slot.action.id, control: 'delete' })}
               />
             ),
