@@ -1,3 +1,4 @@
+import { type SummaryBaseline, TODAY_LABEL, versionLabel } from './baseline'
 import type { Tally } from './report'
 import type { SuspiciousKind } from './signals'
 
@@ -37,6 +38,14 @@ export const SKILL_ARMS: ArmLabels = {
   second: 'without the Skill',
 }
 
+export const armLabelsOf = (
+  baseline: SummaryBaseline,
+  formatTime: (at: number) => string,
+): ArmLabels =>
+  baseline.kind === 'none'
+    ? SKILL_ARMS
+    : { first: TODAY_LABEL, second: versionLabel(baseline.at, formatTime) }
+
 export const suspiciousText = (
   kind: SuspiciousKind,
   { first, second }: ArmLabels = SKILL_ARMS,
@@ -52,3 +61,6 @@ export const erroredText = (count: number): string =>
 
 export const leftOutText = (count: number): string =>
   `${count} ${count === 1 ? 'Eval has' : 'Evals have'} no run without the Skill and ${count === 1 ? 'is' : 'are'} left out of the comparison`
+
+export const unpairedText = (count: number): string =>
+  `${count} ${count === 1 ? 'Eval has' : 'Evals have'} a run in only one Stage and ${count === 1 ? 'is' : 'are'} left out of the comparison`

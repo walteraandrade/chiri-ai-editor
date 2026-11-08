@@ -43,6 +43,31 @@ afterEach(() => {
     rmSync(dir, { recursive: true, force: true })
 })
 
+describe('stageSkill with another SKILL.md', () => {
+  it("replaces SKILL.md in the copy, keeps today's other files and the real folder", async () => {
+    const { skill } = skillIn()
+    const stage = await stageSkill(skill, scratch(), 'Older text\n')
+    expect(readFileSync(join(stage.dir, 'SKILL.md'), 'utf8')).toBe(
+      'Older text\n',
+    )
+    expect(stage.skillText).toBe('Older text\n')
+    expect(readFileSync(join(stage.dir, 'notes.md'), 'utf8')).toBe('notes')
+    expect(stage.caseCount).toBe(2)
+    expect(readFileSync(join(skill, 'SKILL.md'), 'utf8')).toContain('Body')
+  })
+
+  it('does not write through a SKILL.md that links to a file outside', async () => {
+    const { base, skill } = skillIn()
+    const outside = join(base, 'outside.md')
+    writeFileSync(outside, 'outside')
+    rmSync(join(skill, 'SKILL.md'))
+    symlinkSync(outside, join(skill, 'SKILL.md'))
+    const stage = await stageSkill(skill, scratch(), 'Older\n')
+    expect(readFileSync(outside, 'utf8')).toBe('outside')
+    expect(readFileSync(join(stage.dir, 'SKILL.md'), 'utf8')).toBe('Older\n')
+  })
+})
+
 describe('stageSkill', () => {
   it('copies the skill and counts the cases', async () => {
     const { skill } = skillIn()

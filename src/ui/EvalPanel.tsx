@@ -1,3 +1,4 @@
+import { summaryView } from '../evals/baseline-view'
 import { caseSignals, firedOverall, helpedOverall } from '../evals/signals'
 import type { EvalsKit } from '../evals/types'
 import { unsavedNotice } from '../evals/unsaved'
@@ -5,10 +6,10 @@ import {
   costEstimate,
   countLabel,
   erroredText,
-  leftOutText,
   stoppedText,
   suspiciousText,
 } from '../evals/view'
+import { formatClock } from '../history/time'
 import type { Skill } from '../skills/scan-skills'
 import { EvalRunDialog } from './EvalRunDialog'
 import { useEvalPanel } from './use-eval-panel'
@@ -29,6 +30,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
     message,
     refresh,
     ask,
+    pick,
     close,
     run,
     cancel,
@@ -47,6 +49,13 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
   const errored = signals.filter(({ errored: count }) => count > 0)
   const fired = last === null ? null : firedOverall(last.cases)
   const helped = last === null ? null : helpedOverall(last.cases)
+  const view = summaryView(last?.baseline ?? { kind: 'none' }, (at) =>
+    formatClock(at, Date.now()),
+  )
+  const firedSecond =
+    last === null || view.firedSides === 1
+      ? null
+      : firedOverall(last.cases, 'second')
 
   return (
     <section
@@ -103,25 +112,22 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
               <p className="text-ink-faint">
                 Last complete run, {new Date(last.startedAt).toLocaleString()}
               </p>
+              {view.comparedNote === null ? null : (
+                <p className="text-ink-faint">{view.comparedNote}</p>
+              )}
               <dl className="mt-1 space-y-1">
                 <div>
                   <dt className="text-ink-muted">Did the Skill fire?</dt>
                   <dd className="text-ink-strong">
-                    {fired === null
-                      ? 'Not checked. No Eval has a tool_used Skill grader.'
-                      : `${countLabel(fired)} runs with the Skill`}
+                    {view.firedText(fired, firedSecond)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-ink-muted">Did it help?</dt>
-                  <dd className="text-ink-strong">
-                    {helped === null
-                      ? 'No run without the Skill to compare.'
-                      : `${countLabel(helped.with)} passes with, ${countLabel(helped.without)} without`}
-                  </dd>
+                  <dd className="text-ink-strong">{view.helpedText(helped)}</dd>
                   {helped === null || helped.leftOut === 0 ? null : (
                     <dd className="text-ink-faint">
-                      {leftOutText(helped.leftOut)}.
+                      {view.leftOut(helped.leftOut)}.
                     </dd>
                   )}
                 </div>
@@ -136,10 +142,10 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                       Fired
                     </th>
                     <th scope="col" className="py-0.5 pr-2 font-normal">
-                      With
+                      {view.columns.first}
                     </th>
                     <th scope="col" className="py-0.5 font-normal">
-                      Without
+                      {view.columns.second}
                     </th>
                   </tr>
                 </thead>
@@ -154,7 +160,9 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                           ? '–'
                           : countLabel(signals[index].fired)}
                       </td>
-                      <td className="py-0.5 pr-2">{countLabel(item.with)}</td>
+                      <td className="py-0.5 pr-2">
+                        {item.with.total === 0 ? '–' : countLabel(item.with)}
+                      </td>
                       <td className="py-0.5">
                         {item.without === null ? '–' : countLabel(item.without)}
                       </td>
@@ -201,7 +209,7 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
                           <span className="font-medium text-ink-strong">
                             {item.name}
                           </span>{' '}
-                          {suspiciousText(kind)}
+                          {suspiciousText(kind, view.labels)}
                         </li>
                       )),
                     )}
@@ -214,13 +222,18 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
               <p className="mt-1 text-ink-faint">
                 Cost {costEstimate(last.costUsd)}, the CLI's figure.
               </p>
-              <button
-                type="button"
-                className="cm-ai-button mt-1 px-2 py-0.5 text-xs"
-                onClick={() => void openReport()}
-              >
-                Open report
-              </button>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {view.reports.map(({ part, label }) => (
+                  <button
+                    key={part}
+                    type="button"
+                    className="cm-ai-button px-2 py-0.5 text-xs"
+                    onClick={() => void openReport(part)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {notice === null ? null : (
@@ -261,7 +274,10 @@ export function EvalPanel({ evals, skill, unsaved }: EvalPanelProps) {
           skillName={skill.name}
           unsavedNotice={notice}
           prepared={dialog.prepared}
-          onRun={(settings) => void run(settings)}
+          baseline={dialog.baseline}
+          refreshing={dialog.refreshing}
+          onPick={(baseline) => void pick(baseline)}
+          onRun={(settings) => void run(settings, dialog.baseline)}
           onClose={close}
         />
       ) : null}

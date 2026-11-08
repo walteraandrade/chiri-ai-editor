@@ -31,6 +31,14 @@ describe('buildEvalArgs', () => {
     ])
   })
 
+  it('adds --ablation none last for a Version baseline, and nothing else', () => {
+    expect(buildEvalArgs({ ...input, ablationNone: true })).toEqual([
+      ...buildEvalArgs(input),
+      '--ablation',
+      'none',
+    ])
+  })
+
   it('keeps the model in one argument', () => {
     expect(buildEvalArgs({ ...input, model: 'claude-haiku-4.5' })).toContain(
       '--model=claude-haiku-4.5',

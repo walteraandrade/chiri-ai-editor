@@ -7,6 +7,7 @@ export type OutcomeInput = {
   readonly cancelled: boolean
   readonly maxCostUsd: number
   readonly cliVersion: string | null
+  readonly limitNote?: string
 }
 
 export type RunOutcome =
@@ -31,6 +32,9 @@ const stop = (message: string, costUsd: number | null): RunOutcome => ({
 
 const limitLabel = (maxCostUsd: number): string =>
   maxCostUsd.toFixed(4).replace(/0{1,2}$/, '')
+
+export const costLimitMessage = (maxCostUsd: number, note?: string): string =>
+  `Stopped at the cost limit (US$${limitLabel(maxCostUsd)}${note === undefined ? '' : `, ${note}`})`
 
 const exitMessage = (exitCode: number | null, signal: string | null): string =>
   signal !== null
@@ -58,10 +62,10 @@ const partialMessage = (
   exitCode: number | null,
   signal: string | null,
   maxCostUsd: number,
+  limitNote: string | undefined,
 ): string => {
   if (reason === 'interrupted') return CANCELLED
-  if (reason === 'cost_ceiling')
-    return `Stopped at the cost limit (US$${limitLabel(maxCostUsd)})`
+  if (reason === 'cost_ceiling') return costLimitMessage(maxCostUsd, limitNote)
   if (reason === 'auth_failed') return 'Claude is not logged in'
   if (endedByCancel(exitCode, signal)) return CANCELLED
   const early = `Claude stopped early${reason === null ? '' : ` (${reason})`}`
@@ -77,6 +81,7 @@ export const mapRunOutcome = ({
   cancelled,
   maxCostUsd,
   cliVersion,
+  limitNote,
 }: OutcomeInput): RunOutcome => {
   const costUsd = reportText === null ? null : reportCost(reportText)
   if (cancelled) return stop(CANCELLED, costUsd)
@@ -85,7 +90,7 @@ export const mapRunOutcome = ({
   if (report.kind === 'refused') return stop(report.message, costUsd)
   if (report.kind === 'partial')
     return stop(
-      partialMessage(report.reason, exitCode, signal, maxCostUsd),
+      partialMessage(report.reason, exitCode, signal, maxCostUsd, limitNote),
       costUsd,
     )
   if (report.summary.cases.length === 0)

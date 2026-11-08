@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  armLabelsOf,
   costEstimate,
   countLabel,
   erroredText,
   leftOutText,
   stoppedText,
   suspiciousText,
+  unpairedText,
 } from './view'
 
 describe('countLabel', () => {
@@ -59,5 +61,39 @@ describe('erroredText and leftOutText', () => {
     expect(erroredText(2)).toContain('2 runs')
     expect(leftOutText(1)).toContain('1 Eval has no run without the Skill')
     expect(leftOutText(3)).toContain('3 Evals have')
+  })
+})
+
+describe('armLabelsOf', () => {
+  it('keeps the Skill labels with no baseline', () => {
+    expect(armLabelsOf({ kind: 'none' }, String)).toEqual({
+      first: 'with the Skill',
+      second: 'without the Skill',
+    })
+  })
+
+  it("names today's SKILL.md and the Version", () => {
+    expect(
+      armLabelsOf({ kind: 'version', versionId: 3, at: 9 }, (at) => `t${at}`),
+    ).toEqual({ first: "today's SKILL.md", second: 'the Version from t9' })
+  })
+
+  it('fits the Suspicious sentences', () => {
+    const labels = armLabelsOf(
+      { kind: 'version', versionId: 3, at: 9 },
+      (at) => `t${at}`,
+    )
+    expect(suspiciousText('passes-in-both', labels)).toBe(
+      "passes today's SKILL.md and the Version from t9, so it does not tell them apart",
+    )
+  })
+})
+
+describe('unpairedText', () => {
+  it('counts the Evals left out', () => {
+    expect(unpairedText(1)).toBe(
+      '1 Eval has a run in only one Stage and is left out of the comparison',
+    )
+    expect(unpairedText(2)).toContain('2 Evals have')
   })
 })

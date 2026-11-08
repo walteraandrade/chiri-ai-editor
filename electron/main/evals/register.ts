@@ -7,6 +7,7 @@ import {
   EVALS_RUN_CHANNEL,
   EVALS_STATUS_CHANNEL,
 } from '../../api'
+import type { HistoryAccess } from '../history-main'
 import { type LibraryDeps, listLibrary } from '../library/handlers'
 import { findClaude, isExecutableFile } from './find-claude'
 import { createEvalHandlers } from './handlers'
@@ -19,6 +20,7 @@ type Trust = (event: IpcMainInvokeEvent) => boolean
 export const registerEvalHandlers = (
   isTrusted: Trust,
   library: LibraryDeps,
+  history: HistoryAccess,
 ): void => {
   const home = homedir()
   const path = process.env.PATH
@@ -31,7 +33,12 @@ export const registerEvalHandlers = (
     findClaude: () =>
       findClaude({ path, home, isExecutable: isExecutableFile }),
     runner: createSpawnRunner({ home, path }),
-    stage: (skillPath) => stageSkill(skillPath),
+    stage: (skillPath, skillText) =>
+      stageSkill(skillPath, undefined, skillText),
+    history: {
+      versions: (file) => history.db().list(file),
+      text: (file, id) => history.db().text(file, id),
+    },
     results: createResultsStore(app.getPath('userData')),
     openPath: (file) => shell.openPath(file),
   })

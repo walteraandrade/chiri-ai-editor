@@ -4,6 +4,7 @@ export type EvalCommandInput = {
   readonly maxCostUsd: number
   readonly jsonFile: string
   readonly outputDir: string
+  readonly ablationNone?: boolean
 }
 
 export const buildEvalArgs = ({
@@ -12,6 +13,7 @@ export const buildEvalArgs = ({
   maxCostUsd,
   jsonFile,
   outputDir,
+  ablationNone = false,
 }: EvalCommandInput): readonly string[] => [
   'plugin',
   'eval',
@@ -29,4 +31,5 @@ export const buildEvalArgs = ({
   jsonFile,
   '--output-dir',
   outputDir,
+  ...(ablationNone ? ['--ablation', 'none'] : []),
 ]

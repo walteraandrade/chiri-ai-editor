@@ -7,6 +7,7 @@ import {
   readFile,
   realpath,
   rm,
+  writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, sep } from 'node:path'
@@ -92,6 +93,7 @@ const countCases = async (stageDir: string): Promise<number> => {
 export const stageSkill = async (
   skillPath: string,
   tempBase: string = tmpdir(),
+  skillTextOverride?: string,
 ): Promise<Stage> => {
   const realRoot = await realpath(skillPath)
   const container = await mkdtemp(join(tempBase, 'chiri-eval-'))
@@ -116,6 +118,8 @@ export const stageSkill = async (
           ),
         ),
     )
+    if (skillTextOverride !== undefined)
+      await writeFile(join(dir, SKILL_FILE_NAME), skillTextOverride, 'utf8')
     const skillText = await readFile(join(dir, SKILL_FILE_NAME), 'utf8')
     const leftOut = [...present, ...skipped.flat()].toSorted()
     return {

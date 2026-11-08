@@ -20,7 +20,14 @@ const fixture = (name: string): string =>
   )
 
 const SKILL = '/skills/pdf'
-const REQUEST = { skillPath: SKILL, runs: 2, model: 'haiku', maxCostUsd: 0.5 }
+const NONE = { kind: 'none' } as const
+const REQUEST = {
+  skillPath: SKILL,
+  baseline: { kind: 'none' },
+  runs: 2,
+  model: 'haiku',
+  maxCostUsd: 0.5,
+}
 
 const made: string[] = []
 
@@ -90,6 +97,7 @@ const setup = ({
       cleanup,
     }),
     results,
+    history: { versions: () => [], text: () => null },
     openPath,
   }
   return { userData, jobs, cleanup, openPath, deps }
@@ -135,12 +143,18 @@ describe('prepare', () => {
     const { deps, cleanup } = setup({
       skillText: '---\nname: pdf\n---\n!`ls`\n',
     })
-    const result = await createEvalHandlers(deps).prepare({ skillPath: SKILL })
+    const result = await createEvalHandlers(deps).prepare({
+      skillPath: SKILL,
+      baseline: NONE,
+    })
     expect(result).toEqual({
       kind: 'ready',
       claudeVersion: '2.1.319',
       caseCount: 2,
       risks: [{ kind: 'shell-commands', lines: ['!`ls`'] }],
+      baselineRisks: null,
+      versions: [],
+      sameAsSaved: [],
     })
     expect(cleanup).toHaveBeenCalledTimes(1)
   })
@@ -168,7 +182,7 @@ describe('run', () => {
         cleanup: async () => undefined,
       }),
     })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     skillText = '---\nhooks:\n  A: []\n---\n'
     expect(await handlers.run(REQUEST)).toEqual({ kind: 'risks-changed' })
     expect(jobs).toEqual([])
@@ -177,7 +191,7 @@ describe('run', () => {
   it('runs the fixed command in the Stage and keeps a complete run', async () => {
     const { deps, jobs, userData, cleanup } = setup()
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const result = await handlers.run(REQUEST)
     expect(result.kind).toBe('completed')
     expect(jobs).toHaveLength(1)
@@ -227,7 +241,7 @@ describe('run', () => {
     const last = join(userData, 'eval-runs', key, 'last')
     mkdirSync(last, { recursive: true })
     writeFileSync(join(last, 'result.json'), fixture('with-without.json'))
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const result = await handlers.run(REQUEST)
     expect(result.kind).toBe('not-complete')
     expect(readFileSync(join(last, 'result.json'), 'utf8')).toBe(
@@ -248,7 +262,7 @@ describe('run', () => {
     const last = join(userData, 'eval-runs', key, 'last')
     mkdirSync(last, { recursive: true })
     writeFileSync(join(last, 'result.json'), 'previous')
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     expect(await handlers.run(REQUEST)).toEqual({
       kind: 'not-complete',
       message: 'No Evals in this skill',
@@ -261,7 +275,7 @@ describe('run', () => {
   it('needs a fresh prepare for every run', async () => {
     const { deps, jobs } = setup()
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     expect((await handlers.run(REQUEST)).kind).toBe('completed')
     expect(await handlers.run(REQUEST)).toEqual({ kind: 'risks-changed' })
     expect(jobs).toHaveLength(1)
@@ -287,7 +301,7 @@ describe('run', () => {
           }),
       },
     })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     cleanup.mockClear()
     const running = handlers.run(REQUEST)
     await vi.waitFor(() => expect(started).toBe(true))
@@ -314,7 +328,7 @@ describe('run', () => {
       report: JSON.stringify({ schemaVersion: 9, claudeVersion: '9.9.9' }),
     })
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const result = await handlers.run(REQUEST)
     expect(result.kind === 'not-complete' && result.message).toContain('9.9.9')
   })
@@ -322,7 +336,7 @@ describe('run', () => {
   it('accepts exit 1 when the report is complete', async () => {
     const { deps } = setup({ exitCode: 1 })
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     expect((await handlers.run(REQUEST)).kind).toBe('completed')
   })
 
@@ -338,7 +352,7 @@ describe('run', () => {
         },
       },
     })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     cleanup.mockClear()
     expect((await handlers.run(REQUEST)).kind).toBe('failed')
     expect(cleanup).toHaveBeenCalledTimes(1)
@@ -362,7 +376,7 @@ describe('run', () => {
               }),
       },
     })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const first = handlers.run(REQUEST)
     await vi.waitFor(() => expect(started).toBe(true))
     expect(await handlers.run(REQUEST)).toEqual({ kind: 'busy' })
@@ -374,7 +388,7 @@ describe('run', () => {
   it('refuses a request outside the Library or with bad values', async () => {
     const { deps, jobs } = setup()
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     expect(
       (await handlers.run({ ...REQUEST, model: '--allow-tools' })).kind,
     ).toBe('failed')
@@ -451,7 +465,7 @@ describe('cancel', () => {
       },
     })
     const last = keepLast(userData)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     cleanup.mockClear()
     const running = handlers.run(REQUEST)
     await vi.waitFor(() => expect(started).toBe(true))
@@ -491,7 +505,7 @@ describe('cancel', () => {
       },
     })
     const last = keepLast(userData)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const running = handlers.run(REQUEST)
     await vi.waitFor(() => expect(started).toBe(true))
     await handlers.cancel(undefined)
@@ -510,7 +524,7 @@ describe('cancel', () => {
     })
     const handlers = createEvalHandlers(deps)
     const last = keepLast(userData)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     expect(await handlers.run(REQUEST)).toEqual({
       kind: 'not-complete',
       message: 'Cancelled',
@@ -529,7 +543,7 @@ describe('cancel', () => {
     })
     const handlers = createEvalHandlers(deps)
     const last = keepLast(userData)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     expect(await handlers.run(REQUEST)).toEqual({
       kind: 'not-complete',
       message,
@@ -584,7 +598,7 @@ describe('cancel', () => {
     async (gate) => {
       const { handlers, cleanup, userData, open, entered, run, armed } =
         gated(gate)
-      await handlers.prepare({ skillPath: SKILL })
+      await handlers.prepare({ skillPath: SKILL, baseline: NONE })
       armed.on = true
       cleanup.mockClear()
       const running = handlers.run(REQUEST)
@@ -619,7 +633,7 @@ describe('cancel', () => {
         return open.promise
       },
     })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const running = handlers.run(REQUEST)
     await entered.promise
     await handlers.cancel(undefined)
@@ -635,7 +649,7 @@ describe('cancel', () => {
   it('shutdown before the spawn stops the run and deletes the Stage and next/', async () => {
     const { handlers, cleanup, userData, open, entered, run, armed } =
       gated('begin')
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     armed.on = true
     cleanup.mockClear()
     const running = handlers.run(REQUEST)
@@ -658,10 +672,10 @@ describe('cancel', () => {
   it('does not carry a cancel into the next run', async () => {
     const { deps } = setup()
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     expect((await handlers.run(REQUEST)).kind).toBe('completed')
     await handlers.cancel(undefined)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     expect((await handlers.run(REQUEST)).kind).toBe('completed')
   })
 })
@@ -678,7 +692,7 @@ describe('after a run', () => {
   it('names the CLI version when the report is not JSON', async () => {
     const { deps } = setup({ report: 'not json' })
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const result = await handlers.run(REQUEST)
     expect(result.kind === 'not-complete' && result.message).toBe(
       'The Eval report could not be read (Claude CLI 2.1.319)',
@@ -689,7 +703,7 @@ describe('after a run', () => {
     const empty = { ...JSON.parse(fixture('with-without.json')), cases: [] }
     const { deps } = setup({ report: JSON.stringify(empty), exitCode: 0 })
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const result = await handlers.run(REQUEST)
     expect(result.kind === 'not-complete' && result.message).toBe(
       'No Evals in this skill',
@@ -714,7 +728,7 @@ describe('after a run', () => {
         },
       },
     })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const running = handlers.run(REQUEST)
     await vi.waitFor(() => expect(started).toBe(true))
     expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
@@ -742,7 +756,7 @@ describe('after a run', () => {
       exitCode: 2,
     })
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     await handlers.run(REQUEST)
     expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
       stopped: { message: 'Claude is not logged in', costUsd: 0.0015 },
@@ -752,7 +766,7 @@ describe('after a run', () => {
   it('clears the stopped outcome when a run completes', async () => {
     const { deps } = setup()
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     await handlers.run({ ...REQUEST, skillPath: '/skills/pdf' })
     expect(await handlers.status({ skillPath: SKILL })).toMatchObject({
       stopped: null,
@@ -773,7 +787,7 @@ describe('after a run', () => {
     }
     const handlers = createEvalHandlers({ ...deps, results })
     const last = join(userData, 'eval-runs', skillKeyOf(SKILL), 'last')
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const running = handlers.run(REQUEST)
     await reading.promise
     expect(await handlers.cancel(undefined)).toEqual({ kind: 'cancelling' })
@@ -800,7 +814,7 @@ describe('after a run', () => {
       },
     }
     const handlers = createEvalHandlers({ ...deps, results })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const running = handlers.run(REQUEST)
     await promoting.promise
     let shutDown = false
@@ -833,7 +847,7 @@ describe('after a run', () => {
       },
     }
     const handlers = createEvalHandlers({ ...deps, results })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     const running = handlers.run(REQUEST)
     await promoting.promise
     expect(await handlers.cancel(undefined)).toEqual({ kind: 'idle' })
@@ -892,7 +906,7 @@ describe('openReport', () => {
   it('opens the report of the last complete run', async () => {
     const { deps, openPath, userData } = setup()
     const handlers = createEvalHandlers(deps)
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     await handlers.run(REQUEST)
     expect(await handlers.openReport({ skillPath: SKILL })).toEqual({
       kind: 'opened',
@@ -923,7 +937,7 @@ describe('openReport', () => {
       ...deps,
       openPath: async () => 'no handler',
     })
-    await handlers.prepare({ skillPath: SKILL })
+    await handlers.prepare({ skillPath: SKILL, baseline: NONE })
     await handlers.run(REQUEST)
     expect((await handlers.openReport({ skillPath: SKILL })).kind).toBe(
       'failed',
