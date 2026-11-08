@@ -184,6 +184,17 @@
   animation: surface-out var(--motion-state) var(--ease-out-quart);
 }
 
+.library-in {
+  animation: library-in var(--motion-enter) var(--ease-out-expo);
+}
+
+@keyframes library-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
 .toast-in {
   --enter-rise: 10px;
   animation: surface-in 320ms var(--ease-out-expo);
@@ -241,6 +252,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
+
+  .library-in {
+    animation: none !important;
+  }
 }
 /* biome-ignore-end lint/complexity/noImportantStyles: reduced motion has to beat every component animation */
 
@@ -249,6 +264,10 @@
   align-items: center;
   gap: 0.5rem;
   border-bottom: 1px solid var(--color-hairline);
+}
+
+.library-rail .cm-ai-button {
+  padding: 0.75rem 0.3rem;
 }
 
 .quick-action-row .cm-ai-button {

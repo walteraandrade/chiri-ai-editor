@@ -32,6 +32,7 @@ export const LIBRARY_CREATE_SKILL_CHANNEL = 'library:create-skill'
 export const LAUNCH_TAKE_CHANNEL = 'launch:take'
 export const LAUNCH_FILE_CHANNEL = 'launch:file'
 export const PREFERENCES_REQUEST_CHANNEL = 'menu:preferences'
+export const LIBRARY_REQUEST_CHANNEL = 'menu:library'
 export const QUICK_ACTIONS_LOAD_CHANNEL = 'quick-actions:load'
 export const QUICK_ACTIONS_SAVE_CHANNEL = 'quick-actions:save'
 
@@ -122,6 +123,7 @@ export type ChiriApi = {
   readonly takeLaunchFile: () => Promise<string | null>
   readonly onLaunchFile: (listener: () => void) => () => void
   readonly onPreferencesRequest: (listener: () => void) => () => void
+  readonly onLibraryRequest: (listener: () => void) => () => void
   readonly loadQuickActions: () => Promise<string | null>
   readonly saveQuickActions: (text: string) => Promise<void>
   readonly evalStatus: (request: EvalSkillRequest) => Promise<EvalStatus>

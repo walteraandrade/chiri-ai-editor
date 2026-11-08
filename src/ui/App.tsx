@@ -48,12 +48,16 @@ import { FullHistory } from './FullHistory'
 import { Hint } from './Hint'
 import { KeyDialog } from './KeyDialog'
 import { LeaveDialog } from './LeaveDialog'
-import { Library } from './Library'
+import { Library, type LibraryHandle } from './Library'
+import { LibraryRail } from './LibraryRail'
 import { LineDiff } from './LineDiff'
+import { isLibraryShortcut, libraryKeyAnswer } from './library-fold'
+import { libraryPlacement } from './library-layout'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { ModelDialog } from './ModelDialog'
 import { NewSkillDialog } from './NewSkillDialog'
 import { PreferencesDialog } from './PreferencesDialog'
+import { detectApplePlatform } from './platform'
 import { isPreferencesShortcut } from './preferences-shortcut'
 import { ReviewToolbar } from './ReviewToolbar'
 import { Timeline } from './Timeline'
@@ -70,6 +74,7 @@ import { useQuickActions } from './use-quick-actions'
 import type { SkillUnsaved } from './use-skill-unsaved'
 import { useTheme } from './use-theme'
 import { useVersionTexts } from './use-version-texts'
+import { useViewportWidth } from './use-viewport-width'
 import { VersionBar } from './VersionBar'
 
 type AppProps<Ref> = {
@@ -89,6 +94,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     external,
     launches,
     preferencesRequests,
+    libraryRequests,
   } = kit
   const key = useKeyState(kit)
   const initialDoc = unsavedText.initial
@@ -180,6 +186,43 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
   const libraryControls = useLibrary(library, showToast)
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const libraryHandle = useRef<LibraryHandle>(null)
+  const focusTreeWhenOpen = useRef(false)
+  const viewportWidth = useViewportWidth()
+  const placement = libraryPlacement(viewportWidth)
+  const toggleLibrary = useEffectEvent(() => {
+    const answer = libraryKeyAnswer({
+      open: libraryOpen,
+      focused: libraryHandle.current?.holdsFocus() ?? false,
+    })
+    if (answer === 'open-and-focus') {
+      focusTreeWhenOpen.current = true
+      setLibraryOpen(true)
+    } else if (answer === 'focus') libraryHandle.current?.focusTree()
+    else {
+      setLibraryOpen(false)
+      focusEditor()
+    }
+  })
+  useEffect(() => {
+    if (!libraryOpen || !focusTreeWhenOpen.current) return
+    focusTreeWhenOpen.current = false
+    libraryHandle.current?.focusTree()
+  }, [libraryOpen])
+  useEffect(() => {
+    if (library === undefined) return
+    const apple = detectApplePlatform()
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!isLibraryShortcut(event, apple)) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (!event.repeat) toggleLibrary()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [library])
+  useEffect(() => libraryRequests?.(toggleLibrary), [libraryRequests])
   const openRef = file.session?.ref ?? null
   const openSkill =
     library === undefined ||
@@ -503,7 +546,11 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         </div>
       </main>
       <div className="pointer-events-none sticky bottom-0 z-30">
-        <div className="pointer-events-auto mb-4 ml-4 flex w-fit gap-2 bg-canvas text-sm">
+        <div
+          className={`pointer-events-auto mb-4 flex w-fit gap-2 bg-canvas text-sm ${
+            libraryOpen && placement === 'overlay' ? 'ml-76' : 'ml-4'
+          }`}
+        >
           <button
             type="button"
             className="cm-ai-button"
@@ -560,7 +607,11 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     page
   ) : (
     <div className="flex items-start">
+      <LibraryRail open={libraryOpen} onToggle={toggleLibrary} />
       <Library
+        open={libraryOpen}
+        placement={placement}
+        handleRef={libraryHandle}
         library={library}
         controls={libraryControls}
         activeRef={openRef}
