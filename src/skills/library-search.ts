@@ -31,25 +31,26 @@ type Folded = {
   readonly ends: readonly number[]
 }
 
-const fold = (text: string): Folded =>
-  [...text].reduce<{
-    text: string
-    starts: number[]
-    ends: number[]
-    at: number
-  }>(
-    (folded, char) => {
-      const lower = char.toLowerCase()
-      const end = folded.at + char.length
-      return {
-        text: folded.text + lower,
-        starts: [...folded.starts, ...Array(lower.length).fill(folded.at)],
-        ends: [...folded.ends, ...Array(lower.length).fill(end)],
-        at: end,
-      }
+const fold = (text: string): Folded => {
+  const chars = [...text]
+  const lowers = chars.map((char) => char.toLowerCase())
+  const offsets = chars.reduce<number[]>(
+    (at, char, index) => {
+      at.push((at[index] ?? 0) + char.length)
+      return at
     },
-    { text: '', starts: [], ends: [], at: 0 },
+    [0],
   )
+  return {
+    text: lowers.join(''),
+    starts: lowers.flatMap((lower, index) =>
+      Array<number>(lower.length).fill(offsets[index] ?? 0),
+    ),
+    ends: lowers.flatMap((lower, index) =>
+      Array<number>(lower.length).fill(offsets[index + 1] ?? 0),
+    ),
+  }
+}
 
 const rangeIn = (
   folded: Folded,
@@ -78,10 +79,12 @@ const matchAt = (
   return null
 }
 
-const prefixMatch = (text: string, needle: string): MatchRange | null =>
-  fold(text).text.startsWith(needle)
-    ? rangeIn(fold(text), 0, needle.length)
+const prefixMatch = (text: string, needle: string): MatchRange | null => {
+  const folded = fold(text)
+  return folded.text.startsWith(needle)
+    ? rangeIn(folded, 0, needle.length)
     : null
+}
 
 const wordMatch = (text: string, needle: string): MatchRange | null =>
   matchAt(text, needle, isWordStart)

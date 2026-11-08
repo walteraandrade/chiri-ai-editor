@@ -55,7 +55,7 @@ export function LibrarySearch({
     !focused || !searching
       ? ''
       : results.length === 0
-        ? `No Skill or file matches ${text.trim()}`
+        ? 'No matches'
         : `${results.length} ${results.length === 1 ? 'result' : 'results'}`
   const apple = detectApplePlatform()
   const shortcut = formatShortcut('P', apple)
