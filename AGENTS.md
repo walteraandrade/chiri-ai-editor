@@ -50,6 +50,14 @@ Dev environment variables (all optional; parallel checkouts on one machine need 
 
 Attach to the window: `CHIRI_DEV_PORT=5301 CHIRI_CDP_PORT=9301 CHIRI_USER_DATA_DIR=$(mktemp -d) pnpm dev:electron`, then `agent-browser connect 9301`.
 
+Off-screen, so a check does not open a window on the maintainer's desktop (needs Xvfb; Electron 43 picks Wayland from `XDG_SESSION_TYPE` and `OZONE_PLATFORM`, so override both):
+
+```bash
+env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 OZONE_PLATFORM=x11 xvfb-run -a -s "-screen 0 1440x900x24" env CHIRI_DEV_PORT=5301 CHIRI_CDP_PORT=9301 CHIRI_USER_DATA_DIR=$(mktemp -d) pnpm dev:electron -- --ozone-platform=x11
+```
+
+For a Before screenshot, run the parent commit from its own `git worktree`, never by checking out an older commit in a checkout whose dev server someone else is using.
+
 ## AI SDK
 
 - Follow [.claude/skills/use-ai-sdk/SKILL.md](.claude/skills/use-ai-sdk/SKILL.md) (copied verbatim from `vercel/ai@c739d37`, `skills/use-ai-sdk/`). **Never write AI SDK code from memory**: read `node_modules/ai/docs/` and the provider's bundled docs first.
@@ -103,6 +111,7 @@ scripts/
 - One branch per issue, from `main`: `feat/ | fix/ | chore/ | refactor/ | docs/ | test/` + short kebab slug, max 40 chars.
 - Commit messages: short, imperative, conventional prefix. No `Co-Authored-By` or other authorship trailers.
 - PR body: use the `pr` skill, filling [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Start with `Closes #N`.
+- Evidence for a visible change is screenshots shown in the PR body, not links to them. Commit them under `docs/chiri/verification/img/` and embed each one as `![<issue>-<n>](https://github.com/<owner>/<repo>/raw/<sha>/docs/chiri/verification/img/<issue>-<n>.png)`, pinned to a commit SHA so it survives branch deletion; a `[…](…/blob/…)` link does not render. When the change alters something that already shows (a screen, a style, a state, a review fix), add a Before screenshot taken at the parent commit; a new screen has no Before, so say that in one line. This holds with or without AI calls.
 - Squash merge only. A ruleset on `main` requires the `checks` job and allows only squash; its JSON is `.github/ruleset.json`, applied with `.github/apply-ruleset.sh`.
 
 ## Definition of done (every slice)
@@ -123,7 +132,7 @@ Every check that calls the model is recorded. This is how the US$5 budget is acc
 - Fields: task requested (e.g. "select paragraph 2 → Shorter"), model requested, model and provider that served it, tokens (input / output / reasoning / cached), cost, latency (client total, OpenRouter `latency`, `generation_time`, time to first Suggestion for review passes), `finish_reason`, valid or retried, generation `id`.
 - Where:
   - `docs/chiri/verification/<issue>-<slug>.md`: the full table plus screenshots for that slice.
-  - `docs/chiri/verification/img/<issue>-<n>.png`: screenshots, committed. Link them in the PR by commit SHA so links survive branch deletion.
+  - `docs/chiri/verification/img/<issue>-<n>.png`: screenshots, committed. Embed them in the PR by commit SHA ([Git and PRs](#git-and-prs)).
   - [docs/chiri/ai-costs.md](docs/chiri/ai-costs.md): one row per check, plus the running total against the US$5 cap.
   - PR: a summary table under Evidence.
 

@@ -6,8 +6,8 @@ Closes #
 
 ## Evidence
 
-- **Before:** <!-- screenshot / output / failing test -->
-  **After:** <!-- screenshot / output / passing test -->
+- **Before:** <!-- visible change: embedded screenshot at the parent commit, ![…](…/raw/<sha>/…png), not a link; new screen: say so. Otherwise output / failing test -->
+  **After:** <!-- visible change: embedded screenshot, ![…](…/raw/<sha>/…png), not a link. Otherwise output / passing test -->
 
 ### AI calls during verification
 
