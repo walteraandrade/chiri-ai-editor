@@ -369,7 +369,11 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
                   className="cm-ai-button"
                   title="How this Skill performs"
                   aria-pressed={mode.kind === 'evals'}
-                  aria-busy={evalPanel.running || undefined}
+                  aria-busy={
+                    evalPanel.running ||
+                    evalPanel.busyWith !== null ||
+                    undefined
+                  }
                   onClick={historyView.toggleEvals}
                 >
                   Evals

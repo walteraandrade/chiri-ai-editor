@@ -191,3 +191,6 @@ Runs of `claude plugin eval` through the Chiri app ([ADR 0018](adr/0018-skill-ev
 | 2026-11-07 | #90 | Eval run from the app against an older Version, 2 Evals, 2 runs, two Stages | `haiku` | 2.1.319 | 0.0109 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
 | 2026-11-07 | #90 | Version run, 5 runs, cancelled in the second run (first run's cost counted) | `haiku` | 2.1.319 | 0.0195 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
 | 2026-11-07 | #90 | Version run, 5 runs, cancelled in the first run | `haiku` | 2.1.319 | 0.0024 | [90-eval-version-baseline.md](verification/90-eval-version-baseline.md) |
+| 2026-11-08 | #99 | Eval run from the app on the Evals page, 2 Evals, 1 run | `haiku` | 2.1.319 | 0.0052 | [99-evals-page.md](verification/99-evals-page.md) |
+| 2026-11-08 | #99 | Second run, started on the page, closed with Esc, another Skill's page open while it ran (cost not read, replaced by run 3) | `haiku` | 2.1.319 | about 0.005 | [99-evals-page.md](verification/99-evals-page.md) |
+| 2026-11-08 | #99 | Third run, page closed with Esc, toast with Show clicked | `haiku` | 2.1.319 | 0.0051 | [99-evals-page.md](verification/99-evals-page.md) |
