@@ -187,7 +187,7 @@ export function PreferencesDialog({
           {onKey === undefined ? null : (
             <SettingRow
               title="OpenRouter key"
-              detail="Lets Chiri call OpenRouter"
+              detail="Lets Desafinado call OpenRouter"
               onOpen={onKey}
             />
           )}

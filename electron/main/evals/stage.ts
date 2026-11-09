@@ -96,7 +96,7 @@ export const stageSkill = async (
   skillTextOverride?: string,
 ): Promise<Stage> => {
   const realRoot = await realpath(skillPath)
-  const container = await mkdtemp(join(tempBase, 'chiri-eval-'))
+  const container = await mkdtemp(join(tempBase, 'desafinado-eval-'))
   const cleanup = (): Promise<void> =>
     rm(container, { recursive: true, force: true })
   try {

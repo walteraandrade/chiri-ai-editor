@@ -7,7 +7,7 @@ import { childEnv, createSpawnRunner } from './runner'
 const made: string[] = []
 
 const scratch = (): string => {
-  const dir = mkdtempSync(join(tmpdir(), 'chiri-runner-test-'))
+  const dir = mkdtempSync(join(tmpdir(), 'desafinado-runner-test-'))
   made.push(dir)
   return dir
 }

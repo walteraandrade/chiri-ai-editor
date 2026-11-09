@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { appOrigin, isAppNavigation, isTrustedFrame } from './trust'
 
 const DEV_URL = 'http://localhost:5301/electron.html'
-const FILE_URL = 'file:///opt/chiri/out/renderer/electron.html'
-const APP_URL = 'app://chiri/electron.html'
+const FILE_URL = 'file:///opt/desafinado/out/renderer/electron.html'
+const APP_URL = 'app://desafinado/electron.html'
 
 describe('appOrigin', () => {
   it('is the origin of the dev server', () => {
@@ -15,7 +15,7 @@ describe('appOrigin', () => {
   })
 
   it('is the scheme and host for the app scheme', () => {
-    expect(appOrigin(APP_URL)).toBe('app://chiri')
+    expect(appOrigin(APP_URL)).toBe('app://desafinado')
   })
 })
 
@@ -40,12 +40,14 @@ describe('isAppNavigation', () => {
   })
 
   it('allows only the app host for the app scheme', () => {
-    expect(isAppNavigation('app://chiri/electron.html#a', APP_URL)).toBe(true)
-    expect(isAppNavigation('app://chiri/', APP_URL)).toBe(true)
+    expect(isAppNavigation('app://desafinado/electron.html#a', APP_URL)).toBe(
+      true,
+    )
+    expect(isAppNavigation('app://desafinado/', APP_URL)).toBe(true)
     expect(isAppNavigation('app://other/electron.html', APP_URL)).toBe(false)
     expect(isAppNavigation('data:text/html,hi', APP_URL)).toBe(false)
     expect(isAppNavigation('about:blank', APP_URL)).toBe(false)
-    expect(isAppNavigation('http://chiri/', APP_URL)).toBe(false)
+    expect(isAppNavigation('http://desafinado/', APP_URL)).toBe(false)
     expect(isAppNavigation('file:///etc/passwd', APP_URL)).toBe(false)
   })
 

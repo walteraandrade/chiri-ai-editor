@@ -20,7 +20,7 @@ import {
 let dir = ''
 
 beforeEach(async () => {
-  dir = await realpath(await mkdtemp(join(tmpdir(), 'chiri-handlers-')))
+  dir = await realpath(await mkdtemp(join(tmpdir(), 'desafinado-handlers-')))
 })
 
 afterEach(async () => {

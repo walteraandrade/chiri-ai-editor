@@ -6,7 +6,7 @@ import {
 } from './openrouter-forward'
 
 const KEY = 'sk-or-v1-dummy-for-tests'
-const APP = 'app://chiri'
+const APP = 'app://desafinado'
 
 type UpstreamCall = { readonly url: string; readonly init: RequestInit }
 

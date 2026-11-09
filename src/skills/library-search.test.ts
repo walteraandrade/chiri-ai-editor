@@ -134,7 +134,7 @@ describe('searchLibrary', () => {
     expect(searchLibrary(roots, 'prove')).toEqual([])
   })
 
-  it('skips SKILL.md and files Chiri cannot open as file rows', () => {
+  it('skips SKILL.md and files Desafinado cannot open as file rows', () => {
     const roots = listing(skill('docs', ['notes.txt', 'run.sh', 'extra.md']))
     expect(searchLibrary(roots, 'skill')).toEqual([])
     expect(searchLibrary(roots, 'notes')).toEqual([])

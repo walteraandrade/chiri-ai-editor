@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   BOOK_PALETTES,
-  CHIRI_THEME,
   DEFAULT_THEME,
+  DESAFINADO_THEME,
   omarchyOption,
   THEME_OPTIONS,
   themeById,
@@ -135,9 +135,9 @@ describe('book palettes', () => {
   })
 })
 
-describe('the Chiri theme', () => {
+describe('the Desafinado theme', () => {
   it('passes AA', () => {
-    expectLegible(CHIRI_THEME.tokens.roles)
+    expectLegible(DESAFINADO_THEME.tokens.roles)
   })
 })
 
@@ -178,9 +178,9 @@ describe('the default theme', () => {
 })
 
 describe('theme options', () => {
-  it('lists the Chiri theme first, then every Palette', () => {
+  it('lists the Desafinado theme first, then every Palette', () => {
     expect(THEME_OPTIONS).toHaveLength(25)
-    expect(THEME_OPTIONS[0]).toBe(CHIRI_THEME)
+    expect(THEME_OPTIONS[0]).toBe(DESAFINADO_THEME)
   })
 
   it('splits the options by mode, with no option lost', () => {
@@ -191,9 +191,9 @@ describe('theme options', () => {
     expect(dark.length + light.length).toBe(THEME_OPTIONS.length)
   })
 
-  it('shows every code the Chiri theme paints', () => {
-    const codes = CHIRI_THEME.colors.map(({ hex }) => hex)
-    for (const value of Object.values(CHIRI_THEME.tokens.roles))
+  it('shows every code the Desafinado theme paints', () => {
+    const codes = DESAFINADO_THEME.colors.map(({ hex }) => hex)
+    for (const value of Object.values(DESAFINADO_THEME.tokens.roles))
       expect(codes).toContain(value)
   })
 
@@ -201,16 +201,16 @@ describe('theme options', () => {
     const option = omarchyOption('omarchy', {
       name: 'tokyo-night',
       mode: 'dark',
-      roles: CHIRI_THEME.tokens.roles,
+      roles: DESAFINADO_THEME.tokens.roles,
     })
     expect(option.origin).toBe('Follows Tokyo Night')
     expect(option.colors.map(({ hex }) => hex)).toEqual(
-      CHIRI_THEME.colors.map(({ hex }) => hex),
+      DESAFINADO_THEME.colors.map(({ hex }) => hex),
     )
   })
 
   it('finds an option by id and answers null otherwise', () => {
-    expect(themeById(CHIRI_THEME.id)).toBe(CHIRI_THEME)
+    expect(themeById(DESAFINADO_THEME.id)).toBe(DESAFINADO_THEME)
     expect(themeById('neon')).toBeNull()
   })
 })

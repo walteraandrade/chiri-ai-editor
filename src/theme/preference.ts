@@ -2,7 +2,7 @@ import type { StorageLike } from '../document/storage'
 import { DEFAULT_THEME, themeById } from './catalog'
 import type { ThemeTokens } from './tokens'
 
-export const THEME_STORAGE_KEY = 'chiri.theme'
+export const THEME_STORAGE_KEY = 'desafinado.theme'
 
 export const OMARCHY_CHOICE = 'omarchy'
 

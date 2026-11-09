@@ -1,4 +1,4 @@
-import { type ChiriApi, FILE_NOT_FOUND_REASON } from '../../electron/api'
+import { type DesafinadoApi, FILE_NOT_FOUND_REASON } from '../../electron/api'
 import type { FileSession } from '../document/file-session'
 import { SAMPLE_DOCUMENT } from '../document/sample-document'
 import { restoreUnsaved } from '../document/unsaved'
@@ -43,7 +43,7 @@ export const SCRATCH_KEY = 'scratch:document'
 
 type ElectronKitDeps = {
   readonly api: Pick<
-    ChiriApi,
+    DesafinadoApi,
     | 'historyList'
     | 'historyText'
     | 'historyRecord'
@@ -250,10 +250,10 @@ export const createElectronKit = async ({
   }
 }
 
-const chiriApi = (): ChiriApi => {
-  if (window.chiri === undefined)
+const desafinadoApi = (): DesafinadoApi => {
+  if (window.desafinado === undefined)
     throw new Error('The Electron preload API is missing')
-  return window.chiri
+  return window.desafinado
 }
 
 export const createElectronKitFactory =
@@ -263,7 +263,7 @@ export const createElectronKitFactory =
 
 export const browserElectronKit: PlatformKitFactory<string> =
   createElectronKitFactory(() => {
-    const api = chiriApi()
+    const api = desafinadoApi()
     return {
       api,
       storage: getRemovableStorage(),

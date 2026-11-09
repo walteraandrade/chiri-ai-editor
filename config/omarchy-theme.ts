@@ -113,7 +113,7 @@ const watchTheme = (server: ViteDevServer, stateDir: string): void => {
 export const omarchyTheme = (stateDir = defaultStateDir()): Plugin => {
   let serving = false
   return {
-    name: 'chiri-omarchy-theme',
+    name: 'desafinado-omarchy-theme',
     configResolved: (config) => {
       serving = config.command === 'serve'
     },

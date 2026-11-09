@@ -3,23 +3,25 @@ import { devServerOptions, parsePort } from './ports'
 
 describe('parsePort', () => {
   it('returns undefined when the variable is not set', () => {
-    expect(parsePort('CHIRI_DEV_PORT', undefined)).toBeUndefined()
+    expect(parsePort('DESAFINADO_DEV_PORT', undefined)).toBeUndefined()
   })
 
   it('returns undefined when the variable is empty', () => {
-    expect(parsePort('CHIRI_DEV_PORT', '')).toBeUndefined()
-    expect(parsePort('CHIRI_DEV_PORT', '   ')).toBeUndefined()
+    expect(parsePort('DESAFINADO_DEV_PORT', '')).toBeUndefined()
+    expect(parsePort('DESAFINADO_DEV_PORT', '   ')).toBeUndefined()
   })
 
   it('parses a port number', () => {
-    expect(parsePort('CHIRI_DEV_PORT', '5301')).toBe(5301)
-    expect(parsePort('CHIRI_DEV_PORT', ' 9301 ')).toBe(9301)
+    expect(parsePort('DESAFINADO_DEV_PORT', '5301')).toBe(5301)
+    expect(parsePort('DESAFINADO_DEV_PORT', ' 9301 ')).toBe(9301)
   })
 
   it.each(['0', '65536', '-1', '53.01', 'abc', '5301x', '0x10'])(
     'rejects %s and names the variable',
     (raw) => {
-      expect(() => parsePort('CHIRI_DEV_PORT', raw)).toThrow(/CHIRI_DEV_PORT/)
+      expect(() => parsePort('DESAFINADO_DEV_PORT', raw)).toThrow(
+        /DESAFINADO_DEV_PORT/,
+      )
     },
   )
 })
@@ -30,15 +32,15 @@ describe('devServerOptions', () => {
   })
 
   it('fixes the port and refuses to move when one is configured', () => {
-    expect(devServerOptions({ CHIRI_DEV_PORT: '5301' })).toEqual({
+    expect(devServerOptions({ DESAFINADO_DEV_PORT: '5301' })).toEqual({
       port: 5301,
       strictPort: true,
     })
   })
 
   it('fails on an invalid port', () => {
-    expect(() => devServerOptions({ CHIRI_DEV_PORT: 'nope' })).toThrow(
-      /CHIRI_DEV_PORT/,
+    expect(() => devServerOptions({ DESAFINADO_DEV_PORT: 'nope' })).toThrow(
+      /DESAFINADO_DEV_PORT/,
     )
   })
 })

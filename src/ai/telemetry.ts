@@ -150,7 +150,7 @@ export const createTelemetryCollector = (
   return { integration, expect, release }
 }
 
-const COLLECTOR_KEY = Symbol.for('chiri.telemetry')
+const COLLECTOR_KEY = Symbol.for('desafinado.telemetry')
 
 const isTelemetryCollector = (value: unknown): value is TelemetryCollector =>
   typeof value === 'object' &&

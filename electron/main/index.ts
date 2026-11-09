@@ -19,6 +19,7 @@ import { registerFileHandlers } from './files/register'
 import { type HistoryAccess, registerHistory } from './history-main'
 import { prepareInstalledApp, startInstalledApp } from './installed-app'
 import { registerLaunches } from './launch/register'
+import { migrateLegacyUserData } from './legacy-user-data'
 import { registerLibraryHandlers } from './library/register'
 import { menuTemplate } from './menu-template'
 import { registerQuickActionsIpc } from './quick-actions/quick-actions-ipc'
@@ -38,6 +39,11 @@ const applyDevOptions = (): void => {
     packaged: app.isPackaged,
   })
   if (userDataDir !== undefined) app.setPath('userData', userDataDir)
+  else
+    migrateLegacyUserData({
+      target: app.getPath('userData'),
+      appData: app.getPath('appData'),
+    })
   if (debugPort !== undefined)
     app.commandLine.appendSwitch('remote-debugging-port', String(debugPort))
 }

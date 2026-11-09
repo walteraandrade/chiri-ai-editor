@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { contentTypeFor, resolveAssetPath } from './static-files'
 
-const ROOT = '/opt/chiri/resources/app.asar/out/renderer'
+const ROOT = '/opt/desafinado/resources/app.asar/out/renderer'
 
 describe('resolveAssetPath', () => {
   it('maps a pathname into the root', () => {

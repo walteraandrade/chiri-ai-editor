@@ -21,7 +21,7 @@ type Handler = (event: unknown, ...args: unknown[]) => unknown
 let dir = ''
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'chiri-quick-actions-'))
+  dir = await mkdtemp(join(tmpdir(), 'desafinado-quick-actions-'))
 })
 
 afterEach(async () => {

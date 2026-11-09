@@ -14,7 +14,7 @@ import { readMarkdown } from './read-markdown'
 let dir = ''
 
 beforeEach(async () => {
-  dir = await realpath(await mkdtemp(join(tmpdir(), 'chiri-read-')))
+  dir = await realpath(await mkdtemp(join(tmpdir(), 'desafinado-read-')))
 })
 
 afterEach(async () => {

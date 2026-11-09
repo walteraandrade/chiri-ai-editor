@@ -24,7 +24,7 @@ let base = ''
 let stop: () => void = () => undefined
 
 beforeEach(async () => {
-  base = await realpath(await mkdtemp(join(tmpdir(), 'chiri-external-')))
+  base = await realpath(await mkdtemp(join(tmpdir(), 'desafinado-external-')))
 })
 
 afterEach(async () => {

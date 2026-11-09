@@ -48,7 +48,9 @@ describe('stored choice', () => {
   })
 
   it('ignores a stored value that is not a model id', () => {
-    expect(readModelChoice(memory({ 'chiri.model': 'junk' }))).toBeUndefined()
+    expect(
+      readModelChoice(memory({ 'desafinado.model': 'junk' })),
+    ).toBeUndefined()
   })
 
   it('survives storage that throws', () => {
@@ -68,6 +70,6 @@ describe('stored choice', () => {
   })
 
   it('names its change event', () => {
-    expect(MODEL_CHANGED_EVENT).toBe('chiri:model-changed')
+    expect(MODEL_CHANGED_EVENT).toBe('desafinado:model-changed')
   })
 })

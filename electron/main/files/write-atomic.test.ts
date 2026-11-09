@@ -16,7 +16,7 @@ import { type AtomicFs, writeAtomic } from './write-atomic'
 let dir = ''
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'chiri-atomic-'))
+  dir = await mkdtemp(join(tmpdir(), 'desafinado-atomic-'))
 })
 
 afterEach(async () => {

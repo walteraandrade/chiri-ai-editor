@@ -1,8 +1,8 @@
-import type { ChiriApi } from '../../electron/api'
+import type { DesafinadoApi } from '../../electron/api'
 import type { LibraryKit } from './kit'
 
 export type LibraryApi = Pick<
-  ChiriApi,
+  DesafinadoApi,
   | 'listLibrary'
   | 'addLibraryRoot'
   | 'removeLibraryRoot'

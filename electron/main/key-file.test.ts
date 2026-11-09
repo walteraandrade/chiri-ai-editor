@@ -7,7 +7,7 @@ import { createKeyFile } from './key-file'
 let dir = ''
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'chiri-key-file-'))
+  dir = await mkdtemp(join(tmpdir(), 'desafinado-key-file-'))
 })
 
 afterEach(async () => {

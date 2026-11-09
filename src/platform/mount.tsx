@@ -5,6 +5,7 @@ import { applyInitialTheme } from '../theme/apply-theme'
 import { App } from '../ui/App'
 import { StartError } from '../ui/StartError'
 import type { PlatformKit, PlatformKitFactory } from './kit'
+import { getListableStorage, migrateLegacyStorage } from './legacy-storage'
 import { startWith } from './start'
 import { startErrorMessage } from './start-error'
 
@@ -32,6 +33,7 @@ const renderStartError = (error: unknown): void => {
 export const mountApp = <Ref,>(
   createKit: PlatformKitFactory<Ref>,
 ): Promise<void> => {
+  migrateLegacyStorage(getListableStorage())
   applyInitialTheme()
   return startWith(createKit, render).catch(renderStartError)
 }

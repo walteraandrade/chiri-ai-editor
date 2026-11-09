@@ -1,4 +1,4 @@
-export const DOCUMENT_STORAGE_KEY = 'chiri.document'
+export const DOCUMENT_STORAGE_KEY = 'desafinado.document'
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
 

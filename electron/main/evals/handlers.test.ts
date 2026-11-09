@@ -65,7 +65,7 @@ const setup = ({
   version = '2.1.319',
   evalCount = 2,
 }: SetupOptions = {}): Setup => {
-  const userData = mkdtempSync(join(tmpdir(), 'chiri-handlers-test-'))
+  const userData = mkdtempSync(join(tmpdir(), 'desafinado-handlers-test-'))
   made.push(userData)
   const jobs: EvalJob[] = []
   const cleanup = vi.fn(async () => undefined)

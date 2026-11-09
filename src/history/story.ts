@@ -100,7 +100,7 @@ export const describeVersion = (
       return {
         author: 'file',
         label: 'External',
-        headline: 'Changed outside Chiri',
+        headline: 'Changed outside Desafinado',
       }
     case 'accepted':
       return acceptedDescription(cause.changes)

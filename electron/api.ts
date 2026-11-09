@@ -104,7 +104,7 @@ export type KeyDetails = {
 
 export type KeyState = KeyDetails & { readonly managed: boolean }
 
-export type ChiriApi = {
+export type DesafinadoApi = {
   readonly shellInfo: () => Promise<ShellInfo>
   readonly openFile: () => Promise<FileReadResult>
   readonly readFile: (path: string) => Promise<FileReadResult>

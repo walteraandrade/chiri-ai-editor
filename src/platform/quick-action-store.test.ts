@@ -65,7 +65,7 @@ describe('createQuickActionStore', () => {
 })
 
 describe('localQuickActionStore', () => {
-  it('keeps the settings under chiri.quickActions', async () => {
+  it('keeps the settings under desafinado.quickActions', async () => {
     const storage = memoryStorage()
     await localQuickActionStore(storage).save(SETTINGS)
     expect(storage.items.has(QUICK_ACTIONS_STORAGE_KEY)).toBe(true)

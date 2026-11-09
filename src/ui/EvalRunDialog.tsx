@@ -148,8 +148,8 @@ export function EvalRunDialog({
           LSP config, settings, agents and commands. The CLI gives each run its
           own home and working folder, but it says its sandbox is not a
           guarantee, so what the agent's tools can read on this machine is not
-          limited by Chiri. Hard links to files outside the folder are copied as
-          content.
+          limited by Desafinado. Hard links to files outside the folder are
+          copied as content.
         </p>
         <h3 className="mt-4 font-medium text-ink-muted text-xs">
           Found on this Skill

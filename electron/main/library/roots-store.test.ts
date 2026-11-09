@@ -7,7 +7,7 @@ import { createRootsStore, ROOTS_FILE_NAME } from './roots-store'
 let dir = ''
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'chiri-roots-'))
+  dir = await mkdtemp(join(tmpdir(), 'desafinado-roots-'))
 })
 
 afterEach(async () => {

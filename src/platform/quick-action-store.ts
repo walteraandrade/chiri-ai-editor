@@ -6,7 +6,7 @@ import {
 } from '../ai/quick-action-settings'
 import type { StorageLike } from '../document/storage'
 
-export const QUICK_ACTIONS_STORAGE_KEY = 'chiri.quickActions'
+export const QUICK_ACTIONS_STORAGE_KEY = 'desafinado.quickActions'
 
 export type QuickActionStore = {
   readonly load: () => Promise<QuickActionSettings>

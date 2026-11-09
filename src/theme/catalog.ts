@@ -55,7 +55,7 @@ const optionOf = (palette: Palette): ThemeOption => ({
   tokens: { name: palette.id, mode: palette.mode, roles: rolesOf(palette) },
 })
 
-const CHIRI_ROLES: ThemeRoles = {
+const DESAFINADO_ROLES: ThemeRoles = {
   canvas: '#141417',
   raised: '#28282d',
   ink: '#f1f1f3',
@@ -70,12 +70,12 @@ const CHIRI_ROLES: ThemeRoles = {
   scrollbar: '#46464b',
 }
 
-export const CHIRI_THEME: ThemeOption = {
-  id: 'chiri',
-  title: 'Chiri',
+export const DESAFINADO_THEME: ThemeOption = {
+  id: 'desafinado',
+  title: 'Desafinado',
   origin: 'The original theme',
-  colors: rolesAsColors(CHIRI_ROLES),
-  tokens: { name: 'chiri', mode: 'dark', roles: CHIRI_ROLES },
+  colors: rolesAsColors(DESAFINADO_ROLES),
+  tokens: { name: 'desafinado', mode: 'dark', roles: DESAFINADO_ROLES },
 }
 
 export const omarchyOption = (
@@ -90,7 +90,7 @@ export const omarchyOption = (
 })
 
 export const THEME_OPTIONS: readonly ThemeOption[] = [
-  CHIRI_THEME,
+  DESAFINADO_THEME,
   ...BOOK_PALETTES.map(optionOf),
 ]
 

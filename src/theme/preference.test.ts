@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { StorageLike } from '../document/storage'
-import { BOOK_PALETTES, CHIRI_THEME, DEFAULT_THEME } from './catalog'
+import { BOOK_PALETTES, DEFAULT_THEME, DESAFINADO_THEME } from './catalog'
 import {
   activeTheme,
   loadThemeChoice,
@@ -35,7 +35,7 @@ const MOOD_INDIGO = 'mood-indigo'
 const omarchy: ThemeTokens = {
   name: 'vantablack',
   mode: 'dark',
-  roles: CHIRI_THEME.tokens.roles,
+  roles: DESAFINADO_THEME.tokens.roles,
 }
 
 describe('loadThemeChoice', () => {
@@ -47,8 +47,8 @@ describe('loadThemeChoice', () => {
 
   it('reads a saved theme and ignores unknown values', () => {
     expect(
-      loadThemeChoice(memoryStorage({ [THEME_STORAGE_KEY]: 'chiri' })),
-    ).toBe('chiri')
+      loadThemeChoice(memoryStorage({ [THEME_STORAGE_KEY]: 'desafinado' })),
+    ).toBe('desafinado')
     expect(
       loadThemeChoice(memoryStorage({ [THEME_STORAGE_KEY]: MOOD_INDIGO })),
     ).toBe(MOOD_INDIGO)
@@ -66,7 +66,7 @@ describe('saveThemeChoice', () => {
   })
 
   it('swallows storage errors', () => {
-    expect(() => saveThemeChoice(throwingStorage, 'chiri')).not.toThrow()
+    expect(() => saveThemeChoice(throwingStorage, 'desafinado')).not.toThrow()
   })
 })
 
@@ -81,7 +81,7 @@ describe('activeTheme', () => {
 
   it('uses the chosen theme, even with Omarchy present', () => {
     expect(activeTheme(MOOD_INDIGO, omarchy).name).toBe(MOOD_INDIGO)
-    expect(activeTheme('chiri', omarchy)).toBe(CHIRI_THEME.tokens)
+    expect(activeTheme('desafinado', omarchy)).toBe(DESAFINADO_THEME.tokens)
   })
 
   it('falls back to the default theme for an unknown id', () => {

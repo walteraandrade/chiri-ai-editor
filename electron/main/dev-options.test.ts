@@ -13,60 +13,68 @@ describe('resolveDevOptions in the dev run', () => {
     })
   })
 
-  it('takes the debugging port from CHIRI_CDP_PORT', () => {
-    expect(resolveDevOptions({ CHIRI_CDP_PORT: '9301' }, DEV).debugPort).toBe(
-      9301,
-    )
+  it('takes the debugging port from DESAFINADO_CDP_PORT', () => {
+    expect(
+      resolveDevOptions({ DESAFINADO_CDP_PORT: '9301' }, DEV).debugPort,
+    ).toBe(9301)
   })
 
-  it('takes userData from CHIRI_USER_DATA_DIR', () => {
+  it('takes userData from DESAFINADO_USER_DATA_DIR', () => {
     expect(
-      resolveDevOptions({ CHIRI_USER_DATA_DIR: '/tmp/chiri-a' }, DEV)
+      resolveDevOptions({ DESAFINADO_USER_DATA_DIR: '/tmp/desafinado-a' }, DEV)
         .userDataDir,
-    ).toBe('/tmp/chiri-a')
+    ).toBe('/tmp/desafinado-a')
   })
 
   it('treats empty values as not set', () => {
     expect(
-      resolveDevOptions({ CHIRI_CDP_PORT: ' ', CHIRI_USER_DATA_DIR: '' }, DEV),
+      resolveDevOptions(
+        { DESAFINADO_CDP_PORT: ' ', DESAFINADO_USER_DATA_DIR: '' },
+        DEV,
+      ),
     ).toEqual({ debugPort: DEFAULT_CDP_PORT, userDataDir: undefined })
   })
 
   it('rejects an invalid debugging port and names the variable', () => {
-    expect(() => resolveDevOptions({ CHIRI_CDP_PORT: 'abc' }, DEV)).toThrow(
-      /CHIRI_CDP_PORT/,
-    )
+    expect(() =>
+      resolveDevOptions({ DESAFINADO_CDP_PORT: 'abc' }, DEV),
+    ).toThrow(/DESAFINADO_CDP_PORT/)
   })
 
   it('rejects a relative userData path and names the variable', () => {
     expect(() =>
-      resolveDevOptions({ CHIRI_USER_DATA_DIR: 'data/chiri' }, DEV),
-    ).toThrow(/CHIRI_USER_DATA_DIR/)
+      resolveDevOptions({ DESAFINADO_USER_DATA_DIR: 'data/desafinado' }, DEV),
+    ).toThrow(/DESAFINADO_USER_DATA_DIR/)
   })
 })
 
 describe('resolveDevOptions in a preview of the built app', () => {
-  it('takes userData from CHIRI_USER_DATA_DIR', () => {
+  it('takes userData from DESAFINADO_USER_DATA_DIR', () => {
     expect(
-      resolveDevOptions({ CHIRI_USER_DATA_DIR: '/tmp/chiri-a' }, PREVIEW)
-        .userDataDir,
-    ).toBe('/tmp/chiri-a')
+      resolveDevOptions(
+        { DESAFINADO_USER_DATA_DIR: '/tmp/desafinado-a' },
+        PREVIEW,
+      ).userDataDir,
+    ).toBe('/tmp/desafinado-a')
   })
 
-  it('opens no debugging port, whatever CHIRI_CDP_PORT says', () => {
+  it('opens no debugging port, whatever DESAFINADO_CDP_PORT says', () => {
     expect(resolveDevOptions({}, PREVIEW).debugPort).toBeUndefined()
     expect(
-      resolveDevOptions({ CHIRI_CDP_PORT: '9301' }, PREVIEW).debugPort,
+      resolveDevOptions({ DESAFINADO_CDP_PORT: '9301' }, PREVIEW).debugPort,
     ).toBeUndefined()
     expect(
-      resolveDevOptions({ CHIRI_CDP_PORT: 'abc' }, PREVIEW).debugPort,
+      resolveDevOptions({ DESAFINADO_CDP_PORT: 'abc' }, PREVIEW).debugPort,
     ).toBeUndefined()
   })
 
   it('rejects a relative userData path and names the variable', () => {
     expect(() =>
-      resolveDevOptions({ CHIRI_USER_DATA_DIR: 'data/chiri' }, PREVIEW),
-    ).toThrow(/CHIRI_USER_DATA_DIR/)
+      resolveDevOptions(
+        { DESAFINADO_USER_DATA_DIR: 'data/desafinado' },
+        PREVIEW,
+      ),
+    ).toThrow(/DESAFINADO_USER_DATA_DIR/)
   })
 })
 
@@ -74,7 +82,10 @@ describe('resolveDevOptions in a packaged app', () => {
   it('ignores both variables', () => {
     expect(
       resolveDevOptions(
-        { CHIRI_CDP_PORT: '9301', CHIRI_USER_DATA_DIR: '/tmp/chiri-a' },
+        {
+          DESAFINADO_CDP_PORT: '9301',
+          DESAFINADO_USER_DATA_DIR: '/tmp/desafinado-a',
+        },
         PACKAGED,
       ),
     ).toEqual({ debugPort: undefined, userDataDir: undefined })
@@ -83,7 +94,7 @@ describe('resolveDevOptions in a packaged app', () => {
   it('does not fail on invalid values', () => {
     expect(() =>
       resolveDevOptions(
-        { CHIRI_CDP_PORT: 'abc', CHIRI_USER_DATA_DIR: 'relative' },
+        { DESAFINADO_CDP_PORT: 'abc', DESAFINADO_USER_DATA_DIR: 'relative' },
         PACKAGED,
       ),
     ).not.toThrow()

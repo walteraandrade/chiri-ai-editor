@@ -1,9 +1,9 @@
-import type { ChiriApi } from '../../electron/api'
+import type { DesafinadoApi } from '../../electron/api'
 import type { PlatformKit } from './kit'
 
 export const withKeySettings = async <Ref>(
   api: Pick<
-    ChiriApi,
+    DesafinadoApi,
     'keyState' | 'saveKey' | 'keepKeyAsPlainText' | 'clearKey'
   >,
   kit: PlatformKit<Ref>,
