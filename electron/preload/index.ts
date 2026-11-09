@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
-  type ChiriApi,
+  type DesafinadoApi,
   EVALS_CANCEL_CHANNEL,
   EVALS_OPEN_REPORT_CHANNEL,
   EVALS_PREPARE_CHANNEL,
@@ -31,7 +31,7 @@ import {
 } from '../api'
 import { HISTORY_CHANNELS } from '../history-api'
 
-const api: ChiriApi = {
+const api: DesafinadoApi = {
   shellInfo: () => ipcRenderer.invoke(SHELL_INFO_CHANNEL),
   openFile: () => ipcRenderer.invoke(FILE_OPEN_CHANNEL),
   readFile: (path) => ipcRenderer.invoke(FILE_READ_CHANNEL, path),
@@ -99,4 +99,4 @@ const api: ChiriApi = {
   clearKey: () => ipcRenderer.invoke(KEY_CLEAR_CHANNEL),
 }
 
-contextBridge.exposeInMainWorld('chiri', api)
+contextBridge.exposeInMainWorld('desafinado', api)

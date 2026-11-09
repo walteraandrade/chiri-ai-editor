@@ -22,7 +22,7 @@ const bridgeOf = (handlers: HistoryHandlers): HistoryApi => ({
 describeHistoryStoreContract(
   'the SQLite adapter',
   async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'chiri-contract-'))
+    const directory = mkdtempSync(join(tmpdir(), 'desafinado-contract-'))
     const db = openHistoryDb(join(directory, 'history.sqlite'))
     return {
       store: createElectronHistoryStore(
@@ -43,7 +43,7 @@ describe('createHistoryHandlers', () => {
   let handlers: HistoryHandlers
 
   beforeEach(() => {
-    directory = mkdtempSync(join(tmpdir(), 'chiri-handlers-'))
+    directory = mkdtempSync(join(tmpdir(), 'desafinado-handlers-'))
     db = openHistoryDb(join(directory, 'history.sqlite'))
     handlers = createHistoryHandlers(db, () => 42)
   })

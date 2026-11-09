@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { ChiriApi, KeyState } from '../../electron/api'
+import type { DesafinadoApi, KeyState } from '../../electron/api'
 import { withKeySettings } from './key-settings'
 import type { PlatformKit } from './kit'
 
@@ -21,7 +21,7 @@ const baseKit = {
 } as unknown as PlatformKit
 
 type KeyApi = Pick<
-  ChiriApi,
+  DesafinadoApi,
   'keyState' | 'saveKey' | 'keepKeyAsPlainText' | 'clearKey'
 >
 
@@ -59,10 +59,10 @@ describe('withKeySettings', () => {
   })
 
   it('passes each action to the matching API function', async () => {
-    const chiri = api(state())
-    const { keySettings } = await withKeySettings(chiri, baseKit)
+    const desafinado = api(state())
+    const { keySettings } = await withKeySettings(desafinado, baseKit)
     expect((await keySettings?.save('sk-or-v1-a'))?.storage).toBe('keyring')
-    expect(chiri.saveKey).toHaveBeenCalledWith('sk-or-v1-a')
+    expect(desafinado.saveKey).toHaveBeenCalledWith('sk-or-v1-a')
     expect((await keySettings?.keepAsPlainText())?.storage).toBe('plain-text')
     expect((await keySettings?.clear())?.present).toBe(false)
   })

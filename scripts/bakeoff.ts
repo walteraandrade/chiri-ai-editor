@@ -44,7 +44,7 @@ const BUDGET_USD = 0.5
 const STOP_BEFORE_USD = 0.45
 const FIRST_CALL_ESTIMATE_USD = 0.01
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1'
-const DEFAULT_OUT = 'docs/chiri/bakeoff.md'
+const DEFAULT_OUT = 'docs/bakeoff.md'
 
 type QuickPlan = {
   readonly action: BuiltInQuickActionId

@@ -1,5 +1,5 @@
 ---
-name: Chiri
+name: Desafinado
 description: A Markdown editor where the AI works in the text as a visible, quiet co-author.
 colors:
   deep-indigo: "#051230"
@@ -57,13 +57,13 @@ components:
     textColor: "{colors.apricot-orange}"
 ---
 
-# Design System: Chiri
+# Design System: Desafinado
 
 ## 1. Overview
 
 **Creative North Star: "The Shared Manuscript".** One page, two authors. The writer's ink is neutral; the AI writes in one color and wears one name tag, so every glance answers "who did this?". The surface is flat with square corners; depth comes from solid layers and hairlines.
 
-Colors are not hard-coded. A Theme is 12 solid roles on `:root` (`--theme-canvas`, `-raised`, `-ink`, `-faint`, `-accent`, `-ai`, `-danger`, `-selection`, `-fill`, `-fill-hover`, `-hairline`, `-scrollbar`), and every `--color-*` token is an alias of one of them. The themes live in `src/theme/catalog.ts`: 24 Palettes from *A Dictionary of Color Combinations* Vol. 1, of which `Mood Indigo` below is the default, and the original Chiri theme in graphite and ember. In `pnpm dev` on an Omarchy machine the current Omarchy theme, light or dark, is one more option (`config/omarchy-theme.ts`, registered in `config/renderer.ts` for both the Web and the Electron dev servers); it computes its own solid roles. See [ADR 0017](docs/chiri/adr/0017-book-themes-and-solid-colors.md).
+Colors are not hard-coded. A Theme is 12 solid roles on `:root` (`--theme-canvas`, `-raised`, `-ink`, `-faint`, `-accent`, `-ai`, `-danger`, `-selection`, `-fill`, `-fill-hover`, `-hairline`, `-scrollbar`), and every `--color-*` token is an alias of one of them. The themes live in `src/theme/catalog.ts`: 24 Palettes from *A Dictionary of Color Combinations* Vol. 1, of which `Mood Indigo` below is the default, and the original Desafinado theme in graphite and ember. In `pnpm dev` on an Omarchy machine the current Omarchy theme, light or dark, is one more option (`config/omarchy-theme.ts`, registered in `config/renderer.ts` for both the Web and the Electron dev servers); it computes its own solid roles. See [ADR 0017](docs/adr/0017-book-themes-and-solid-colors.md).
 
 ## 2. Colors
 
@@ -90,7 +90,7 @@ These are the default theme's colors, `Mood Indigo`. Another Theme puts its own 
 **Display Font:** League Spartan (app title only)
 **Body Font:** Inter Variable
 
-One family carries the product. League Spartan appears once, in the "Chiri" wordmark.
+One family carries the product. League Spartan appears once, in the "Desafinado" wordmark.
 
 ### Hierarchy
 - **Display** (600, 1.5rem): the wordmark.
@@ -137,7 +137,7 @@ Flat, always. There are no shadows. Floating surfaces (bubble, floating Card, Re
 
 ### Lists (Library)
 - **Open file:** the canvas color behind medium-weight ink, with a solid 6px accent square before the name. The skill that holds it gets an accent caret.
-- **Tree rows:** roots, Skills, folders and files are rows of one tree, indented 12px per level, with a ▸ / ▾ caret on every node that has children. A Skill row shows its name only; its description shows under it, cut at 3 lines with an ellipsis (the full text in its tooltip), while the Skill is open or the row has keyboard focus. Hover alone never shows it: rows that move under the pointer turn a click into a click on the wrong row. It unfolds in 180ms, quart-out, and folds back the same way. A node's children unfold the same way when it opens and vanish at once when it closes. A Skill with a frontmatter problem wears the danger color, and the problem shows with the description. A file that does not open in Chiri is faint. A folder can carry a faint `· detail` (`evals/` shows its Eval count).
+- **Tree rows:** roots, Skills, folders and files are rows of one tree, indented 12px per level, with a ▸ / ▾ caret on every node that has children. A Skill row shows its name only; its description shows under it, cut at 3 lines with an ellipsis (the full text in its tooltip), while the Skill is open or the row has keyboard focus. Hover alone never shows it: rows that move under the pointer turn a click into a click on the wrong row. It unfolds in 180ms, quart-out, and folds back the same way. A node's children unfold the same way when it opens and vanish at once when it closes. A Skill with a frontmatter problem wears the danger color, and the problem shows with the description. A file that does not open in Desafinado is faint. A folder can carry a faint `· detail` (`evals/` shows its Eval count).
 - **Focused row:** the canvas color and a 1px accent outline drawn inside the row, no shadow. The tree is one Tab stop; the arrow keys move the focus.
 
 ### Library rail

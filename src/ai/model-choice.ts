@@ -1,6 +1,6 @@
-export const MODEL_CHANGED_EVENT = 'chiri:model-changed'
+export const MODEL_CHANGED_EVENT = 'desafinado:model-changed'
 
-const STORAGE_KEY = 'chiri.model'
+const STORAGE_KEY = 'desafinado.model'
 const MODEL_ID = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]*$/i
 
 type ModelStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>

@@ -16,7 +16,7 @@ import { countEvals, stageSkill } from './stage'
 const made: string[] = []
 
 const scratch = (): string => {
-  const dir = mkdtempSync(join(tmpdir(), 'chiri-stage-test-'))
+  const dir = mkdtempSync(join(tmpdir(), 'desafinado-stage-test-'))
   made.push(dir)
   return dir
 }

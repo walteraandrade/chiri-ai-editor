@@ -31,11 +31,11 @@ export const resolveDevOptions = (
     ? { debugPort: undefined, userDataDir: undefined }
     : {
         debugPort: devServer
-          ? (parsePort('CHIRI_CDP_PORT', env.CHIRI_CDP_PORT) ??
+          ? (parsePort('DESAFINADO_CDP_PORT', env.DESAFINADO_CDP_PORT) ??
             DEFAULT_CDP_PORT)
           : undefined,
         userDataDir: parseDirectory(
-          'CHIRI_USER_DATA_DIR',
-          env.CHIRI_USER_DATA_DIR,
+          'DESAFINADO_USER_DATA_DIR',
+          env.DESAFINADO_USER_DATA_DIR,
         ),
       }

@@ -22,7 +22,7 @@ import { type AtomicFs, nodeFs } from './write-atomic'
 let dir = ''
 
 beforeEach(async () => {
-  dir = await realpath(await mkdtemp(join(tmpdir(), 'chiri-save-')))
+  dir = await realpath(await mkdtemp(join(tmpdir(), 'desafinado-save-')))
 })
 
 afterEach(async () => {

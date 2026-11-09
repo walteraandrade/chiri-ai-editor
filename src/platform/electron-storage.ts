@@ -1,6 +1,6 @@
 import type { StorageLike } from '../document/storage'
 
-export const LAST_FILE_KEY = 'chiri.lastFile'
+export const LAST_FILE_KEY = 'desafinado.lastFile'
 
 export type RemovableStorage = StorageLike & Pick<Storage, 'removeItem'>
 

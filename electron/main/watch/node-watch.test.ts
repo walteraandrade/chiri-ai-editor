@@ -23,7 +23,7 @@ let dir = ''
 let watching: ReturnType<typeof createFolderWatcher> | null = null
 
 beforeEach(async () => {
-  dir = await realpath(await mkdtemp(join(tmpdir(), 'chiri-watch-')))
+  dir = await realpath(await mkdtemp(join(tmpdir(), 'desafinado-watch-')))
 })
 
 afterEach(async () => {

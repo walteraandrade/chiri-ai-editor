@@ -1,8 +1,8 @@
-import type { ChiriApi } from '../../electron/api'
+import type { DesafinadoApi } from '../../electron/api'
 import type { EvalsKit } from '../evals/types'
 
 export type EvalsApi = Pick<
-  ChiriApi,
+  DesafinadoApi,
   'evalStatus' | 'evalPrepare' | 'evalRun' | 'evalOpenReport' | 'evalCancel'
 >
 

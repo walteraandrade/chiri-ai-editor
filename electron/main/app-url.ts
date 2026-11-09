@@ -1,5 +1,5 @@
 export const APP_SCHEME = 'app'
-export const APP_HOST = 'chiri'
+export const APP_HOST = 'desafinado'
 export const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`
 export const RENDERER_ENTRY = 'electron.html'
 export const BUNDLE_URL = `${APP_ORIGIN}/${RENDERER_ENTRY}`

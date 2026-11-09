@@ -57,7 +57,7 @@ describe('describeKeyState', () => {
     expect(
       describeKeyState(state({ unreadable: true, keyringAvailable: false })),
     ).toBe(
-      'The system keyring is not available, so the stored key cannot be read. Unlock your keyring and restart Chiri.',
+      'The system keyring is not available, so the stored key cannot be read. Unlock your keyring and restart Desafinado.',
     )
   })
 })

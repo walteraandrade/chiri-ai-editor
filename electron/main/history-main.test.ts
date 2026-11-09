@@ -10,14 +10,14 @@ type Listener = (
   ...args: unknown[]
 ) => unknown
 
-const trusted = { senderFrame: { origin: 'app://chiri' } }
+const trusted = { senderFrame: { origin: 'app://desafinado' } }
 
 describe('registerHistory', () => {
   let directory = ''
   let file = ''
 
   beforeEach(() => {
-    directory = mkdtempSync(join(tmpdir(), 'chiri-main-'))
+    directory = mkdtempSync(join(tmpdir(), 'desafinado-main-'))
     file = join(directory, 'history.sqlite')
   })
 
@@ -33,7 +33,7 @@ describe('registerHistory', () => {
         handle: (channel, listener) => listeners.set(channel, listener),
       },
       file: () => file,
-      isTrusted: (event) => event.senderFrame?.origin === 'app://chiri',
+      isTrusted: (event) => event.senderFrame?.origin === 'app://desafinado',
       onQuit: (close) => quit.push(close),
     })
     const call = (channel: string, ...args: unknown[]) =>

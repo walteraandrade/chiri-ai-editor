@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type {
-  ChiriApi,
+  DesafinadoApi,
   FileReadResult,
   FileSaveResult,
 } from '../../electron/api'
@@ -23,7 +23,7 @@ const readOk: FileReadResult = {
   text: '# A\n',
 }
 
-const api = (overrides: Partial<ChiriApi> = {}) => ({
+const api = (overrides: Partial<DesafinadoApi> = {}) => ({
   openFile: vi.fn(async (): Promise<FileReadResult> => readOk),
   readFile: vi.fn(async (): Promise<FileReadResult> => readOk),
   saveFile: vi.fn(

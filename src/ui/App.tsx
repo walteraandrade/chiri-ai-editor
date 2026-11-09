@@ -502,7 +502,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 pt-6 pb-3">
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 className="font-display font-semibold text-2xl text-ink-strong tracking-wide">
-              Chiri
+              Desafinado
             </h1>
             {file.session ? (
               <FileName

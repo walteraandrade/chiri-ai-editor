@@ -36,6 +36,6 @@ describe('resolveAppUrl', () => {
 describe('the bundle URL', () => {
   it('lives on the app origin', () => {
     expect(BUNDLE_URL.startsWith(`${APP_ORIGIN}/`)).toBe(true)
-    expect(APP_ORIGIN).toBe('app://chiri')
+    expect(APP_ORIGIN).toBe('app://desafinado')
   })
 })

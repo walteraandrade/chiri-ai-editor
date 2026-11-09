@@ -14,7 +14,7 @@ export const resolveDevDialogs = (
   read: (path: string) => Promise<string> = readText,
 ): FileDialogs | undefined => {
   if (packaged || env.ELECTRON_RENDERER_URL === undefined) return undefined
-  const pickFile = env.CHIRI_DEV_PICK_FILE?.trim() ?? ''
+  const pickFile = env.DESAFINADO_DEV_PICK_FILE?.trim() ?? ''
   if (pickFile === '' || !isAbsolute(pickFile)) return undefined
   const next = async (): Promise<string | null> => {
     try {

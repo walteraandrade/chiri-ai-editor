@@ -15,6 +15,6 @@ export const parsePort = (
 export const devServerOptions = (
   env: Readonly<Record<string, string | undefined>>,
 ): { readonly port?: number; readonly strictPort?: boolean } => {
-  const port = parsePort('CHIRI_DEV_PORT', env.CHIRI_DEV_PORT)
+  const port = parsePort('DESAFINADO_DEV_PORT', env.DESAFINADO_DEV_PORT)
   return port === undefined ? {} : { port, strictPort: true }
 }

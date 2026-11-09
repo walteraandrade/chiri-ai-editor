@@ -36,7 +36,7 @@ const edit = (text: string, at = 1) => ({
 
 describe('openHistoryDb', () => {
   beforeEach(() => {
-    directory = mkdtempSync(join(tmpdir(), 'chiri-history-'))
+    directory = mkdtempSync(join(tmpdir(), 'desafinado-history-'))
     file = join(directory, 'history.sqlite')
   })
 
@@ -209,7 +209,7 @@ describe('openHistoryDb', () => {
 
 describe('unsaved text in drafts', () => {
   beforeEach(() => {
-    directory = mkdtempSync(join(tmpdir(), 'chiri-history-'))
+    directory = mkdtempSync(join(tmpdir(), 'desafinado-history-'))
     file = join(directory, 'history.sqlite')
   })
 
@@ -302,7 +302,7 @@ describe('unsaved text in drafts', () => {
 
 describe('thin', () => {
   beforeEach(() => {
-    directory = mkdtempSync(join(tmpdir(), 'chiri-history-'))
+    directory = mkdtempSync(join(tmpdir(), 'desafinado-history-'))
     file = join(directory, 'history.sqlite')
   })
 

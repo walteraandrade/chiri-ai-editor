@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { createAppHandler } from './app-protocol'
 import { CONTENT_SECURITY_POLICY } from './security'
 
-const ROOT = '/opt/chiri/resources/app.asar/out/renderer'
+const ROOT = '/opt/desafinado/resources/app.asar/out/renderer'
 const KEY = 'sk-or-v1-dummy-for-tests'
 
 const files: Record<string, string> = {
-  [`${ROOT}/electron.html`]: '<!doctype html><title>Chiri</title>',
+  [`${ROOT}/electron.html`]: '<!doctype html><title>Desafinado</title>',
   [`${ROOT}/assets/index-1.js`]: 'export {}',
   [`${ROOT}/assets/font.woff2`]: 'woff2-bytes',
 }
@@ -42,7 +42,7 @@ const build = (
 }
 
 const get = (path: string, init: RequestInit = {}) =>
-  new Request(`app://chiri${path}`, init)
+  new Request(`app://desafinado${path}`, init)
 
 describe('createAppHandler: the bundle', () => {
   it('serves the entry with the security headers', async () => {
@@ -56,14 +56,14 @@ describe('createAppHandler: the bundle', () => {
       CONTENT_SECURITY_POLICY,
     )
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
-    expect(await response.text()).toContain('Chiri')
+    expect(await response.text()).toContain('Desafinado')
   })
 
   it('serves the entry for the root path', async () => {
     const { handler } = build()
     const response = await handler(get('/'))
     expect(response.status).toBe(200)
-    expect(await response.text()).toContain('Chiri')
+    expect(await response.text()).toContain('Desafinado')
   })
 
   it('serves assets with their content type', async () => {
@@ -184,7 +184,9 @@ describe('createAppHandler: OpenRouter', () => {
 
   it('accepts a request that the app initiated', async () => {
     const { handler } = build()
-    const request = Object.assign(chat(), { initiatorOrigin: 'app://chiri' })
+    const request = Object.assign(chat(), {
+      initiatorOrigin: 'app://desafinado',
+    })
     expect((await handler(request)).status).toBe(200)
   })
 

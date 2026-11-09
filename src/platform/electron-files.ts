@@ -1,5 +1,5 @@
 import type {
-  ChiriApi,
+  DesafinadoApi,
   FileReadResult,
   FileSaveResult,
 } from '../../electron/api'
@@ -7,7 +7,7 @@ import { createExclusive } from '../document/exclusive'
 import type { DocumentFiles, OpenResult, SaveResult } from './kit'
 
 export type FilesApi = Pick<
-  ChiriApi,
+  DesafinadoApi,
   'openFile' | 'readFile' | 'saveFile' | 'saveFileAs'
 >
 

@@ -5,12 +5,16 @@ describe('findAppPage', () => {
   it('picks the page served on app://', () => {
     const page = {
       type: 'page',
-      url: 'app://chiri/index.html',
+      url: 'app://desafinado/index.html',
       webSocketDebuggerUrl: 'ws://127.0.0.1:9333/devtools/page/1',
     }
     expect(
       findAppPage([
-        { type: 'other', url: 'app://chiri/', webSocketDebuggerUrl: 'ws://x' },
+        {
+          type: 'other',
+          url: 'app://desafinado/',
+          webSocketDebuggerUrl: 'ws://x',
+        },
         { type: 'page', url: 'about:blank', webSocketDebuggerUrl: 'ws://y' },
         page,
       ]),

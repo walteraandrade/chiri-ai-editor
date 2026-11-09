@@ -2,7 +2,7 @@ import type { StorageLike } from '../document/storage'
 import { isCause } from './cause'
 import type { History, Version } from './types'
 
-export const HISTORY_STORAGE_KEY = 'chiri.history'
+export const HISTORY_STORAGE_KEY = 'desafinado.history'
 
 const FALLBACK_SIZES = [10, 1] as const
 

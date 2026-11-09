@@ -88,7 +88,7 @@ const setup = ({
   olderText = OLDER,
   versions = [version(7, 1000), version(8, 2000)],
 }: SetupOptions = {}): Setup => {
-  const userData = mkdtempSync(join(tmpdir(), 'chiri-version-test-'))
+  const userData = mkdtempSync(join(tmpdir(), 'desafinado-version-test-'))
   made.push(userData)
   const jobs: EvalJob[] = []
   const cleaned: string[] = []

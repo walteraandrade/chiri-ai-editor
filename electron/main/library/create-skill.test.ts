@@ -28,7 +28,7 @@ let claudeRoot = ''
 let projectRoot = ''
 
 beforeEach(async () => {
-  dir = await realpath(await mkdtemp(join(tmpdir(), 'chiri-create-')))
+  dir = await realpath(await mkdtemp(join(tmpdir(), 'desafinado-create-')))
   home = join(dir, 'home')
   claudeRoot = join(home, '.claude', 'skills')
   projectRoot = join(dir, 'repo', '.claude', 'skills')

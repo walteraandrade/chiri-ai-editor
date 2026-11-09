@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createLaunchQueue, launchFileOf } from './launch-queue'
 
-const EXE = '/opt/Chiri/chiri-ai-editor'
+const EXE = '/opt/Desafinado/desafinado'
 
 describe('launchFileOf', () => {
   it('finds the Markdown file the desktop passes', () => {

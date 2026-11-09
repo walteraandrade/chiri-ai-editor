@@ -15,7 +15,7 @@ import { createResultsStore, skillKeyOf } from './results'
 const made: string[] = []
 
 const store = () => {
-  const dir = mkdtempSync(join(tmpdir(), 'chiri-results-test-'))
+  const dir = mkdtempSync(join(tmpdir(), 'desafinado-results-test-'))
   made.push(dir)
   return { dir, results: createResultsStore(dir) }
 }
@@ -92,7 +92,7 @@ describe('createResultsStore', () => {
   })
 
   it('puts the last run back when promoting fails', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'chiri-results-test-'))
+    const dir = mkdtempSync(join(tmpdir(), 'desafinado-results-test-'))
     made.push(dir)
     const failing = createResultsStore(dir, async (from, to) => {
       if (String(from).endsWith('next')) throw new Error('rename failed')

@@ -9,7 +9,7 @@ describe('resolveDevDialogs', () => {
   it('is off in the production build, where no dev server sets the URL', () => {
     expect(
       resolveDevDialogs(
-        { CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
+        { DESAFINADO_DEV_PICK_FILE: '/tmp/pick.txt' },
         UNPACKAGED,
         vi.fn(),
       ),
@@ -19,7 +19,7 @@ describe('resolveDevDialogs', () => {
   it('is off in a packaged app, whatever the environment says', () => {
     expect(
       resolveDevDialogs(
-        { ...DEV, CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
+        { ...DEV, DESAFINADO_DEV_PICK_FILE: '/tmp/pick.txt' },
         PACKAGED,
         vi.fn(),
       ),
@@ -30,7 +30,7 @@ describe('resolveDevDialogs', () => {
     expect(resolveDevDialogs(DEV, UNPACKAGED, vi.fn())).toBeUndefined()
     expect(
       resolveDevDialogs(
-        { ...DEV, CHIRI_DEV_PICK_FILE: '  ' },
+        { ...DEV, DESAFINADO_DEV_PICK_FILE: '  ' },
         UNPACKAGED,
         vi.fn(),
       ),
@@ -40,7 +40,7 @@ describe('resolveDevDialogs', () => {
   it('refuses a relative path for the switch', () => {
     expect(
       resolveDevDialogs(
-        { ...DEV, CHIRI_DEV_PICK_FILE: 'pick.txt' },
+        { ...DEV, DESAFINADO_DEV_PICK_FILE: 'pick.txt' },
         UNPACKAGED,
         vi.fn(),
       ),
@@ -55,7 +55,7 @@ describe('resolveDevDialogs', () => {
       .mockResolvedValueOnce('/tmp/copy.md')
       .mockResolvedValueOnce('/work/repo/.claude/skills\n')
     const dialogs = resolveDevDialogs(
-      { ...DEV, CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
+      { ...DEV, DESAFINADO_DEV_PICK_FILE: '/tmp/pick.txt' },
       UNPACKAGED,
       read,
     )
@@ -68,7 +68,7 @@ describe('resolveDevDialogs', () => {
 
   it('cancels the dialog when the file is empty or cannot be read', async () => {
     const dialogs = resolveDevDialogs(
-      { ...DEV, CHIRI_DEV_PICK_FILE: '/tmp/pick.txt' },
+      { ...DEV, DESAFINADO_DEV_PICK_FILE: '/tmp/pick.txt' },
       UNPACKAGED,
       vi
         .fn<(path: string) => Promise<string>>()

@@ -89,7 +89,9 @@ export const useMarkdownFile = <Ref>({
   const dirty = session?.dirty ?? false
   useEffect(() => {
     document.title =
-      name === undefined ? 'Chiri' : `${dirty ? '• ' : ''}${name} · Chiri`
+      name === undefined
+        ? 'Desafinado'
+        : `${dirty ? '• ' : ''}${name} · Desafinado`
   }, [name, dirty])
 
   const { open, openRef, openCreated, save, edited, restore } = lifecycle

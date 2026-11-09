@@ -1,8 +1,8 @@
-import { type ChiriApi, FILE_NOT_FOUND_REASON } from '../../electron/api'
+import { type DesafinadoApi, FILE_NOT_FOUND_REASON } from '../../electron/api'
 import type { DiskRead, ExternalKit } from './kit'
 
 export type ExternalApi = Pick<
-  ChiriApi,
+  DesafinadoApi,
   'watchFile' | 'readFile' | 'onExternalChanges'
 >
 
@@ -10,7 +10,7 @@ export const pathTouched = (ref: string, paths: readonly string[]): boolean =>
   paths.some((path) => ref === path || ref.startsWith(`${path}/`))
 
 const toDiskRead = (
-  result: Awaited<ReturnType<ChiriApi['readFile']>>,
+  result: Awaited<ReturnType<DesafinadoApi['readFile']>>,
 ): DiskRead => {
   if (result.kind === 'opened')
     return { kind: 'text', name: result.name, text: result.text }

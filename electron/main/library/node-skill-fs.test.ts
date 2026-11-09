@@ -15,7 +15,7 @@ import { nodeSkillFileSystem } from './node-skill-fs'
 let dir = ''
 
 beforeEach(async () => {
-  dir = await realpath(await mkdtemp(join(tmpdir(), 'chiri-skillfs-')))
+  dir = await realpath(await mkdtemp(join(tmpdir(), 'desafinado-skillfs-')))
 })
 
 afterEach(async () => {

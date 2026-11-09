@@ -68,7 +68,7 @@ describe('describeVersion', () => {
     expect(describeLast(withVersion({ kind: 'external' }, 1))).toEqual({
       author: 'file',
       label: 'External',
-      headline: 'Changed outside Chiri',
+      headline: 'Changed outside Desafinado',
     })
   })
 

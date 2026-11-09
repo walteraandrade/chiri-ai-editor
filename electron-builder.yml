@@ -1,5 +1,5 @@
-appId: io.github.walteraandrade.chiri
-productName: Chiri
+appId: io.github.walteraandrade.desafinado
+productName: Desafinado
 directories:
   output: release
   buildResources: build
@@ -18,7 +18,7 @@ electronFuses:
 linux:
   target:
     - pacman
-  executableName: chiri-ai-editor
+  executableName: desafinado
   icon: icons
   category: Utility;TextEditor
   synopsis: Markdown editor with an AI co-author
@@ -28,9 +28,9 @@ linux:
   maintainer: Walter Andrade
   desktop:
     entry:
-      Name: Chiri
+      Name: Desafinado
       Comment: Markdown editor with an AI co-author
-      StartupWMClass: chiri-ai-editor
+      StartupWMClass: desafinado
       Keywords: markdown;editor;ai;skills;
 pacman:
   depends:
