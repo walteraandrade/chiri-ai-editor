@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Desafinado">
-  <rect width="512" height="512" rx="112" fill="#141417"/>
-  <path d="M338 174 A128 128 0 1 0 338 338" fill="none" stroke="#e37545" stroke-width="56" stroke-linecap="round"/>
+  <rect width="512" height="512" fill="#112f2c"/>
+  <g stroke="#b6bfc1" stroke-width="14">
+    <line x1="88" y1="176" x2="424" y2="176"/>
+    <line x1="88" y1="232" x2="424" y2="232"/>
+    <line x1="88" y1="288" x2="424" y2="288"/>
+    <line x1="88" y1="344" x2="424" y2="344"/>
+  </g>
+  <ellipse cx="292" cy="250" rx="54" ry="40" transform="rotate(-20 292 250)" fill="#fbe6a0"/>
 </svg>
