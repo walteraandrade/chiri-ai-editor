@@ -4,7 +4,7 @@ A Markdown editor with an AI co-author, built for writing prose and agent Skills
 
 The name comes from Jobim's *Desafinado*, a song in defense of the singer who is slightly out of tune. The AI here proposes; your voice wins. Every change it suggests sits in the text as a tracked change until you Accept it.
 
-![Two Suggestions, a word-level change and a block-level rewrite, with the Active Suggestion's card in the right margin: its Rationale, Accept, Reject and Refine](docs/screenshots/margin-cards.png)
+![A Skill open from the Library, with two Suggestions from a Review pass: a paragraph rewrite with its card in the margin (Rationale, Accept, Reject, Refine), and word-level fixes in the Tone section](docs/screenshots/editor.png)
 
 ## Writing with the AI
 
