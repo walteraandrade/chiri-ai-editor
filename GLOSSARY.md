@@ -46,8 +46,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 | **Web build** | (Backlog) The browser app: a tab on the Vite dev server, `pnpm dev`. Gets shared code, no new platform features ([ADR 0016](docs/adr/0016-web-and-electron-builds.md)). |
 | **Electron build** | (Backlog) The native app: an Electron window, `pnpm dev:electron` ([ADR 0013](docs/adr/0013-native-app-on-electron.md)). The Library, the watcher and `history.sqlite` exist only here. |
 | **Bake-off** | Scripted comparison of candidate models on the same requests ([ADR 0010](docs/adr/0010-model-bakeoff.md)). |
-| **AI call record** | Per-call log entry for verification: task, model, provider, tokens, cost, timings, finish reason, generation id. |
+| **AI call record** | Per-call log entry in `window.__aiCalls`, dev only: task, model, provider, tokens, cost, timings, finish reason, generation id. |
 | **Theme** | The colors the app paints with: 12 solid roles and a fixed mode, light or dark. Picked in Preferences. |
 | **Palette** | A Theme from the book: 2 Vol. 1 combinations of *A Dictionary of Color Combinations* that share a color, at least 6 colors, named after a Duke Ellington composition ([ADR 0017](docs/adr/0017-book-themes-and-solid-colors.md)). |
 | **Preferences** | The screen for app settings: themes and Quick actions. Opens with `Ctrl+,`, a button in the Web build, and `File > Preferences…` in the Electron build. |
-| **Gate** | A point where the orchestrator stops for the maintainer's decision. |
