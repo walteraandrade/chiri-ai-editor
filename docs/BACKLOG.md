@@ -41,4 +41,4 @@ Context links point to where the related code, decision or evidence lives. A mer
 
 ## Out of scope, by choice
 
-Sync between machines (local only; [ADR 0015](adr/0015-history-in-sqlite.md) keeps the file format Turso can read) · editing plugin skills · new platform features in the Web build ([ADR 0016](adr/0016-web-and-electron-builds.md)) · Windows and macOS packages · deploy / hosted demo · proactive AI · slash commands · split-pane before/after · chat sidebar · real-time multi-user collaboration · mobile layout · end-to-end tests (the UI is checked by hand, see `chiri/verification/`).
+Sync between machines (local only; [ADR 0015](adr/0015-history-in-sqlite.md) keeps the file format Turso can read) · editing plugin skills · new platform features in the Web build ([ADR 0016](adr/0016-web-and-electron-builds.md)) · Windows and macOS packages · deploy / hosted demo · proactive AI · slash commands · split-pane before/after · chat sidebar · real-time multi-user collaboration · mobile layout · end-to-end tests (the UI is checked by hand with `agent-browser`).
