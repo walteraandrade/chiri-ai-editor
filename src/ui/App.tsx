@@ -39,6 +39,7 @@ import type { SkillField } from '../skills/skill-frontmatter'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
 import type { ThemeTokens } from '../theme/tokens'
+import { appMenus } from './app-menus'
 import { EditorPane } from './EditorPane'
 import { EvalsPage } from './EvalsPage'
 import { ExternalChangeNotice } from './ExternalChangeNotice'
@@ -61,12 +62,14 @@ import {
   railAnswer,
 } from './library-fold'
 import { libraryPlacement } from './library-layout'
+import { MenuBar } from './MenuBar'
 import { MissingKeyBanner } from './MissingKeyBanner'
 import { ModelDialog } from './ModelDialog'
 import { NewSkillDialog } from './NewSkillDialog'
 import { PreferencesDialog } from './PreferencesDialog'
 import { detectApplePlatform } from './platform'
 import { isPreferencesShortcut } from './preferences-shortcut'
+import { ReviewForm } from './ReviewForm'
 import { ReviewToolbar } from './ReviewToolbar'
 import { SettingsButton } from './SettingsButton'
 import { Timeline } from './Timeline'
@@ -503,6 +506,60 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       reviewTriggerRef.current?.focus()
   }, [])
 
+  const [reviewFormOpen, setReviewFormOpen] = useState(false)
+  const closeReviewForm = useCallback(() => {
+    setReviewFormOpen(false)
+    reviewTriggerRef.current?.focus()
+  }, [])
+  const startReview = useCallback(
+    (focus: string) => {
+      reviewControls?.start(focus)
+      setReviewFormOpen(false)
+    },
+    [reviewControls],
+  )
+  const apple = detectApplePlatform()
+  const menus = appMenus(
+    {
+      apple,
+      documentReady: documentControls !== null,
+      reviewReady: reviewControls !== null,
+      reviewRunning: review.running,
+      openSuggestions: review.open,
+      problems: frontmatterProblems,
+    },
+    {
+      startNew: () => void file.startNew(),
+      open: () => void file.open(),
+      save: (saveAs) => void file.save(saveAs),
+      showProblems: showFrontmatterProblems,
+      openPreferences: () => setPreferencesOpen(true),
+      review: () => setReviewFormOpen(true),
+      stopReview: () => reviewControls?.stop(),
+      acceptAll: () => reviewControls?.acceptAll(),
+      rejectAll: () => reviewControls?.rejectAll(),
+    },
+  ).map((menu) =>
+    menu.label === 'Edit' ? { ...menu, buttonRef: reviewTriggerRef } : menu,
+  )
+  const headerCommands = (
+    <>
+      <FileControls
+        disabled={documentControls === null}
+        problems={frontmatterProblems}
+        onOpen={file.open}
+        onSave={file.save}
+        onShowProblems={showFrontmatterProblems}
+      />
+      <ReviewToolbar
+        status={review}
+        controls={reviewControls}
+        triggerRef={reviewTriggerRef}
+      />
+      <SettingsButton onClick={() => setPreferencesOpen(true)} />
+    </>
+  )
+
   const page = (
     <div className="min-h-(--app-height)">
       <header
@@ -523,19 +580,16 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
             <Hint />
-            <FileControls
-              disabled={documentControls === null}
-              problems={frontmatterProblems}
-              onOpen={file.open}
-              onSave={file.save}
-              onShowProblems={showFrontmatterProblems}
-            />
-            <ReviewToolbar
-              status={review}
-              controls={reviewControls}
-              triggerRef={reviewTriggerRef}
-            />
-            <SettingsButton onClick={() => setPreferencesOpen(true)} />
+            {titleBar === undefined ? (
+              headerCommands
+            ) : (
+              <ReviewToolbar
+                status={review}
+                controls={reviewControls}
+                triggerRef={reviewTriggerRef}
+                trigger={false}
+              />
+            )}
           </div>
         </div>
         {file.conflict ? (
@@ -698,7 +752,17 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     content
   ) : (
     <>
-      <TitleBar />
+      <TitleBar apple={apple}>
+        <MenuBar menus={menus} />
+        {reviewFormOpen && !review.running ? (
+          <ReviewForm
+            className="popover-in absolute top-full left-0 z-30 mt-1 flex w-[min(24rem,calc(100vw-3rem))] gap-2 border border-hairline bg-raised p-2"
+            dismissOnOutside
+            onSubmit={startReview}
+            onClose={closeReviewForm}
+          />
+        ) : null}
+      </TitleBar>
       {content}
     </>
   )

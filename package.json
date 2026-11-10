@@ -1,7 +1,7 @@
 {
   "name": "desafinado",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Markdown editor with an AI co-author",
   "author": "Walter Andrade",
   "homepage": "https://github.com/walteraandrade/desafinado",

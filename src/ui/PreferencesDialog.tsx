@@ -193,6 +193,9 @@ export function PreferencesDialog({
           )}
         </section>
         <QuickActionsSettings quickActions={quickActions} />
+        <p className="mt-8 text-ink-faint text-xs">
+          Desafinado {__APP_VERSION__} · {__APP_COMMIT__}
+        </p>
       </div>
     </dialog>
   )

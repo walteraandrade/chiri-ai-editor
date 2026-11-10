@@ -19,6 +19,8 @@ type ConfirmLeave<Ref> = {
 
 export const UNTITLED_NAME = 'Untitled'
 
+export const NEW_DOCUMENT_TEXT = ''
+
 const answerFor = async <Ref>(
   { ask }: LeaveOptions<Ref>,
   name: string,
@@ -35,7 +37,9 @@ const hasUnsavedChanges = <Ref>({
   text,
   leave,
 }: ConfirmLeave<Ref>): boolean =>
-  session === null ? text !== leave.untitledBaseline : session.dirty
+  session === null
+    ? text.trim() !== '' && text !== leave.untitledBaseline
+    : session.dirty
 
 export const confirmLeave = async <Ref>(
   options: ConfirmLeave<Ref>,

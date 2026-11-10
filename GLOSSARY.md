@@ -4,7 +4,7 @@ Use these names in code, UI, PRs and issues. Avoid synonyms such as "edit", "pro
 
 | Term | Meaning |
 |---|---|
-| **Document** | The Markdown text in the editor. Persisted to `localStorage` with its History, and to a `.md` file on Save. Open replaces it with a file's text ([ADR 0011](docs/adr/0011-open-and-save-markdown-files.md)). |
+| **Document** | The Markdown text in the editor. Persisted to `localStorage` with its History, and to a `.md` file on Save. New replaces it with an empty Document with no file (`Ctrl+N` / `Cmd+N`, asking first about unsaved changes). Open replaces it with a file's text ([ADR 0011](docs/adr/0011-open-and-save-markdown-files.md)). |
 | **Version** | A copy of the whole Document at one moment, with its Cause and time ([ADR 0012](docs/adr/0012-document-history.md)). Causes: Started, Edited (your edits), Accepted (the Suggestions, with Instruction and Rationale), Opened, Restored, and External (the file changed outside the app; recorded by the watcher slice). Saved is a mark on a Version. |
 | **History** | The Document's Versions, oldest first, read through the async History store. Web build: `localStorage`, one Document, at most 50 (the oldest go first). Electron build: `history.sqlite`, one History per file, no cap ([ADR 0015](docs/adr/0015-history-in-sqlite.md)). |
 | **Timeline** | The bar under the header, one dot per Version. A dot shows that Version against the current text, with Restore. |

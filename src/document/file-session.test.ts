@@ -22,6 +22,10 @@ describe('nextFileSession', () => {
     })
   })
 
+  it('drops the session when cleared', () => {
+    expect(nextFileSession(opened(), { type: 'cleared' })).toBeNull()
+  })
+
   it('starts dirty when the Document shows unsaved text over the file', () => {
     expect(
       nextFileSession<typeof REF>(null, {

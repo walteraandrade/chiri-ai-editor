@@ -101,6 +101,12 @@ describe('confirmLeave', () => {
       expect(ask).toHaveBeenCalledWith(UNTITLED_NAME)
     })
 
+    it('lets an empty Document go without asking', async () => {
+      const { ask, leave } = setup('cancel')
+      expect(await leave(null, '  \n')).toBe('leave')
+      expect(ask).not.toHaveBeenCalled()
+    })
+
     it('leaves on Discard, with no file to drop the text of', async () => {
       const { discard, leave } = setup('discard')
       expect(await leave(null, edited)).toBe('leave')

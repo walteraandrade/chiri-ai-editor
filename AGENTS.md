@@ -39,6 +39,8 @@ Commands:
 | `pnpm package` | Builds `out/`, checks that `out/main` and `out/preload` import nothing outside `electron` and Node, then packages for Linux with electron-builder (`release/desafinado-<version>.pacman`). `package:dir` stops at the unpacked app in `release/linux-unpacked/`. |
 | `pnpm bakeoff` | Model Bake-off. Calls the model. |
 
+Releases: bump `package.json`, then push a `v<version>` tag; see [docs/RELEASING.md](docs/RELEASING.md).
+
 Dev environment variables (all optional; parallel checkouts on one machine need their own):
 
 | Variable | Effect |

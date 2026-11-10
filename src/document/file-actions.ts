@@ -1,6 +1,11 @@
 import type { DocumentFiles, FileContents, OpenResult } from '../platform/kit'
 import type { FileSession, FileSessionEvent } from './file-session'
-import { confirmLeave, type LeaveOptions } from './leave-guard'
+import {
+  confirmLeave,
+  type LeaveOptions,
+  NEW_DOCUMENT_TEXT,
+  UNTITLED_NAME,
+} from './leave-guard'
 import { suggestedFileName } from './markdown-file'
 import { restoreUnsaved, type Unsaved } from './unsaved'
 
@@ -53,6 +58,7 @@ export type OpenCreated<T> =
 export type FileActions<Ref> = {
   readonly open: () => Promise<void>
   readonly openRef: (ref: Ref) => Promise<void>
+  readonly startNew: () => Promise<void>
   readonly openCreated: <T>(
     prepare: () => Promise<CreatedFile<Ref, T>>,
   ) => Promise<OpenCreated<T>>
@@ -179,6 +185,24 @@ export const createFileActions = <Ref>({
     })
   }
 
+  const startNew = async (): Promise<void> => {
+    const current = editor()
+    if (current === null) return
+    if (leave !== undefined) {
+      const outcome = await confirmLeave({
+        session: session(),
+        text: current.text(),
+        leave,
+        save: () => save(false),
+      })
+      if (outcome === 'stay') return
+    }
+    dispatch({ type: 'cleared' })
+    current.replace(NEW_DOCUMENT_TEXT)
+    onOpened?.({ text: NEW_DOCUMENT_TEXT, name: UNTITLED_NAME })
+    notify('New Document')
+  }
+
   const openCreated = async <T>(
     prepare: () => Promise<CreatedFile<Ref, T>>,
   ): Promise<OpenCreated<T>> => {
@@ -279,5 +303,5 @@ export const createFileActions = <Ref>({
     }
   }
 
-  return { open, openRef, openCreated, save, reload, reloadFrom }
+  return { open, openRef, startNew, openCreated, save, reload, reloadFrom }
 }
