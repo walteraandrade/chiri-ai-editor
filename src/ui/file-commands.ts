@@ -1,4 +1,4 @@
-export type FileCommand = 'open' | 'save' | 'save-as'
+export type FileCommand = 'new' | 'open' | 'save' | 'save-as'
 
 type KeyLike = Pick<
   KeyboardEvent,
@@ -16,5 +16,6 @@ export const fileCommandOf = (
   const key = event.key.toLowerCase()
   if (key === 's') return event.shiftKey ? 'save-as' : 'save'
   if (key === 'o' && !event.shiftKey) return 'open'
+  if (key === 'n' && !event.shiftKey) return 'new'
   return null
 }

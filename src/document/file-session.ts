@@ -21,6 +21,7 @@ export type FileSessionEvent<Ref> =
       readonly current: string
     }
   | { readonly type: 'edited'; readonly text: string }
+  | { readonly type: 'cleared' }
 
 export const nextFileSession = <Ref>(
   session: FileSession<Ref> | null,
@@ -40,7 +41,7 @@ export const nextFileSession = <Ref>(
       savedText: event.text,
       dirty: event.current !== event.text,
     }
-  if (session === null) return null
+  if (event.type === 'cleared' || session === null) return null
   const dirty = event.text !== session.savedText
   return dirty === session.dirty ? session : { ...session, dirty }
 }

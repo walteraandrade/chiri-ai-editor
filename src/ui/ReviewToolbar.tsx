@@ -1,14 +1,17 @@
 import { type RefObject, useEffect, useId, useRef, useState } from 'react'
 import type { ReviewControls } from '../editor/review-controls'
 import type { ReviewStatus } from '../editor/review-field'
+import { ReviewForm } from './ReviewForm'
 
 type ReviewToolbarProps = {
   readonly status: ReviewStatus
   readonly controls: ReviewControls | null
   readonly triggerRef: RefObject<HTMLButtonElement | null>
+  readonly trigger?: boolean
 }
 
-const FOCUS_PLACEHOLDER = 'Focus (optional): tone, concision…'
+const POPOVER_CLASS =
+  'popover-in absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 border border-hairline bg-raised p-2'
 
 const countLabel = (added: number): string =>
   `${added} ${added === 1 ? 'suggestion' : 'suggestions'}`
@@ -17,16 +20,11 @@ export function ReviewToolbar({
   status,
   controls,
   triggerRef,
+  trigger = true,
 }: ReviewToolbarProps) {
   const [open, setOpen] = useState(false)
-  const [focus, setFocus] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
   const popoverId = useId()
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus()
-  }, [open])
 
   useEffect(() => {
     if (!open) return undefined
@@ -42,9 +40,8 @@ export function ReviewToolbar({
     triggerRef.current?.focus()
   }
 
-  const submit = (): void => {
-    controls?.start(focus.trim())
-    setFocus('')
+  const submit = (focus: string): void => {
+    controls?.start(focus)
     setOpen(false)
   }
 
@@ -71,69 +68,46 @@ export function ReviewToolbar({
           </button>
         </>
       ) : null}
-      <button
-        ref={triggerRef}
-        type="button"
-        className="cm-ai-button"
-        aria-busy={status.running || undefined}
-        aria-haspopup={status.running ? undefined : 'dialog'}
-        aria-expanded={status.running ? undefined : open}
-        aria-controls={!status.running && open ? popoverId : undefined}
-        title={status.running ? 'Stop the Review pass' : undefined}
-        disabled={controls === null}
-        onClick={
-          status.running
-            ? () => controls?.stop()
-            : () => setOpen((value) => !value)
-        }
-      >
-        {status.running ? (
-          <>
-            <span className="cm-ai-pulse" aria-hidden="true" />
-            Reviewing…
-            {status.added > 0 ? (
-              <span key={status.added} className="cm-ai-count ml-1">
-                {countLabel(status.added)}
-              </span>
-            ) : null}
-            <span className="ml-2 text-ink-strong">Stop</span>
-          </>
-        ) : (
-          'Review'
-        )}
-      </button>
-      {open && !status.running ? (
-        <form
-          id={popoverId}
-          role="dialog"
-          aria-label="Review the Document"
-          className="popover-in absolute top-full right-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-3rem))] gap-2 border border-hairline bg-raised p-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            submit()
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Escape') return
-            event.preventDefault()
-            event.stopPropagation()
-            close()
-          }}
+      {trigger || status.running ? (
+        <button
+          ref={trigger ? triggerRef : undefined}
+          type="button"
+          className="cm-ai-button"
+          aria-busy={status.running || undefined}
+          aria-haspopup={status.running ? undefined : 'dialog'}
+          aria-expanded={status.running ? undefined : open}
+          aria-controls={!status.running && open ? popoverId : undefined}
+          title={status.running ? 'Stop the Review pass' : undefined}
+          disabled={controls === null}
+          onClick={
+            status.running
+              ? () => controls?.stop()
+              : () => setOpen((value) => !value)
+          }
         >
-          <input
-            ref={inputRef}
-            type="text"
-            className="cm-ai-bubble-input"
-            placeholder={FOCUS_PLACEHOLDER}
-            aria-label="Focus (optional)"
-            autoComplete="off"
-            spellCheck={false}
-            value={focus}
-            onChange={(event) => setFocus(event.target.value)}
-          />
-          <button type="submit" className="cm-ai-button">
-            Review
-          </button>
-        </form>
+          {status.running ? (
+            <>
+              <span className="cm-ai-pulse" aria-hidden="true" />
+              Reviewing…
+              {status.added > 0 ? (
+                <span key={status.added} className="cm-ai-count ml-1">
+                  {countLabel(status.added)}
+                </span>
+              ) : null}
+              <span className="ml-2 text-ink-strong">Stop</span>
+            </>
+          ) : (
+            'Review'
+          )}
+        </button>
+      ) : null}
+      {open && !status.running ? (
+        <ReviewForm
+          id={popoverId}
+          className={POPOVER_CLASS}
+          onSubmit={submit}
+          onClose={close}
+        />
       ) : null}
     </div>
   )

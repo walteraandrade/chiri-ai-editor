@@ -27,6 +27,14 @@ describe('fileCommandOf', () => {
     ).toBe('save-as')
   })
 
+  it('maps Ctrl+N and Cmd+N to New', () => {
+    expect(fileCommandOf(key('n', { ctrlKey: true }), false)).toBe('new')
+    expect(fileCommandOf(key('n', { metaKey: true }), true)).toBe('new')
+    expect(
+      fileCommandOf(key('N', { ctrlKey: true, shiftKey: true }), false),
+    ).toBeNull()
+  })
+
   it('maps Cmd on macOS', () => {
     expect(fileCommandOf(key('o', { metaKey: true }), true)).toBe('open')
     expect(fileCommandOf(key('s', { metaKey: true }), true)).toBe('save')

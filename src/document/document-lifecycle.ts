@@ -54,7 +54,7 @@ type LifecycleOptions<Ref> = {
 
 export type DocumentLifecycle<Ref> = Pick<
   FileActions<Ref>,
-  'open' | 'openRef' | 'openCreated' | 'save'
+  'open' | 'openRef' | 'startNew' | 'openCreated' | 'save'
 > & {
   readonly snapshot: () => LifecycleState<Ref>
   readonly subscribe: (listener: () => void) => () => void
@@ -230,6 +230,7 @@ export const createDocumentLifecycle = <Ref>({
   return {
     open: actions.open,
     openRef: actions.openRef,
+    startNew: actions.startNew,
     openCreated: actions.openCreated,
     save: actions.save,
     snapshot: () => state,

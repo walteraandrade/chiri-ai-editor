@@ -1140,3 +1140,40 @@ describe('reloadFrom', () => {
     expect(reloadedFiles).toEqual([])
   })
 })
+
+describe('startNew', () => {
+  it('empties the Document and drops the file session', async () => {
+    const calls: string[] = []
+    const { editor } = fakeEditor('# A\n', calls)
+    const { actions, session, notices, openedFiles } = setup({
+      editor,
+      session: sessionOf('# A\n'),
+      calls,
+    })
+    await actions.startNew()
+    expect(calls).toEqual(['dispatch cleared', 'replace', 'onOpened'])
+    expect(editor.replace).toHaveBeenCalledWith('')
+    expect(session()).toBeNull()
+    expect(openedFiles).toEqual([{ text: '', name: 'Untitled' }])
+    expect(notices).toEqual(['New Document'])
+  })
+
+  it('asks first about unsaved changes and stays on Cancel', async () => {
+    const { editor } = fakeEditor('# A, edited\n')
+    const { actions, ask, events } = setup({
+      editor,
+      session: sessionOf('# A\n', true),
+      choice: 'cancel',
+    })
+    await actions.startNew()
+    expect(ask).toHaveBeenCalledWith('SKILL.md')
+    expect(editor.replace).not.toHaveBeenCalled()
+    expect(events).toEqual([])
+  })
+
+  it('does nothing before the editor exists', async () => {
+    const { actions, events } = setup({ editor: null })
+    await actions.startNew()
+    expect(events).toEqual([])
+  })
+})

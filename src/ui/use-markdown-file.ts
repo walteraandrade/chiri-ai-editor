@@ -77,7 +77,8 @@ export const useMarkdownFile = <Ref>({
       if (command === null) return
       event.preventDefault()
       if (event.repeat) return
-      if (command === 'open') void lifecycle.open()
+      if (command === 'new') void lifecycle.startNew()
+      else if (command === 'open') void lifecycle.open()
       else void lifecycle.save(command === 'save-as')
     }
     window.addEventListener('keydown', onKeyDown, { capture: true })
@@ -94,7 +95,8 @@ export const useMarkdownFile = <Ref>({
         : `${dirty ? '• ' : ''}${name} · Desafinado`
   }, [name, dirty])
 
-  const { open, openRef, openCreated, save, edited, restore } = lifecycle
+  const { open, openRef, startNew, openCreated, save, edited, restore } =
+    lifecycle
   const reloadFromDisk = useCallback(
     () => lifecycle.resolveConflict('reload'),
     [lifecycle],
@@ -109,6 +111,7 @@ export const useMarkdownFile = <Ref>({
     conflict,
     open,
     openRef,
+    startNew,
     openCreated,
     save,
     edited,
