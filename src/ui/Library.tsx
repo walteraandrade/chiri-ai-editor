@@ -382,10 +382,10 @@ export function Library<Ref>({
       tabIndex={-1}
       hidden={!open}
       aria-label="Library"
-      className={`library-in flex h-screen w-72 shrink-0 flex-col bg-surface focus:outline-none ${
+      className={`library-in flex h-(--app-height) w-72 shrink-0 flex-col bg-surface focus:outline-none ${
         placement === 'column'
-          ? 'sticky top-0'
-          : 'fixed top-0 left-10 z-40 border-hairline border-r'
+          ? 'sticky top-(--title-bar-height)'
+          : 'fixed top-(--title-bar-height) left-10 z-40 border-hairline border-r'
       }`}
       onKeyDown={(event) => {
         if (event.key === 'Escape') onEscape()

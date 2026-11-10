@@ -38,6 +38,7 @@ import { SKILL_FILE_NAME } from '../skills/scan-skills'
 import type { SkillField } from '../skills/skill-frontmatter'
 import { noticeMessage } from '../suggestions/notice'
 import type { SuggestionNotice } from '../suggestions/types'
+import type { ThemeTokens } from '../theme/tokens'
 import { EditorPane } from './EditorPane'
 import { EvalsPage } from './EvalsPage'
 import { ExternalChangeNotice } from './ExternalChangeNotice'
@@ -69,6 +70,7 @@ import { isPreferencesShortcut } from './preferences-shortcut'
 import { ReviewToolbar } from './ReviewToolbar'
 import { SettingsButton } from './SettingsButton'
 import { Timeline } from './Timeline'
+import { TitleBar } from './TitleBar'
 import { Toast, type ToastAction, type ToastMessage } from './Toast'
 import { useDescriptionAi } from './use-description-ai'
 import { type EvalSkill, useEvalPanel } from './use-eval-panel'
@@ -103,7 +105,12 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     launches,
     preferencesRequests,
     libraryRequests,
+    titleBar,
   } = kit
+  const paintTitleBar = useCallback(
+    (tokens: ThemeTokens) => titleBar?.paint(tokens.roles),
+    [titleBar],
+  )
   const key = useKeyState(kit)
   const initialDoc = unsavedText.initial
   const [toast, setToast] = useState<ToastMessage | null>(null)
@@ -114,7 +121,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   const [controls, setControls] = useState<ReviewControls | null>(null)
   const [documentControls, setDocumentControls] =
     useState<DocumentControls | null>(null)
-  const theme = useTheme()
+  const theme = useTheme(paintTitleBar)
   const toastId = useRef(0)
   const headerRef = useRef<HTMLElement>(null)
   const reviewTriggerRef = useRef<HTMLButtonElement>(null)
@@ -497,8 +504,11 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
   }, [])
 
   const page = (
-    <div className="min-h-screen">
-      <header ref={headerRef} className="sticky top-0 z-30 bg-canvas">
+    <div className="min-h-(--app-height)">
+      <header
+        ref={headerRef}
+        className="sticky top-(--title-bar-height) z-30 bg-canvas"
+      >
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 pt-6 pb-3">
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 className="font-display font-semibold text-2xl text-ink-strong tracking-wide">
@@ -525,9 +535,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
               controls={reviewControls}
               triggerRef={reviewTriggerRef}
             />
-            {preferencesRequests === undefined ? (
-              <SettingsButton onClick={() => setPreferencesOpen(true)} />
-            ) : null}
+            <SettingsButton onClick={() => setPreferencesOpen(true)} />
           </div>
         </div>
         {file.conflict ? (
@@ -652,36 +660,46 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     </div>
   )
 
-  return library === undefined ? (
-    page
-  ) : (
-    <div className="flex items-start">
-      <LibraryRail
-        open={libraryOpen}
-        onToggle={toggleLibraryFromRail}
-        onSearch={searchLibrary}
-      />
-      <Library
-        open={libraryOpen}
-        placement={placement}
-        handleRef={libraryHandle}
-        library={library}
-        controls={libraryControls}
-        activeRef={openRef}
-        onOpen={openFromLibrary}
-        onOpenResult={openSearchResult}
-        onSearchBlur={leaveSearch}
-        onNewSkill={() => setNewSkillOpen(true)}
-        onEscape={focusTextFromLibrary}
-      />
-      {newSkillOpen && libraryControls.state.status === 'ready' ? (
-        <NewSkillDialog
-          roots={libraryControls.state.roots}
-          onCreate={createSkill}
-          onClose={() => setNewSkillOpen(false)}
+  const content =
+    library === undefined ? (
+      page
+    ) : (
+      <div className="flex items-start">
+        <LibraryRail
+          open={libraryOpen}
+          onToggle={toggleLibraryFromRail}
+          onSearch={searchLibrary}
         />
-      ) : null}
-      <div className="min-w-0 flex-1">{page}</div>
-    </div>
+        <Library
+          open={libraryOpen}
+          placement={placement}
+          handleRef={libraryHandle}
+          library={library}
+          controls={libraryControls}
+          activeRef={openRef}
+          onOpen={openFromLibrary}
+          onOpenResult={openSearchResult}
+          onSearchBlur={leaveSearch}
+          onNewSkill={() => setNewSkillOpen(true)}
+          onEscape={focusTextFromLibrary}
+        />
+        {newSkillOpen && libraryControls.state.status === 'ready' ? (
+          <NewSkillDialog
+            roots={libraryControls.state.roots}
+            onCreate={createSkill}
+            onClose={() => setNewSkillOpen(false)}
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">{page}</div>
+      </div>
+    )
+
+  return titleBar === undefined ? (
+    content
+  ) : (
+    <>
+      <TitleBar />
+      {content}
+    </>
   )
 }

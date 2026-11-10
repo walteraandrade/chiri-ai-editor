@@ -123,7 +123,7 @@ export function PreferencesDialog({
     <dialog
       ref={dialog}
       aria-labelledby="preferences-title"
-      className="fixed top-0 right-0 bottom-0 left-auto m-0 flex h-full max-h-none w-[min(26rem,100vw)] flex-col border-hairline border-l bg-surface text-ink backdrop:bg-transparent"
+      className="fixed top-(--title-bar-height) right-0 bottom-0 left-auto m-0 flex h-auto max-h-none w-[min(26rem,100vw)] flex-col border-hairline border-l bg-surface text-ink backdrop:bg-transparent"
       onCancel={(event) => {
         event.preventDefault()
         onClose()

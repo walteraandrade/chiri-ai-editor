@@ -20,7 +20,9 @@ export type ThemeState = {
   readonly choose: (choice: ThemeChoice) => void
 }
 
-export function useTheme(): ThemeState {
+export function useTheme(
+  onApplied?: (tokens: ThemeTokens) => void,
+): ThemeState {
   const [omarchy, setOmarchy] = useState(initialOmarchyTheme)
   const [choice, setChoice] = useState(() => loadThemeChoice(getLocalStorage()))
   const applied = useRef(false)
@@ -28,11 +30,13 @@ export function useTheme(): ThemeState {
   useEffect(() => onOmarchyThemeChange(setOmarchy), [])
 
   useEffect(() => {
-    applyTheme(document.documentElement, activeTheme(choice, omarchy), {
+    const tokens = activeTheme(choice, omarchy)
+    applyTheme(document.documentElement, tokens, {
       crossfade: applied.current && !prefersReducedMotion(),
     })
     applied.current = true
-  }, [choice, omarchy])
+    onApplied?.(tokens)
+  }, [choice, omarchy, onApplied])
 
   const choose = (next: ThemeChoice): void => {
     saveThemeChoice(getLocalStorage(), next)
