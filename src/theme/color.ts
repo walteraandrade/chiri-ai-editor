@@ -35,3 +35,6 @@ export const mixHex = (from: string, to: string, share: number): string => {
   const mix = (a: number, b: number): string => toHex(a + (b - a) * share)
   return `#${mix(r1, r2)}${mix(g1, g2)}${mix(b1, b2)}`
 }
+
+export const sixDigitHex = (hex: string): string =>
+  `#${rgbOf(hex).map(toHex).join('')}`

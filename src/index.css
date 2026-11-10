@@ -29,7 +29,7 @@
 }
 
 html.title-bar {
-  --title-bar-height: 37px;
+  --title-bar-height: calc(env(titlebar-area-height, 36px) + 1px);
 }
 
 @theme static {

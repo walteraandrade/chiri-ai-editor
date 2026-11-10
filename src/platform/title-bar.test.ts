@@ -9,4 +9,15 @@ describe('titleBarColors', () => {
       symbolColor: DEFAULT_THEME.tokens.roles.ink,
     })
   })
+  it('sends three- and eight-digit theme colors as six-digit hex', () => {
+    const roles = {
+      ...DEFAULT_THEME.tokens.roles,
+      raised: '#1a2',
+      ink: '#ffdd00cc',
+    }
+    expect(titleBarColors(roles)).toEqual({
+      color: '#11aa22',
+      symbolColor: '#ffdd00',
+    })
+  })
 })
