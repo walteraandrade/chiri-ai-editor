@@ -28,6 +28,7 @@ import type {
   PlatformKit,
   PlatformKitFactory,
   StartFile,
+  TitleBarKit,
   UnsavedStore,
 } from './kit'
 import { flushWhenPageHides } from './page-hide'
@@ -36,6 +37,7 @@ import {
   createQuickActionStore,
   type QuickActionStore,
 } from './quick-action-store'
+import { titleBarColors } from './title-bar'
 
 const UNSAVED_DELAY_MS = 400
 const HISTORY_IDLE_MS = 30_000
@@ -64,6 +66,7 @@ type ElectronKitDeps = {
   readonly now: () => number
   readonly hasApiKey: boolean
   readonly onHide: (flush: () => void) => void
+  readonly titleBar?: TitleBarKit
 }
 
 type Reopened = {
@@ -152,6 +155,7 @@ export const createElectronKit = async ({
   now,
   hasApiKey,
   onHide,
+  titleBar,
 }: ElectronKitDeps): Promise<PlatformKit<string>> => {
   const problems = createProblems()
   const unsaved = createElectronUnsavedStore(api, {
@@ -247,6 +251,7 @@ export const createElectronKit = async ({
     preferencesRequests,
     libraryRequests,
     quickActions,
+    titleBar,
   }
 }
 
@@ -281,5 +286,8 @@ export const browserElectronKit: PlatformKitFactory<string> =
       now: Date.now,
       hasApiKey: __HAS_OPENROUTER_KEY__,
       onHide: flushWhenPageHides,
+      titleBar: {
+        paint: (roles) => api.setTitleBarColors(titleBarColors(roles)),
+      },
     }
   })

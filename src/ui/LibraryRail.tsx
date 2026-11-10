@@ -11,7 +11,7 @@ export function LibraryRail({ open, onToggle, onSearch }: LibraryRailProps) {
   const shortcut = formatShortcut('B', apple)
   const searchShortcut = formatShortcut('P', apple)
   return (
-    <div className="library-rail sticky top-0 z-30 flex h-screen w-10 shrink-0 flex-col items-center border-hairline border-r bg-surface pt-6">
+    <div className="library-rail sticky top-(--title-bar-height) z-30 flex h-(--app-height) w-10 shrink-0 flex-col items-center border-hairline border-r bg-surface pt-6">
       <button
         type="button"
         className="cm-ai-button text-sm [writing-mode:vertical-rl]"

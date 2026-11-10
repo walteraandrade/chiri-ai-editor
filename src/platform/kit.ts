@@ -10,6 +10,7 @@ import type {
   LibraryListing,
   RemoveRootResult,
 } from '../skills/library'
+import type { ThemeRoles } from '../theme/tokens'
 import type { Problems } from './problems'
 import type { QuickActionStore } from './quick-action-store'
 
@@ -127,6 +128,10 @@ export type LaunchKit<Ref> = {
   readonly subscribe: (listener: (ref: Ref) => void) => () => void
 }
 
+export type TitleBarKit = {
+  readonly paint: (roles: ThemeRoles) => void
+}
+
 export type PlatformKit<Ref = unknown> = {
   readonly files: DocumentFiles<Ref>
   readonly unsavedText: UnsavedText<Ref>
@@ -143,6 +148,7 @@ export type PlatformKit<Ref = unknown> = {
   readonly launches?: LaunchKit<Ref>
   readonly preferencesRequests?: (listener: () => void) => () => void
   readonly libraryRequests?: (listener: () => void) => () => void
+  readonly titleBar?: TitleBarKit
 }
 
 export type PlatformKitFactory<Ref = unknown> = () => Promise<PlatformKit<Ref>>

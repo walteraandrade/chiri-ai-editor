@@ -11,6 +11,7 @@ import {
   PREFERENCES_REQUEST_CHANNEL,
   SHELL_INFO_CHANNEL,
   type ShellInfo,
+  TITLE_BAR_COLORS_CHANNEL,
 } from '../api'
 import { resolveAppUrl } from './app-url'
 import { resolveDevOptions } from './dev-options'
@@ -25,8 +26,14 @@ import { menuTemplate } from './menu-template'
 import { registerQuickActionsIpc } from './quick-actions/quick-actions-ipc'
 import { isAppNavigation, isTrustedFrame } from './trust'
 import { registerExternalChanges } from './watch/register'
+import {
+  parseTitleBarColors,
+  TITLE_BAR_HEIGHT,
+  windowChrome,
+} from './window-chrome'
 
 const CANVAS_COLOR = '#051230'
+const INITIAL_TITLE_BAR = { color: '#1e0e3f', symbolColor: '#ffdd00' } as const
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
 
@@ -60,6 +67,15 @@ const registerIpc = (history: HistoryAccess): void => {
   })
   const isTrusted = (event: IpcMainInvokeEvent): boolean =>
     isTrustedFrame(event.senderFrame, appUrl())
+  ipcMain.on(TITLE_BAR_COLORS_CHANNEL, (event, input: unknown) => {
+    if (!isTrustedFrame(event.senderFrame, appUrl())) return
+    const colors = parseTitleBarColors(input)
+    if (colors === null || process.platform === 'darwin') return
+    BrowserWindow.fromWebContents(event.sender)?.setTitleBarOverlay({
+      ...colors,
+      height: TITLE_BAR_HEIGHT,
+    })
+  })
   registerFileHandlers(isTrusted)
   const library = registerLibraryHandlers(isTrusted)
   registerExternalChanges(isTrusted, library)
@@ -87,6 +103,7 @@ const createWindow = (): BrowserWindow => {
     height: 860,
     show: false,
     backgroundColor: CANVAS_COLOR,
+    ...windowChrome(process.platform, INITIAL_TITLE_BAR),
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
