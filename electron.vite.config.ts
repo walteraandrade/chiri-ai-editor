@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => ({
     root: '.',
     ...rendererConfig(mode),
     build: {
+      minify: true,
       rolldownOptions: { input: 'electron.html' },
     },
   },
