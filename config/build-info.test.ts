@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shortCommit } from './build-info.ts'
+import { packedRef, shortCommit } from './build-info.ts'
 
 describe('shortCommit', () => {
   it('keeps the first 7 characters of a commit hash', () => {
@@ -12,5 +12,23 @@ describe('shortCommit', () => {
     expect(shortCommit('')).toBe('unknown')
     expect(shortCommit(null)).toBe('unknown')
     expect(shortCommit('not a hash')).toBe('unknown')
+  })
+})
+
+describe('packedRef', () => {
+  const packed = [
+    '# pack-refs with: peeled fully-peeled sorted',
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refs/heads/main',
+    'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb refs/heads/feat/x',
+  ].join('\n')
+
+  it('finds the hash of a packed ref', () => {
+    expect(packedRef(packed, 'refs/heads/feat/x')).toBe(
+      'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    )
+  })
+
+  it('returns null for a ref that is not packed', () => {
+    expect(packedRef(packed, 'refs/heads/gone')).toBeNull()
   })
 })

@@ -118,6 +118,7 @@ export function MenuBar({ menus }: MenuBarProps) {
     <div
       ref={rootRef}
       role="menubar"
+      tabIndex={-1}
       aria-label="Application"
       className="flex h-full items-center"
       onKeyDown={onMenuKeyDown}
