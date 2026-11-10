@@ -4,6 +4,8 @@
 @import "./editor/suggestions.css";
 
 :root {
+  --title-bar-height: 0px;
+  --app-height: calc(100vh - var(--title-bar-height));
   --theme-canvas: #051230;
   --theme-raised: #1e0e3f;
   --theme-ink: #ffdd00;
@@ -24,6 +26,10 @@
   --motion-reveal: 420ms;
   --motion-land: 1400ms;
   --motion-settle: 420ms;
+}
+
+html.title-bar {
+  --title-bar-height: calc(env(titlebar-area-height, 36px) + 1px);
 }
 
 @theme static {
@@ -75,6 +81,7 @@
 
   body {
     @apply bg-canvas font-sans text-ink antialiased;
+    padding-top: var(--title-bar-height);
   }
 }
 
@@ -396,4 +403,9 @@
 .library-search-context {
   color: var(--color-ink-faint);
   font-size: 0.75rem;
+}
+
+.title-bar-drag {
+  -webkit-app-region: drag;
+  user-select: none;
 }

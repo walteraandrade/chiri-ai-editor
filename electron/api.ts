@@ -33,6 +33,7 @@ export const LAUNCH_TAKE_CHANNEL = 'launch:take'
 export const LAUNCH_FILE_CHANNEL = 'launch:file'
 export const PREFERENCES_REQUEST_CHANNEL = 'menu:preferences'
 export const LIBRARY_REQUEST_CHANNEL = 'menu:library'
+export const TITLE_BAR_COLORS_CHANNEL = 'window:title-bar-colors'
 export const QUICK_ACTIONS_LOAD_CHANNEL = 'quick-actions:load'
 export const QUICK_ACTIONS_SAVE_CHANNEL = 'quick-actions:save'
 
@@ -48,6 +49,11 @@ export const KEY_KEEP_AS_PLAIN_TEXT_CHANNEL = 'key:keep-as-plain-text'
 export const KEY_CLEAR_CHANNEL = 'key:clear'
 
 export const FILE_NOT_FOUND_REASON = 'File not found'
+
+export type TitleBarColors = {
+  readonly color: string
+  readonly symbolColor: string
+}
 
 export type ShellInfo = {
   readonly electron: string
@@ -124,6 +130,7 @@ export type DesafinadoApi = {
   readonly onLaunchFile: (listener: () => void) => () => void
   readonly onPreferencesRequest: (listener: () => void) => () => void
   readonly onLibraryRequest: (listener: () => void) => () => void
+  readonly setTitleBarColors: (colors: TitleBarColors) => void
   readonly loadQuickActions: () => Promise<string | null>
   readonly saveQuickActions: (text: string) => Promise<void>
   readonly evalStatus: (request: EvalSkillRequest) => Promise<EvalStatus>

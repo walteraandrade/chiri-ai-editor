@@ -27,6 +27,7 @@ import {
   QUICK_ACTIONS_LOAD_CHANNEL,
   QUICK_ACTIONS_SAVE_CHANNEL,
   SHELL_INFO_CHANNEL,
+  TITLE_BAR_COLORS_CHANNEL,
   WATCH_FILE_CHANNEL,
 } from '../api'
 import { HISTORY_CHANNELS } from '../history-api'
@@ -77,6 +78,8 @@ const api: DesafinadoApi = {
       ipcRenderer.off(LIBRARY_REQUEST_CHANNEL, relay)
     }
   },
+  setTitleBarColors: (colors) =>
+    ipcRenderer.send(TITLE_BAR_COLORS_CHANNEL, colors),
   loadQuickActions: () => ipcRenderer.invoke(QUICK_ACTIONS_LOAD_CHANNEL),
   saveQuickActions: (text) =>
     ipcRenderer.invoke(QUICK_ACTIONS_SAVE_CHANNEL, text),
