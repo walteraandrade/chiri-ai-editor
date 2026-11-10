@@ -409,3 +409,27 @@ html.title-bar {
   -webkit-app-region: drag;
   user-select: none;
 }
+
+.title-bar-commands {
+  -webkit-app-region: no-drag;
+  padding-right: calc(
+    100vw -
+    env(titlebar-area-x, 0px) -
+    env(titlebar-area-width, 100vw) +
+    0.75rem
+  );
+}
+
+.title-bar-commands .cm-ai-button {
+  min-height: 1.625rem;
+}
+
+.title-bar-commands .cm-ai-button-icon {
+  width: 1.625rem;
+}
+
+.title-bar-commands .save-problems {
+  top: -0.25rem;
+  min-width: 1rem;
+  line-height: 1rem;
+}

@@ -503,6 +503,24 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
       reviewTriggerRef.current?.focus()
   }, [])
 
+  const commands = (
+    <>
+      <FileControls
+        disabled={documentControls === null}
+        problems={frontmatterProblems}
+        onOpen={file.open}
+        onSave={file.save}
+        onShowProblems={showFrontmatterProblems}
+      />
+      <ReviewToolbar
+        status={review}
+        controls={reviewControls}
+        triggerRef={reviewTriggerRef}
+      />
+      <SettingsButton onClick={() => setPreferencesOpen(true)} />
+    </>
+  )
+
   const page = (
     <div className="min-h-(--app-height)">
       <header
@@ -523,19 +541,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
             <Hint />
-            <FileControls
-              disabled={documentControls === null}
-              problems={frontmatterProblems}
-              onOpen={file.open}
-              onSave={file.save}
-              onShowProblems={showFrontmatterProblems}
-            />
-            <ReviewToolbar
-              status={review}
-              controls={reviewControls}
-              triggerRef={reviewTriggerRef}
-            />
-            <SettingsButton onClick={() => setPreferencesOpen(true)} />
+            {titleBar === undefined ? commands : null}
           </div>
         </div>
         {file.conflict ? (
@@ -698,7 +704,7 @@ export function App<Ref>({ kit }: AppProps<Ref>) {
     content
   ) : (
     <>
-      <TitleBar />
+      <TitleBar>{commands}</TitleBar>
       {content}
     </>
   )
